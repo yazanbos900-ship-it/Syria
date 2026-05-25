@@ -12,7 +12,7 @@ import java.util.UUID
 
 class CreateStoreViewModel(
     private val storeRepository: StoreRepository = StoreRepositoryImpl(),
-    private val uploader: FirebaseStorageUploader = FirebaseStorageUploader()
+    private val uploader: CloudinaryUploader = CloudinaryUploader()
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StoreUiState())
@@ -79,8 +79,7 @@ class CreateStoreViewModel(
             _state.update { it.copy(isLogoUploading = true, error = null) }
             try {
                 val uploadResult = uploader.uploadFile(
-                    localUriString = uriString,
-                    storagePath = "store_logos/$uid/${UUID.randomUUID()}.jpg"
+                    localUriString = uriString
                 )
                 val url = uploadResult.getOrThrow()
                 _state.update { it.copy(logoUriString = url, isLogoUploading = false) }
@@ -100,8 +99,7 @@ class CreateStoreViewModel(
             _state.update { it.copy(isBannerUploading = true, error = null) }
             try {
                 val uploadResult = uploader.uploadFile(
-                    localUriString = uriString,
-                    storagePath = "store_banners/$uid/${UUID.randomUUID()}.jpg"
+                    localUriString = uriString
                 )
                 val url = uploadResult.getOrThrow()
                 _state.update { it.copy(bannerUriString = url, isBannerUploading = false) }
@@ -198,8 +196,7 @@ class CreateStoreViewModel(
                 currentState.productImageUris.forEachIndexed { index, uriString ->
                     val imageId = UUID.randomUUID().toString()
                     val uploadResult = uploader.uploadFile(
-                        localUriString = uriString,
-                        storagePath = "products/$storeId/$imageId.jpg"
+                        localUriString = uriString
                     )
                     uploadedProductImages.add(uploadResult.getOrThrow())
                 }

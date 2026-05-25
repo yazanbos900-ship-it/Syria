@@ -17,6 +17,9 @@ object ServiceLocator {
     
     private var isInitialized = false
 
+    lateinit var applicationContext: Context
+        private set
+
     // Lazy repository initializations to maintain Clean Architecture principles
     val authRepository: AuthRepository by lazy {
         FirebaseAuthRepositoryImpl()
@@ -43,6 +46,7 @@ object ServiceLocator {
      */
     fun init(context: Context) {
         if (isInitialized) return
+        applicationContext = context.applicationContext
         FirebaseInitializer.initialize(context)
         isInitialized = true
     }
