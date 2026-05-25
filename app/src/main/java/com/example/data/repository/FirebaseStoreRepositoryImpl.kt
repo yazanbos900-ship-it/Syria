@@ -52,6 +52,28 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
         awaitClose { subscription.remove() }
     }
 
+    private fun mapFirestoreDocToStore(doc: com.google.firebase.firestore.DocumentSnapshot): Store? {
+        if (!doc.exists()) return null
+        return try {
+            Store(
+                id = doc.id,
+                name = doc.getString("storeName") ?: doc.getString("name") ?: "",
+                ownerId = doc.getString("ownerId") ?: "",
+                ownerUsername = doc.getString("ownerUsername") ?: "",
+                logoUrl = doc.getString("logoUrl"),
+                bannerUrl = doc.getString("bannerUrl"),
+                description = doc.getString("description") ?: "",
+                followersCount = (doc.getLong("followersCount") ?: 0).toInt(),
+                status = doc.getString("status") ?: "active",
+                rating = doc.getDouble("rating")?.toFloat() ?: 5.0f,
+                isVerified = doc.getBoolean("isVerified") ?: false,
+                createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: doc.getLong("createdAt") ?: System.currentTimeMillis()
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun handleSnapshot(
         snapshot: com.google.firebase.firestore.QuerySnapshot?,
         error: com.google.firebase.firestore.FirebaseFirestoreException?,
@@ -63,24 +85,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
         }
         if (snapshot != null) {
             val list = snapshot.documents.mapNotNull { doc ->
-                try {
-                    Store(
-                        id = doc.id,
-                        name = doc.getString("storeName") ?: doc.getString("name") ?: "",
-                        ownerId = doc.getString("ownerId") ?: "",
-                        ownerUsername = doc.getString("ownerUsername") ?: "",
-                        logoUrl = doc.getString("logoUrl"),
-                        bannerUrl = doc.getString("bannerUrl"),
-                        description = doc.getString("description") ?: "",
-                        followersCount = (doc.getLong("followersCount") ?: 0).toInt(),
-                        status = doc.getString("status") ?: "active",
-                        rating = doc.getDouble("rating")?.toFloat() ?: 5.0f,
-                        isVerified = doc.getBoolean("isVerified") ?: false,
-                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: System.currentTimeMillis()
-                    )
-                } catch (e: Exception) {
-                    null
-                }
+                mapFirestoreDocToStore(doc)
             }
             trySend(Result.success(list))
         } else {
@@ -89,26 +94,22 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
     }
 
     override suspend fun getStoreById(storeId: String): Store? {
+        if (storeId.isBlank()) return null
         val db = firestore ?: return null
         return try {
-            val doc = db.collection("stores").document(storeId).get().await()
-            if (doc.exists()) {
-                Store(
-                    id = doc.id,
-                    name = doc.getString("name") ?: doc.getString("storeName") ?: "",
-                    ownerId = doc.getString("ownerId") ?: "",
-                    logoUrl = doc.getString("logoUrl"),
-                    bannerUrl = doc.getString("bannerUrl"),
-                    description = doc.getString("description") ?: "",
-                    rating = doc.getDouble("rating")?.toFloat() ?: 5.0f,
-                    isVerified = doc.getBoolean("isVerified") ?: false,
-                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
-                )
-            } else {
-                null
+            // 1) Primary: document ID (matches list + createStoreAndFirstProduct)
+            var doc = db.collection("stores").document(storeId).get().await()
+            if (!doc.exists()) {
+                // 2) Fallback: legacy docs with separate storeId field
+                val q = db.collection("stores")
+                    .whereEqualTo("storeId", storeId)
+                    .limit(1)
+                    .get().await()
+                doc = q.documents.firstOrNull() ?: return null
             }
+            mapFirestoreDocToStore(doc)
         } catch (e: Exception) {
-            Log.e(tag, "Error loading store details for ID $storeId", e)
+            Log.e(tag, "getStoreById failed for $storeId", e)
             null
         }
     }

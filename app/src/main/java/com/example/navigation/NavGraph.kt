@@ -55,7 +55,7 @@ fun NavigationGraph(
                     navController.navigate(Screen.ProductDetail.createRoute(productId))
                 },
                 onStoreSelected = { storeId ->
-                    // Dynamic navigation skeleton prepared for stores
+                    navController.navigate(Screen.StoreDetail.createRoute(storeId))
                 },
                 onSignOut = {
                     navController.navigate(Screen.Onboarding.route) {
@@ -117,6 +117,19 @@ fun NavigationGraph(
             val productId = backStackEntry.arguments?.getString("productId")
             ProductDetailScreen(
                 productId = productId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.StoreDetail.route,
+            arguments = listOf(
+                navArgument("storeId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val storeId = backStackEntry.arguments?.getString("storeId") ?: ""
+            com.example.features.marketplace.StoreDetailScreen(
+                storeId = storeId,
                 onBack = { navController.popBackStack() }
             )
         }

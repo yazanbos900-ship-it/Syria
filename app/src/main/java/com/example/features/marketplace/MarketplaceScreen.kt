@@ -669,7 +669,7 @@ fun MarketplaceScreen(
                         
                         BrandButton(
                             text = "Launch New Store",
-                            onClick = { onStoreSelected("new_store") }
+                            onClick = { onCreateStoreSelected() }
                         )
                     }
                 }
