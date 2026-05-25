@@ -130,7 +130,10 @@ fun NavigationGraph(
             val storeId = backStackEntry.arguments?.getString("storeId") ?: ""
             com.example.features.marketplace.StoreDetailScreen(
                 storeId = storeId,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onProductClick = { productId ->
+                    navController.navigate(Screen.ProductDetail.createRoute(productId))
+                }
             )
         }
 

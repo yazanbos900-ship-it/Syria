@@ -8,6 +8,7 @@ interface ProductRepository {
     fun getProducts(): Flow<List<Product>>
     fun getProductsByCategory(categoryId: String): Flow<List<Product>>
     fun searchProducts(query: String): Flow<List<Product>>
+    fun getProductsByStoreId(storeId: String): Flow<List<Product>>
     fun getCategories(): Flow<List<Category>>
     suspend fun getProductDetails(productId: String): Product?
 }

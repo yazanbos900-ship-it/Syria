@@ -137,10 +137,10 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 try {
                     Product(
                         id = doc.id,
-                        title = doc.getString("title") ?: "",
+                        title = doc.getString("title") ?: doc.getString("name") ?: "",
                         description = doc.getString("description") ?: "",
                         price = doc.getDouble("price") ?: 0.0,
-                        imageUrls = doc.get("imageUrls") as? List<String> ?: emptyList(),
+                        imageUrls = doc.get("imageUrls") as? List<String> ?: doc.get("images") as? List<String> ?: emptyList(),
                         categoryId = doc.getString("categoryId") ?: "",
                         storeId = doc.getString("storeId") ?: "",
                         rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
@@ -158,6 +158,52 @@ class FirebaseProductRepositoryImpl : ProductRepository {
             Log.e(tag, "Search products query failed", e)
             emit(emptyList())
         }
+    }
+
+    override fun getProductsByStoreId(storeId: String): Flow<List<Product>> = callbackFlow {
+        val db = firestore ?: {
+            trySend(emptyList<Product>())
+            close()
+        }
+        if (db is Function0<*>) return@callbackFlow
+
+        val dbInstance = db as FirebaseFirestore
+        val subscription = dbInstance.collection("products")
+            .whereEqualTo("storeId", storeId)
+            .whereEqualTo("isAvailable", true)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            Product(
+                                id = doc.id,
+                                title = doc.getString("title") ?: doc.getString("name") ?: "",
+                                description = doc.getString("description") ?: "",
+                                price = doc.getDouble("price") ?: 0.0,
+                                imageUrls = doc.get("imageUrls") as? List<String> ?: doc.get("images") as? List<String> ?: emptyList(),
+                                categoryId = doc.getString("categoryId") ?: "",
+                                storeId = doc.getString("storeId") ?: "",
+                                rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
+                                reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
+                                isAvailable = doc.getBoolean("isAvailable") ?: true,
+                                stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
+                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                            )
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    trySend(list)
+                } else {
+                    trySend(emptyList())
+                }
+            }
+
+        awaitClose { subscription.remove() }
     }
 
     override fun getCategories(): Flow<List<Category>> = callbackFlow {
