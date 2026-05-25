@@ -147,6 +147,12 @@ class CreateStoreViewModel(
 
         viewModelScope.launch {
             try {
+                // Check if store already exists
+                if (storeRepository.checkIfStoreExists(uid)) {
+                    _state.update { it.copy(isLoading = false, error = "لديك متجر نشط بالفعل.") }
+                    return@launch
+                }
+                
                 // 1. Upload Store Logo (Required to transition step 2)
                 val logoUrlResult = uploader.uploadFile(
                     localUriString = currentState.logoUriString!!,

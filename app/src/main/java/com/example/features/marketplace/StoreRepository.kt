@@ -1,6 +1,8 @@
 package com.example.features.marketplace
 
 interface StoreRepository {
+    suspend fun checkIfStoreExists(ownerId: String): Boolean
+    
     suspend fun createStoreAndFirstProduct(
         storeId: String,
         ownerId: String,

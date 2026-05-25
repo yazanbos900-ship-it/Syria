@@ -17,6 +17,16 @@ class StoreRepositoryImpl : StoreRepository {
         }
     }
 
+    override suspend fun checkIfStoreExists(ownerId: String): Boolean {
+        val db = firestore ?: return false
+        val snapshot = db.collection("stores")
+            .whereEqualTo("ownerId", ownerId)
+            .limit(1)
+            .get()
+            .await()
+        return !snapshot.isEmpty
+    }
+
     override suspend fun createStoreAndFirstProduct(
         storeId: String,
         ownerId: String,
@@ -32,11 +42,11 @@ class StoreRepositoryImpl : StoreRepository {
         productDescription: String,
         productImages: List<String>
     ): Result<Unit> {
-        val db = firestore ?: return mockSuccessFallback(storeName, productName)
+        val db = firestore ?: return Result.failure(Exception("Firestore service not available"))
 
         return try {
             val storeRef = db.collection("stores").document(storeId)
-            val productRef = storeRef.collection("products").document() // auto-generated ID
+            val productRef = db.collection("products").document() // top-level collection
 
             val storeMap = hashMapOf(
                 "ownerId" to ownerId,
@@ -52,11 +62,15 @@ class StoreRepositoryImpl : StoreRepository {
             )
 
             val productMap = hashMapOf(
+                "productId" to productRef.id,
+                "storeId" to storeId,
+                "ownerUid" to ownerId,
                 "name" to productName,
                 "price" to productPrice,
                 "description" to productDescription,
                 "images" to productImages,
                 "coverImage" to (productImages.firstOrNull() ?: ""),
+                "category" to categoryId,
                 "createdAt" to FieldValue.serverTimestamp()
             )
 
@@ -70,14 +84,7 @@ class StoreRepositoryImpl : StoreRepository {
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(tag, "Failed to write store or first product to Firestore: ${e.message}", e)
-            // If it was a network timeout or permissions issue, we can also gracely fallback
-            // for development ease, but let's return success so the demo flow can proceed
-            mockSuccessFallback(storeName, productName)
+            Result.failure(e)
         }
-    }
-
-    private fun mockSuccessFallback(storeName: String, productName: String): Result<Unit> {
-        Log.w(tag, "Firestore service not fully connected. Simulating success local cache fallback for store: $storeName, product: $productName")
-        return Result.success(Unit)
     }
 }
