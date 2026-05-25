@@ -7,8 +7,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.features.auth.AuthScreen
+import com.example.features.marketplace.CartScreen
 import com.example.features.marketplace.MarketplaceScreen
 import com.example.features.marketplace.ProductDetailScreen
+import com.example.features.marketplace.SearchScreen
 import com.example.features.onboarding.OnboardingScreen
 
 @Composable
@@ -57,6 +59,31 @@ fun NavigationGraph(
                     navController.navigate(Screen.Onboarding.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
+                },
+                onCartSelected = {
+                    navController.navigate(Screen.Cart.route)
+                },
+                onSearchSelected = {
+                    navController.navigate(Screen.Search.route)
+                }
+            )
+        }
+
+        composable(route = Screen.Search.route) {
+            SearchScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onProductSelected = { productId ->
+                    navController.navigate(Screen.ProductDetail.createRoute(productId))
+                }
+            )
+        }
+
+        composable(route = Screen.Cart.route) {
+            CartScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onCheckoutSuccess = {
+                    // Navigate back or show success sequence
+                    navController.popBackStack()
                 }
             )
         }

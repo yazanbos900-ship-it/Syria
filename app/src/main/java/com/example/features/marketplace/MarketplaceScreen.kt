@@ -49,7 +49,9 @@ private data class PromoBanner(
 fun MarketplaceScreen(
     onProductSelected: (String) -> Unit,
     onStoreSelected: (String) -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onCartSelected: () -> Unit,
+    onSearchSelected: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
@@ -121,7 +123,7 @@ fun MarketplaceScreen(
                         }
 
                         IconButton(
-                            onClick = onSignOut,
+                            onClick = onCartSelected,
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .background(BrandBackground)
@@ -137,19 +139,36 @@ fun MarketplaceScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Primary Custom Styled Search Bar
-                BrandTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = "Search multi-vendor stores, items...",
-                    leadingIcon = {
+                // Primary Custom Styled Search Bar (Launches Dedicated Search Screen on tap)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(Color.White, RoundedCornerShape(16.dp))
+                        .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
+                        .clickable { onSearchSelected() }
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search Filter",
-                            tint = BrandTextMuted
+                            contentDescription = "Search Trigger Icon",
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Search multi-vendor stores, items...",
+                            fontSize = 15.sp,
+                            color = BrandTextMuted,
+                            fontWeight = FontWeight.Light
                         )
                     }
-                )
+                }
             }
         }
     ) { innerPadding ->
