@@ -2,10 +2,13 @@ package com.example.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.features.auth.AuthScreen
 import com.example.features.marketplace.MarketplaceScreen
+import com.example.features.marketplace.ProductDetailScreen
 import com.example.features.onboarding.OnboardingScreen
 
 @Composable
@@ -45,7 +48,7 @@ fun NavigationGraph(
         composable(Screen.Home.route) {
             MarketplaceScreen(
                 onProductSelected = { productId ->
-                    // Dynamic navigation skeleton prepared for details
+                    navController.navigate(Screen.ProductDetail.createRoute(productId))
                 },
                 onStoreSelected = { storeId ->
                     // Dynamic navigation skeleton prepared for stores
@@ -55,6 +58,19 @@ fun NavigationGraph(
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(
+            route = Screen.ProductDetail.route,
+            arguments = listOf(
+                navArgument("productId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val productId = backStackEntry.arguments?.getString("productId")
+            ProductDetailScreen(
+                productId = productId,
+                onBack = { navController.popBackStack() }
             )
         }
     }
