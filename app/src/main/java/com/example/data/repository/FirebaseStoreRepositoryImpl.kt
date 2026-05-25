@@ -30,6 +30,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
 
         val dbInstance = db as FirebaseFirestore
         val subscription = dbInstance.collection("stores")
+            .whereEqualTo("status", "active")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -39,7 +40,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                     val list = snapshot.documents.mapNotNull { doc ->
                         Store(
                             id = doc.id,
-                            name = doc.getString("name") ?: "",
+                            name = doc.getString("name") ?: doc.getString("storeName") ?: "",
                             ownerId = doc.getString("ownerId") ?: "",
                             logoUrl = doc.getString("logoUrl"),
                             bannerUrl = doc.getString("bannerUrl"),
@@ -64,7 +65,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
             if (doc.exists()) {
                 Store(
                     id = doc.id,
-                    name = doc.getString("name") ?: "",
+                    name = doc.getString("name") ?: doc.getString("storeName") ?: "",
                     ownerId = doc.getString("ownerId") ?: "",
                     logoUrl = doc.getString("logoUrl"),
                     bannerUrl = doc.getString("bannerUrl"),
@@ -93,6 +94,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "description" to store.description,
                 "rating" to store.rating,
                 "isVerified" to store.isVerified,
+                "status" to "active",
                 "createdAt" to store.createdAt
             )
             db.collection("stores").document(store.id).set(storeMap).await()

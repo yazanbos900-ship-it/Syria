@@ -47,7 +47,7 @@ class StoreRepositoryImpl : StoreRepository {
                 "description" to description,
                 "logoUrl" to logoUrl,
                 "bannerUrl" to bannerUrl,
-                "status" to "pending",
+                "status" to "active",
                 "createdAt" to FieldValue.serverTimestamp()
             )
 

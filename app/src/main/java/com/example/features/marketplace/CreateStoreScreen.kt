@@ -716,38 +716,11 @@ fun Step2StoreIdentity(
                         }
                     }
                 } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.AddCircle,
-                            contentDescription = null,
-                            tint = PrimaryGreen,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "شعار مخصص",
-                            color = TextGray,
-                            fontSize = 11.sp
-                        )
-                    }
-                }
-            }
-
-            // Easy Sandbox Demo Autofill pill to assist fast emulator streaming approvals
-            if (state.logoUriString == null) {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(PrimaryGreen.copy(alpha = 0.12f))
-                        .clickable { viewModel.onLogoSelected("android.resource://" + androidContext.packageName + "/" + R.drawable.ic_launcher_foreground) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "✨ استخدام شعار تجريبي سريع للتقييم",
-                        color = PrimaryGreen,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = Icons.Default.AddCircle,
+                        contentDescription = "رفع شعار المتجر",
+                        tint = PrimaryGreen,
+                        modifier = Modifier.size(32.dp)
                     )
                 }
             }
@@ -929,12 +902,12 @@ fun Step3FirstProduct(
                     ) {
                         for (i in 0 until 3) {
                             val itemIndex = rowIndices.getOrNull(i)
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .aspectRatio(1f)
-                            ) {
-                                if (itemIndex != null) {
+                            if (itemIndex != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f)
+                                ) {
                                     if (itemIndex < state.productImageUris.size) {
                                         // Uploaded thumbnail selection
                                         val imgUri = state.productImageUris[itemIndex]
@@ -1018,32 +991,16 @@ fun Step3FirstProduct(
                                             }
                                         }
                                     }
-                                } else {
-                                    // Empty spacing placeholder
-                                    Spacer(modifier = Modifier.fillMaxSize())
                                 }
+                            } else {
+                                Spacer(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f)
+                                )
                             }
                         }
                     }
-                }
-            }
-
-            // Easy Sandbox Demo picture preset fill for emulator evaluation
-            if (state.productImageUris.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 10.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(PrimaryGreen.copy(alpha = 0.12f))
-                        .clickable { viewModel.onAddProductImage("android.resource://" + androidContext.packageName + "/" + R.drawable.ic_launcher_foreground) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "✨ استخدام صورة توضيحية للمنتج لتسهيل الإعداد",
-                        color = PrimaryGreen,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }
@@ -1216,21 +1173,21 @@ fun SuccessScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                text = stringResource(id = R.string.success_title),
+                text = "تم إنشاء متجرك بنجاح!",
                 color = TextWhite,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = stringResource(id = R.string.success_subtitle),
-                color = TextGray,
-                fontSize = 13.sp,
+                text = "يمكنك البدء بالبيع الآن",
+                color = PrimaryGreen,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                lineHeight = 22.sp,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
