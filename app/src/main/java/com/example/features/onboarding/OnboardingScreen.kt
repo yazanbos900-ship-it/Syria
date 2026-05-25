@@ -52,7 +52,7 @@ fun OnboardingScreen(
             AsyncImage(
                 model = slides[page],
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.FillBounds,
                 modifier = Modifier.fillMaxSize()
             )
         }
