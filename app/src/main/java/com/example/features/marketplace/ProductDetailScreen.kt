@@ -168,8 +168,24 @@ fun ProductDetailScreen(
         mockProductRepository.firstOrNull { it.id == productId } ?: mockProductRepository.first()
     }
 
+    val marketProduct = remember(product.id) {
+        productCatalog.find { it.id == product.id } ?: MarketProduct(
+            id = product.id,
+            name = product.name,
+            price = product.price,
+            originalPrice = product.originalPrice,
+            rating = product.rating,
+            reviewsCount = product.reviewsCount,
+            category = "General",
+            storeName = product.vendorName,
+            deliveryTime = "Standard",
+            dateAdded = "2026-05-25",
+            imageUrl = product.images.firstOrNull() ?: ""
+        )
+    }
+
     var quantity by remember { mutableStateOf(1) }
-    var isLiked by remember { mutableStateOf(false) }
+    val isLiked = SharedWishlistState.isWishlisted(marketProduct)
     
     // Fake interactive countdown timer for scarcity and higher CTA conversion
     var secondsRemaining by remember { mutableStateOf(522) } // 8 mins 42 secs
@@ -237,7 +253,7 @@ fun ProductDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     IconButton(
-                        onClick = { isLiked = !isLiked },
+                        onClick = { SharedWishlistState.toggleWishlist(marketProduct) },
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(BrandBackground)
@@ -329,7 +345,9 @@ fun ProductDetailScreen(
 
                     // Direct Conversion Large Checkout Action
                     Button(
-                        onClick = { /* Add to Cart direct handler */ },
+                        onClick = {
+                            SharedCartState.addProductToCart(marketProduct)
+                        },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = BrandPrimary,
                             contentColor = Color.White

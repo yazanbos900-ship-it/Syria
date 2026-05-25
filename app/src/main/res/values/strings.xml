@@ -1,3 +1,58 @@
 <resources>
     <string name="app_name">WasetPlus</string>
+    
+    <!-- Store Creation Header -->
+    <string name="create_store_title">إنشاء متجر جديد</string>
+    <string name="store_info_step">بيانات المتجر</string>
+    <string name="store_identity_step">هوية المتجر</string>
+    <string name="first_product_step">المنتج الأول</string>
+    
+    <!-- Step 1 Labels -->
+    <string name="store_name_label">اسم المتجر</string>
+    <string name="store_name_placeholder">أدخل اسم المتجر (مثال: متجر الموضة الراقي)</string>
+    <string name="username_label">اسم المستخدم المسؤول</string>
+    <string name="category_label">فئة المتجر الرئيسية</string>
+    <string name="category_placeholder">اختر تصنيف المتجر</string>
+    <string name="store_description_label">وصف متكاملاً لمتجرك</string>
+    <string name="store_description_placeholder">تفاصيل تعبر عن المتجر والمنتجات التي ستقوم ببيعها للعملاء (الحد الأدنى ٥٠ حرفاً)</string>
+    
+    <!-- Step 2 Labels -->
+    <string name="store_logo_label">شعار المتجر (مطلوب)</string>
+    <string name="store_logo_helper">الشعار يظهر دائرياً للزبائن لتسهيل معرفة هويتك التجارية</string>
+    <string name="store_banner_label">خلفية غلاف المتجر (اختياري)</string>
+    <string name="store_banner_helper">صورة مستطيلة مميزة بنسبة ١٦:٩ تظهر في أعلى واجهة متجرك</string>
+    <string name="delete_image">حذف الصورة</string>
+    
+    <!-- Step 3 Labels -->
+    <string name="product_name_label">اسم المنتج الأول</string>
+    <string name="product_name_placeholder">أدخل اسم السلعة أو الخدمة</string>
+    <string name="product_price_label">السعر (بالعملة المحلية)</string>
+    <string name="product_price_placeholder">مثال: 250.0</string>
+    <string name="product_description_label">وصف السلعة</string>
+    <string name="product_description_placeholder">اكتب تفاصيل مواصفات المنتج والضمان والاستخدام</string>
+    <string name="product_images_label">صور المنتج (صورة واحدة على الأقل، بحد أقصى ١٠ صور)</string>
+    <string name="add_image_button">إضافة صورة</string>
+    <string name="cover_image_badge">الصورة الرئيسية</string>
+    
+    <!-- Buttons -->
+    <string name="next_button">التالي</string>
+    <string name="back_button">السابق</string>
+    <string name="submit_button">تأكيد وإنشاء المتجر</string>
+    
+    <!-- Success Screen -->
+    <string name="success_title">تم إنشاء متجرك! في انتظار المراجعة</string>
+    <string name="success_subtitle">نشكرك على الانضمام إلينا. نقوم بمراجعة البيانات والتحقق من الهوية لتوفير بيئة تجارية آمنة. سيتم تفعيل حسابك قريباً.</string>
+    <string name="go_to_home_button">العودة للرئيسية</string>
+    
+    <!-- Validation & Status Alerts -->
+    <string name="validation_error_store_name">يرجى كتابة اسم مناسب ومكتمل للمتجر</string>
+    <string name="validation_error_category">يرجى اختيار فئة للسلع الخاصة بالمتجر</string>
+    <string name="validation_error_description">يجب ألا يقل الوصف عن ٥٠ حرفاً لوضوح الهوية</string>
+    <string name="validation_error_logo">يجب رفع شعار المتجر لإكمال الخطوة</string>
+    <string name="validation_error_product_title">يرجى كتابة اسم السلعة المطلوبة</string>
+    <string name="validation_error_product_price">يرجى إدخال سعر رقمي صحيح ومقبول</string>
+    <string name="validation_error_product_desc">يرجى كتابة تفاصيل ووصف السلعة المضافة</string>
+    <string name="validation_error_product_image">يرجى اختيار صورة واحدة على الأقل لمنتجك</string>
+    <string name="submitting_loading">جاري رفع الملفات وتوثيق متجرك في قواعد البيانات...</string>
+    <string name="error_occurred">حدث خطأ أثناء المعالجة: %1$s</string>
 </resources>

@@ -58,47 +58,9 @@ fun CartScreen(
     onNavigateBack: () -> Unit,
     onCheckoutSuccess: () -> Unit
 ) {
-    // Scaffold state & interactive item tracking state in Compose
-    val initialCartItems = remember {
-        mutableStateListOf(
-            CartItem(
-                id = "watch_item",
-                name = "WasetPlus Precision Active Chrono (Elite Edition)",
-                price = 189.0,
-                originalPrice = 378.0,
-                image = "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?auto=format&fit=crop&w=400&q=80",
-                size = "Space Gray, 45mm",
-                storeName = "Bespoke Horology Lab"
-            ),
-            CartItem(
-                id = "strap_item",
-                name = "Chrono Leather Loop Strap",
-                price = 35.0,
-                originalPrice = null,
-                image = "https://images.unsplash.com/photo-1547996160-81dfa63595aa?auto=format&fit=crop&w=400&q=80",
-                size = "Tan Oak Leather",
-                storeName = "Bespoke Horology Lab"
-            ),
-            CartItem(
-                id = "overcoat_item",
-                name = "Sovereign Tailored Woolen Overcoat",
-                price = 249.0,
-                originalPrice = 498.0,
-                image = "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=400&q=80",
-                size = "Midnight Black, L",
-                storeName = "Atelier & Co London"
-            )
-        )
-    }
-
-    // Explicit quantity snapshot records mapping item ID to quantity State for fast recomposition
-    val itemQuantities = remember {
-        mutableStateMapOf(
-            "watch_item" to 1,
-            "strap_item" to 2,
-            "overcoat_item" to 1
-        )
-    }
+    // Dynamic global cart items state synchronized across the marketplace application
+    val initialCartItems = SharedCartState.cartItems
+    val itemQuantities = SharedCartState.itemQuantities
 
     var promoCodeInput by remember { mutableStateOf("") }
     var promoState by remember { mutableStateOf<PromoState>(PromoState.None) }

@@ -43,7 +43,7 @@ import coil.compose.AsyncImage
 import com.example.ui.theme.*
 
 // Catalog Data Definition
-internal data class MarketProduct(
+data class MarketProduct(
     val id: String,
     val name: String,
     val price: Double,
@@ -187,11 +187,11 @@ fun SearchScreen(
     var filtersVisible by remember { mutableStateOf(false) }
     
     // Filter Critera States
-    var selectedCategoryFilter by remember { mutableStateOf("All") }
-    var maxPriceRange by remember { mutableStateOf(300f) } // Up to $300
-    var minRatingFilter by remember { mutableStateOf(0.0) } // Rating constraint
-    var deliveryFilterSameDayOnly by remember { mutableStateOf(false) }
-    var selectedSortOption by remember { mutableStateOf(SortOption.Newest) }
+    var selectedCategoryFilter by SharedFilterState.selectedCategoryFilterState
+    var maxPriceRange by SharedFilterState.maxPriceRangeState
+    var minRatingFilter by SharedFilterState.minRatingFilterState
+    var deliveryFilterSameDayOnly by SharedFilterState.deliveryFilterSameDayOnlyState
+    var selectedSortOption by SharedFilterState.selectedSortOptionState
 
     // Categories defined for multi-vendor search
     val filterCategories = listOf("All", "Apparel", "Artisanal", "Bespoke", "Furniture", "Wellness")

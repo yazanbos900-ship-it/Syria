@@ -13,9 +13,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import kotlinx.coroutines.delay
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +40,10 @@ import com.example.ui.theme.BrandPrimary
 import com.example.ui.theme.BrandSoftGray
 import com.example.ui.theme.BrandTextMuted
 import com.example.ui.theme.BrandTextPrimary
+import com.example.ui.theme.BrandError
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.List
+import androidx.compose.ui.platform.testTag
 
 private data class PromoBanner(
     val backgroundColor: Color,
@@ -51,12 +58,11 @@ fun MarketplaceScreen(
     onStoreSelected: (String) -> Unit,
     onSignOut: () -> Unit,
     onCartSelected: () -> Unit,
-    onSearchSelected: () -> Unit
+    onSearchSelected: () -> Unit,
+    onWishlistSelected: () -> Unit,
+    onCreateStoreSelected: () -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("All") }
-    
-    val categories = listOf("All", "Apparel", "Artisanal", "Bespoke", "Furniture", "Wellness")
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     val promoBanners = remember {
         listOf(
@@ -72,6 +78,33 @@ fun MarketplaceScreen(
         delay(3000)
         val nextPage = (pagerState.currentPage + 1) % promoBanners.size
         pagerState.animateScrollToPage(nextPage)
+    }
+
+    val filteredHomeProducts = remember(
+        SharedFilterState.selectedCategoryFilter,
+        SharedFilterState.maxPriceRange,
+        SharedFilterState.minRatingFilter,
+        SharedFilterState.deliveryFilterSameDayOnly
+    ) {
+        productCatalog.filter { product ->
+            val matchesCategory = SharedFilterState.selectedCategoryFilter == "All" || product.category == SharedFilterState.selectedCategoryFilter
+            val matchesPrice = product.price <= SharedFilterState.maxPriceRange
+            val matchesRating = product.rating >= SharedFilterState.minRatingFilter
+            val matchesDelivery = !SharedFilterState.deliveryFilterSameDayOnly || product.deliveryTime == "Same Day"
+            matchesCategory && matchesPrice && matchesRating && matchesDelivery
+        }
+    }
+
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color.White
+        ) {
+            FilterBottomSheetContent(
+                onApply = { showBottomSheet = false }
+            )
+        }
     }
 
     Scaffold(
@@ -109,17 +142,33 @@ fun MarketplaceScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // High-retention Wishlist trigger button (Heart toggle) with badge
                         IconButton(
-                            onClick = {},
+                            onClick = onWishlistSelected,
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .background(BrandBackground)
+                                .testTag("home_wishlist_button")
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Active Notifications",
-                                tint = BrandTextPrimary
-                            )
+                            BadgedBox(
+                                badge = {
+                                    if (SharedWishlistState.wishlistItems.isNotEmpty()) {
+                                        Badge(
+                                            containerColor = Color.Red,
+                                            contentColor = Color.White
+                                        ) {
+                                            Text(text = "${SharedWishlistState.wishlistItems.size}", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = "Show Wishlist Queue",
+                                    tint = Color.Red,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
 
                         IconButton(
@@ -134,39 +183,105 @@ fun MarketplaceScreen(
                                 tint = BrandTextPrimary
                             )
                         }
+
+                        IconButton(
+                            onClick = onCreateStoreSelected,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(BrandBackground)
+                                .testTag("home_create_store_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AddCircle,
+                                contentDescription = "Create Store Flow",
+                                tint = BrandPrimary
+                            )
+                        }
                     }
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Primary Custom Styled Search Bar (Launches Dedicated Search Screen on tap)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .background(Color.White, RoundedCornerShape(16.dp))
-                        .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
-                        .clickable { onSearchSelected() }
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.CenterStart
+                // Primary Custom Styled Search Bar alongside Outlined Filters Button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxSize()
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .background(Color.White, RoundedCornerShape(16.dp))
+                            .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
+                            .clickable { onSearchSelected() }
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search Trigger Icon",
-                            tint = BrandPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Search multi-vendor stores, items...",
-                            fontSize = 15.sp,
-                            color = BrandTextMuted,
-                            fontWeight = FontWeight.Light
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search Trigger Icon",
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Search stores, items...",
+                                fontSize = 14.sp,
+                                color = BrandTextMuted,
+                                fontWeight = FontWeight.Light,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { showBottomSheet = true },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF1DB954)
+                        ),
+                        border = BorderStroke(1.dp, Color(0xFF1DB954)),
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        modifier = Modifier
+                            .height(56.dp)
+                            .testTag("filters_home_button")
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.List,
+                                    contentDescription = "Filters Icon",
+                                    tint = Color(0xFF1DB954),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Text(
+                                    text = "فلاتر",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1DB954)
+                                )
+                            }
+                            
+                            if (SharedFilterState.isActive) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 6.dp, y = (-6).dp)
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF1DB954))
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -280,46 +395,6 @@ fun MarketplaceScreen(
                 }
             }
 
-            // Horizontal Categories list
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(bottom = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    categories.forEach { cat ->
-                        val isSelected = selectedCategory == cat
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) BrandPrimary else BrandBackground)
-                                .border(
-                                    1.dp,
-                                    if (isSelected) Color.Transparent else BrandSoftGray,
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .clickable { selectedCategory = cat }
-                                .padding(horizontal = 20.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = cat,
-                                fontSize = 14.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) Color.White else BrandTextPrimary
-                            )
-                        }
-                    }
-                }
-            }
-
             // Promotional Design Hero Card
             Box(
                 modifier = Modifier
@@ -370,147 +445,155 @@ fun MarketplaceScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // High-End Selectable Product Rows
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Item 1
-                    Column(
+                // High-End Selectable Product Grid / Row
+                if (filteredHomeProducts.isEmpty()) {
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White)
-                            .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
-                            .clickable { onProductSelected("apple_watch_ultra_2") }
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(modifier = Modifier.fillMaxWidth().height(140.dp)) {
-                            // Image
-                            AsyncImage(
-                                model = "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?auto=format&fit=crop&w=400&q=80",
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            // 50% OFF Badge
-                            Box(
-                                modifier = Modifier
-                                    .padding(8.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFFE8F5E9))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "50% OFF",
-                                    color = BrandPrimary,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("🔍", fontSize = 48.sp)
+                            Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Precision Active Chrono",
-                                fontSize = 14.sp,
+                                text = "لا توجد منتجات مطابقة للفلاتر",
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = BrandTextPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                color = BrandTextPrimary
                             )
-                            Text(
-                                text = "Bespoke Horology Lab",
-                                fontSize = 11.sp,
-                                color = BrandTextMuted
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Spacer(modifier = Modifier.height(4.dp))
+                            TextButton(
+                                onClick = { SharedFilterState.reset() }
                             ) {
                                 Text(
-                                    text = "$189.00",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = BrandPrimary
-                                )
-                                Text(
-                                    text = "★ 4.9",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFFFFB300),
+                                    text = "إعادة تعيين الفلاتر",
+                                    color = BrandPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                         }
                     }
+                } else {
+                    filteredHomeProducts.chunked(2).forEach { rowProducts ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            rowProducts.forEach { product ->
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(Color.White)
+                                        .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
+                                        .clickable { onProductSelected(product.id) }
+                                ) {
+                                    Box(modifier = Modifier.fillMaxWidth().height(140.dp)) {
+                                        AsyncImage(
+                                            model = product.imageUrl,
+                                            contentDescription = product.name,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        // Heart Favorite button for high conversion wishlist adding directly from home feed
+                                         val isWishlisted = SharedWishlistState.isWishlisted(product)
+                                         Box(
+                                             modifier = Modifier
+                                                 .align(Alignment.TopEnd)
+                                                 .padding(8.dp)
+                                                 .size(28.dp)
+                                                 .clip(CircleShape)
+                                                 .background(Color.White.copy(alpha = 0.9f))
+                                                 .clickable {
+                                                     SharedWishlistState.toggleWishlist(product)
+                                                 }
+                                                 .testTag("home_wishlist_toggle_${product.id}"),
+                                             contentAlignment = Alignment.Center
+                                         ) {
+                                             Icon(
+                                                 imageVector = if (isWishlisted) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                                 contentDescription = "Toggle Wishlist",
+                                                 tint = if (isWishlisted) Color.Red else BrandTextMuted,
+                                                 modifier = Modifier.size(14.dp)
+                                             )
+                                         }
 
-                    // Item 2
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White)
-                            .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
-                            .clickable { onProductSelected("woolen_trench_coat") }
-                    ) {
-                        Box(modifier = Modifier.fillMaxWidth().height(140.dp)) {
-                            // Image
-                            AsyncImage(
-                                model = "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=400&q=80",
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            // Scarcity alert badge
-                            Box(
-                                modifier = Modifier
-                                    .padding(8.dp)
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFFFFEBEE))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "LIMITED",
-                                    color = Color(0xFFC62828),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                         if (product.originalPrice != null) {
+                                            val savings = ((product.originalPrice - product.price) / product.originalPrice * 100).toInt()
+                                            Box(
+                                                modifier = Modifier
+                                                    .padding(8.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(Color(0xFFE8F5E9))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "$savings% OFF",
+                                                    color = BrandPrimary,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        } else if (product.id == "woolen_trench_coat") {
+                                            Box(
+                                                modifier = Modifier
+                                                    .padding(8.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(Color(0xFFFFEBEE))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "LIMITED",
+                                                    color = Color(0xFFC62828),
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = product.name,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = BrandTextPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = product.storeName,
+                                            fontSize = 11.sp,
+                                            color = BrandTextMuted,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "$${String.format("%.2f", product.price)}",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = BrandPrimary
+                                            )
+                                            Text(
+                                                text = "★ ${product.rating}",
+                                                fontSize = 11.sp,
+                                                color = Color(0xFFFFB300),
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
                             }
-                        }
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "Tailored Overcoat",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandTextPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "Atelier & Co",
-                                fontSize = 11.sp,
-                                color = BrandTextMuted
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "$249.00",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = BrandPrimary
-                                )
-                                Text(
-                                    text = "★ 4.8",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFFFFB300),
-                                    fontWeight = FontWeight.Bold
-                                )
+                            if (rowProducts.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }

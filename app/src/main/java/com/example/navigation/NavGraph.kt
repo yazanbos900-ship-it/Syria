@@ -11,6 +11,8 @@ import com.example.features.marketplace.CartScreen
 import com.example.features.marketplace.MarketplaceScreen
 import com.example.features.marketplace.ProductDetailScreen
 import com.example.features.marketplace.SearchScreen
+import com.example.features.marketplace.WishlistScreen
+import com.example.features.marketplace.CreateStoreScreen
 import com.example.features.onboarding.OnboardingScreen
 
 @Composable
@@ -65,6 +67,12 @@ fun NavigationGraph(
                 },
                 onSearchSelected = {
                     navController.navigate(Screen.Search.route)
+                },
+                onWishlistSelected = {
+                    navController.navigate(Screen.Wishlist.route)
+                },
+                onCreateStoreSelected = {
+                    navController.navigate(Screen.CreateStore.route)
                 }
             )
         }
@@ -88,6 +96,18 @@ fun NavigationGraph(
             )
         }
 
+        composable(route = Screen.Wishlist.route) {
+            WishlistScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onProductSelected = { productId ->
+                    navController.navigate(Screen.ProductDetail.createRoute(productId))
+                },
+                onGoToCart = {
+                    navController.navigate(Screen.Cart.route)
+                }
+            )
+        }
+
         composable(
             route = Screen.ProductDetail.route,
             arguments = listOf(
@@ -98,6 +118,16 @@ fun NavigationGraph(
             ProductDetailScreen(
                 productId = productId,
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(route = Screen.CreateStore.route) {
+            CreateStoreScreen(
+                onNavigateHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
             )
         }
     }
