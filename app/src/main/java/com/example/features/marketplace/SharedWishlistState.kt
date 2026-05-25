@@ -2,70 +2,85 @@ package com.example.features.marketplace
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import com.example.core.di.ServiceLocator
+import com.example.domain.repository.AuthRepository
+import com.example.domain.repository.CartRepository
+import com.example.domain.repository.WishlistRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 object SharedWishlistState {
-    // We pre-populate with 2 items for a high-retention default experience, showing real catalog items
-    val wishlistItems = mutableStateListOf<MarketProduct>(
-        productCatalog.find { it.id == "apple_watch_ultra_2" } ?: productCatalog[0],
-        productCatalog.find { it.id == "woolen_trench_coat" } ?: productCatalog[1],
-        productCatalog.find { it.id == "cashmere_scarf" } ?: productCatalog[5]
-    )
+    private var currentUserUid: String? = null
+    val wishlistItems = mutableStateListOf<MarketProduct>()
+    
+    private var wishlistJob: Job? = null
+
+    fun init(authRepository: AuthRepository, wishlistRepository: WishlistRepository, scope: CoroutineScope) {
+        wishlistJob?.cancel()
+        wishlistJob = authRepository.currentUser.onEach { user ->
+            currentUserUid = user?.id
+            if (user != null) {
+                wishlistRepository.getWishlistItems(user.id).collect { items ->
+                    wishlistItems.clear()
+                    wishlistItems.addAll(items)
+                }
+            } else {
+                wishlistItems.clear()
+            }
+        }.launchIn(scope)
+    }
 
     fun isWishlisted(product: MarketProduct): Boolean {
         return wishlistItems.any { it.id == product.id }
     }
 
-    fun toggleWishlist(product: MarketProduct): Boolean {
+    fun toggleWishlist(product: MarketProduct) {
+        val uid = currentUserUid ?: return
         val exists = wishlistItems.any { it.id == product.id }
-        if (exists) {
-            wishlistItems.removeAll { it.id == product.id }
-            return false
-        } else {
-            wishlistItems.add(product)
-            return true
+        CoroutineScope(Dispatchers.IO).launch {
+            if (exists) {
+                ServiceLocator.wishlistRepository.removeFromWishlist(uid, product.id)
+            } else {
+                ServiceLocator.wishlistRepository.addToWishlist(uid, product)
+            }
         }
-    }
-
-    fun removeProduct(product: MarketProduct) {
-        wishlistItems.removeAll { it.id == product.id }
     }
 }
 
 object SharedCartState {
-    val cartItems = mutableStateListOf<CartItem>(
-        CartItem(
-            id = "chrono_leather_strap",
-            name = "Chrono Leather Loop Strap",
-            price = 35.0,
-            originalPrice = null,
-            image = "https://images.unsplash.com/photo-1547996160-81dfa63595aa?auto=format&fit=crop&w=400&q=80",
-            size = "Tan Oak Leather",
-            storeName = "Bespoke Horology Lab"
-        ),
-        CartItem(
-            id = "nordic_dining_chair",
-            name = "Nordic Oak Dining Chair",
-            price = 120.0,
-            originalPrice = 180.0,
-            image = "https://images.unsplash.com/photo-1506439773649-6e0eb8cfb237?auto=format&fit=crop&w=400&q=80",
-            size = "Oak Light",
-            storeName = "Minimalist Living"
-        )
-    )
+    private var currentUserUid: String? = null
+    val cartItems = mutableStateListOf<CartItem>()
+    
+    private var cartJob: Job? = null
 
-    val itemQuantities = mutableStateMapOf<String, Int>(
-        "chrono_leather_strap" to 1,
-        "nordic_dining_chair" to 1
-    )
+    fun init(authRepository: AuthRepository, cartRepository: CartRepository, scope: CoroutineScope) {
+        cartJob?.cancel()
+        cartJob = authRepository.currentUser.onEach { user ->
+            currentUserUid = user?.id
+            if (user != null) {
+                cartRepository.getCartItems(user.id).collect { items ->
+                    cartItems.clear()
+                    cartItems.addAll(items)
+                }
+            } else {
+                cartItems.clear()
+            }
+        }.launchIn(scope)
+    }
 
     fun addProductToCart(product: MarketProduct) {
-        val existingItemIndex = cartItems.indexOfFirst { it.id == product.id }
-        if (existingItemIndex != -1) {
-            val currentQty = itemQuantities[product.id] ?: 1
-            itemQuantities[product.id] = currentQty + 1
-        } else {
-            cartItems.add(
-                CartItem(
+        val uid = currentUserUid ?: return
+        val existingItem = cartItems.find { it.id == product.id }
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            if (existingItem != null) {
+                ServiceLocator.cartRepository.updateQuantity(uid, product.id, existingItem.quantity + 1)
+            } else {
+                val cartItem = CartItem(
                     id = product.id,
                     name = product.name,
                     price = product.price,
@@ -73,10 +88,25 @@ object SharedCartState {
                     image = product.imageUrl,
                     size = "Free Size",
                     storeName = product.storeName,
+                    quantity = 1,
                     keyStockLimit = 10
                 )
-            )
-            itemQuantities[product.id] = 1
+                ServiceLocator.cartRepository.addToCart(uid, cartItem, 1)
+            }
+        }
+    }
+    
+    fun removeProductFromCart(product: CartItem) {
+        val uid = currentUserUid ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            ServiceLocator.cartRepository.removeFromCart(uid, product.id)
+        }
+    }
+    
+    fun updateQuantity(productId: String, quantity: Int) {
+        val uid = currentUserUid ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            ServiceLocator.cartRepository.updateQuantity(uid, productId, quantity)
         }
     }
 }

@@ -4,9 +4,13 @@ import android.content.Context
 import com.example.data.repository.FirebaseAuthRepositoryImpl
 import com.example.data.repository.FirebaseProductRepositoryImpl
 import com.example.data.repository.FirebaseStoreRepositoryImpl
+import com.example.data.repository.FirestoreCartRepositoryImpl
+import com.example.data.repository.FirestoreWishlistRepositoryImpl
 import com.example.domain.repository.AuthRepository
+import com.example.domain.repository.CartRepository
 import com.example.domain.repository.ProductRepository
 import com.example.domain.repository.StoreRepository
+import com.example.domain.repository.WishlistRepository
 import com.example.firebase.FirebaseInitializer
 
 object ServiceLocator {
@@ -24,6 +28,14 @@ object ServiceLocator {
 
     val storeRepository: StoreRepository by lazy {
         FirebaseStoreRepositoryImpl()
+    }
+
+    val cartRepository: CartRepository by lazy {
+        FirestoreCartRepositoryImpl()
+    }
+
+    val wishlistRepository: WishlistRepository by lazy {
+        FirestoreWishlistRepositoryImpl()
     }
 
     /**

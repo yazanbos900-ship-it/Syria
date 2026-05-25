@@ -43,6 +43,7 @@ data class CartItem(
     val image: String,
     val size: String?,
     val storeName: String,
+    val quantity: Int = 1,
     val keyStockLimit: Int = 10
 )
 
@@ -60,7 +61,6 @@ fun CartScreen(
 ) {
     // Dynamic global cart items state synchronized across the marketplace application
     val initialCartItems = SharedCartState.cartItems
-    val itemQuantities = SharedCartState.itemQuantities
 
     var promoCodeInput by remember { mutableStateOf("") }
     var promoState by remember { mutableStateOf<PromoState>(PromoState.None) }
@@ -68,8 +68,7 @@ fun CartScreen(
 
     // Computations
     val subtotal = initialCartItems.sumOf { item ->
-        val qty = itemQuantities[item.id] ?: 1
-        item.price * qty
+        item.price * item.quantity
     }
 
     // Dynamic shipping rules: grouped by seller counts. Let's make it $5 per unique store, showing real multi-vendor breakdown
@@ -127,7 +126,7 @@ fun CartScreen(
                         .background(BrandPrimary.copy(alpha = 0.15f))
                         .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
-                    val itemsQuantityTotal = initialCartItems.sumOf { itemQuantities[it.id] ?: 1 }
+                    val itemsQuantityTotal = initialCartItems.sumOf { it.quantity }
                     Text(
                         text = "$itemsQuantityTotal ITEMS",
                         color = BrandPrimary,
@@ -355,7 +354,7 @@ fun CartScreen(
 
                                 // Store specific items listing
                                 storeItems.forEach { item ->
-                                    val currentQty = itemQuantities[item.id] ?: 1
+                                    val currentQty = item.quantity
 
                                     Row(
                                         modifier = Modifier
@@ -445,7 +444,7 @@ fun CartScreen(
                                                             .background(Color.White)
                                                             .clickable {
                                                                 if (currentQty > 1) {
-                                                                    itemQuantities[item.id] = currentQty - 1
+                                                                    SharedCartState.updateQuantity(item.id, currentQty - 1)
                                                                 }
                                                             },
                                                         contentAlignment = Alignment.Center
@@ -472,7 +471,7 @@ fun CartScreen(
                                                             .background(Color.White)
                                                             .clickable {
                                                                 if (currentQty < item.keyStockLimit) {
-                                                                    itemQuantities[item.id] = currentQty + 1
+                                                                    SharedCartState.updateQuantity(item.id, currentQty + 1)
                                                                 }
                                                             },
                                                         contentAlignment = Alignment.Center
@@ -489,8 +488,7 @@ fun CartScreen(
                                                 // Clean Remove from Cart action button
                                                 IconButton(
                                                     onClick = {
-                                                        initialCartItems.remove(item)
-                                                        itemQuantities.remove(item.id)
+                                                        SharedCartState.removeProductFromCart(item)
                                                     },
                                                     modifier = Modifier
                                                         .size(36.dp)

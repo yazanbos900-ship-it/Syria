@@ -140,7 +140,7 @@ fun WishlistScreen(
                         BadgedBox(
                             badge = {
                                 if (SharedCartState.cartItems.isNotEmpty()) {
-                                    val cartCount = SharedCartState.cartItems.sumOf { SharedCartState.itemQuantities[it.id] ?: 1 }
+                                    val cartCount = SharedCartState.cartItems.sumOf { it.quantity }
                                     Badge(
                                         containerColor = BrandPrimary,
                                         contentColor = Color.White
@@ -433,7 +433,7 @@ fun WishlistScreen(
                                             .background(Color.White.copy(alpha = 0.9f))
                                             .clickable {
                                                 coroutineScope.launch {
-                                                    SharedWishlistState.removeProduct(product)
+                                                    SharedWishlistState.toggleWishlist(product)
                                                     snackbarHostState.showSnackbar(
                                                         message = "Removed '${product.name}' from wishlist",
                                                         duration = SnackbarDuration.Short
