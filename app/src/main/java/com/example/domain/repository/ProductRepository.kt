@@ -1,0 +1,13 @@
+package com.example.domain.repository
+
+import com.example.domain.model.Category
+import com.example.domain.model.Product
+import kotlinx.coroutines.flow.Flow
+
+interface ProductRepository {
+    fun getProducts(): Flow<List<Product>>
+    fun getProductsByCategory(categoryId: String): Flow<List<Product>>
+    fun searchProducts(query: String): Flow<List<Product>>
+    fun getCategories(): Flow<List<Category>>
+    suspend fun getProductDetails(productId: String): Product?
+}

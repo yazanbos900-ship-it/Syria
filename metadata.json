@@ -1,0 +1,6 @@
+{
+  "name": "WasetPlus",
+  "description": "A premium modern multi-vendor marketplace mobile application for real consumers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

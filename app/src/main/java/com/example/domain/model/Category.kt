@@ -1,0 +1,8 @@
+package com.example.domain.model
+
+data class Category(
+    val id: String,
+    val name: String,
+    val imageUrl: String? = null,
+    val iconName: String? = null
+)

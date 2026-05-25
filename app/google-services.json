@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "563259740853",
+    "firebase_url": "https://wasetplus-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "wasetplus",
+    "storage_bucket": "wasetplus.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:563259740853:android:1a6757ab83ed557b19e4fc",
+        "android_client_info": {
+          "package_name": "com.wasetplus.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "563259740853-9mtbem13q6nq3d0ufujt87kov214dtht.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wasetplus.app",
+            "certificate_hash": "a2fe787bae959606c74dfa816cacbd71f913bfc2"
+          }
+        },
+        {
+          "client_id": "563259740853-re152lvf3ikrvl9mcgoomc8s6jq372p1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSnZNcTUqlPk3euPfwIBflPv1ZQXJrabQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "563259740853-re152lvf3ikrvl9mcgoomc8s6jq372p1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
