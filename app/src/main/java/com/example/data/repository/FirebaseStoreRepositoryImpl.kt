@@ -21,41 +21,71 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
         }
     }
 
-    override fun getStores(): Flow<List<Store>> = callbackFlow {
-        val db = firestore ?: {
-            trySend(emptyList<Store>())
+    override fun getAllStores(): Flow<Result<List<Store>>> = callbackFlow {
+        val db = firestore ?: run {
+            trySend(Result.failure(Exception("Firestore service is unavailable")))
             close()
+            return@callbackFlow
         }
-        if (db is Function0<*>) return@callbackFlow
 
-        val dbInstance = db as FirebaseFirestore
-        val subscription = dbInstance.collection("stores")
-            .whereEqualTo("status", "active")
+        val subscription = db.collection("stores")
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(emptyList())
-                    return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    val list = snapshot.documents.mapNotNull { doc ->
-                        Store(
-                            id = doc.id,
-                            name = doc.getString("name") ?: doc.getString("storeName") ?: "",
-                            ownerId = doc.getString("ownerId") ?: "",
-                            logoUrl = doc.getString("logoUrl"),
-                            bannerUrl = doc.getString("bannerUrl"),
-                            description = doc.getString("description") ?: "",
-                            rating = doc.getDouble("rating")?.toFloat() ?: 5.0f,
-                            isVerified = doc.getBoolean("isVerified") ?: false,
-                            createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
-                        )
-                    }
-                    trySend(list)
-                } else {
-                    trySend(emptyList())
-                }
+                handleSnapshot(snapshot, error, ::trySend)
             }
         awaitClose { subscription.remove() }
+    }
+
+    override fun getActiveStores(): Flow<Result<List<Store>>> = callbackFlow {
+        val db = firestore ?: run {
+            trySend(Result.failure(Exception("Firestore service is unavailable")))
+            close()
+            return@callbackFlow
+        }
+
+        val subscription = db.collection("stores")
+            .whereEqualTo("status", "active")
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                handleSnapshot(snapshot, error, ::trySend)
+            }
+        awaitClose { subscription.remove() }
+    }
+
+    private fun handleSnapshot(
+        snapshot: com.google.firebase.firestore.QuerySnapshot?,
+        error: com.google.firebase.firestore.FirebaseFirestoreException?,
+        trySend: (Result<List<Store>>) -> Unit
+    ) {
+        if (error != null) {
+            trySend(Result.failure(error))
+            return
+        }
+        if (snapshot != null) {
+            val list = snapshot.documents.mapNotNull { doc ->
+                try {
+                    Store(
+                        id = doc.id,
+                        name = doc.getString("storeName") ?: doc.getString("name") ?: "",
+                        ownerId = doc.getString("ownerId") ?: "",
+                        ownerUsername = doc.getString("ownerUsername") ?: "",
+                        logoUrl = doc.getString("logoUrl"),
+                        bannerUrl = doc.getString("bannerUrl"),
+                        description = doc.getString("description") ?: "",
+                        followersCount = (doc.getLong("followersCount") ?: 0).toInt(),
+                        status = doc.getString("status") ?: "active",
+                        rating = doc.getDouble("rating")?.toFloat() ?: 5.0f,
+                        isVerified = doc.getBoolean("isVerified") ?: false,
+                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: System.currentTimeMillis()
+                    )
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            trySend(Result.success(list))
+        } else {
+            trySend(Result.success(emptyList()))
+        }
     }
 
     override suspend fun getStoreById(storeId: String): Store? {

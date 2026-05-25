@@ -45,6 +45,14 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.List
 import androidx.compose.ui.platform.testTag
 
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.core.di.ServiceLocator
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.features.marketplace.HomeStoresViewModel
+import com.example.features.marketplace.StoreListUiState
+
 private data class PromoBanner(
     val backgroundColor: Color,
     val title: String,
@@ -62,6 +70,13 @@ fun MarketplaceScreen(
     onWishlistSelected: () -> Unit,
     onCreateStoreSelected: () -> Unit
 ) {
+    val storeViewModel: HomeStoresViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            return HomeStoresViewModel(ServiceLocator.storeRepository) as T
+        }
+    })
+    val storeState by storeViewModel.state.collectAsStateWithLifecycle()
+    
     var showBottomSheet by remember { mutableStateOf(false) }
 
     val promoBanners = remember {
@@ -294,6 +309,13 @@ fun MarketplaceScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Top
         ) {
+            // Stores Section
+            StoresSection(
+                state = storeState,
+                onStoreClick = onStoreSelected,
+                onViewAllClick = { /* TODO: navigation to all stores */ }
+            )
+
             // Professional Banner Carousel (3 Banners, height: 180dp, rounded corners 16dp, auto-scrolling)
             Column(
                 modifier = Modifier
@@ -655,5 +677,103 @@ fun MarketplaceScreen(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+}
+
+@Composable
+fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onViewAllClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("المتاجر", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BrandTextPrimary)
+            TextButton(onClick = onViewAllClick) {
+                Text("عرض الكل", color = BrandPrimary)
+            }
+        }
+        
+        if (state.isLoading) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp)
+            ) {
+                items(4) { StoreStorySkeletonItem() }
+            }
+        } else if (state.error != null) {
+            // Simple error handling
+            Text(text = state.error, color = BrandError, modifier = Modifier.padding(24.dp))
+        } else if (state.stores.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                Text("لا توجد متاجر حالياً", color = BrandTextMuted)
+            }
+        } else {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp)
+            ) {
+                items(state.stores) { store ->
+                    StoreStoryItem(store = store, onClick = { onStoreClick(store.id) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StoreStoryItem(store: com.example.domain.model.Store, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(80.dp).clickable(onClick = onClick)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .border(2.dp, if (store.status == "active") Color(0xFF1DB954) else Color.Transparent, CircleShape)
+                .padding(2.dp)
+        ) {
+            AsyncImage(
+                model = store.logoUrl,
+                contentDescription = store.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(CircleShape)
+            )
+        }
+        Text(
+            text = store.name,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 4.dp),
+            color = BrandTextPrimary
+        )
+        Text(
+            text = "متابعين: ${store.followersCount}",
+            fontSize = 10.sp,
+            color = BrandTextMuted,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+fun StoreStorySkeletonItem() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(80.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(BrandSoftGray)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(modifier = Modifier.height(12.dp).width(50.dp).background(BrandSoftGray))
     }
 }

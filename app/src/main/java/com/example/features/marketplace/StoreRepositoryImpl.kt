@@ -1,8 +1,13 @@
 package com.example.features.marketplace
 
 import android.util.Log
+import com.example.domain.model.Store
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 class StoreRepositoryImpl : StoreRepository {
@@ -25,6 +30,48 @@ class StoreRepositoryImpl : StoreRepository {
             .get()
             .await()
         return !snapshot.isEmpty
+    }
+
+    override fun getActiveStores(): Flow<Result<List<Store>>> = callbackFlow {
+        val db = firestore ?: run {
+            trySend(Result.failure(Exception("Firestore service not available")))
+            close()
+            return@callbackFlow
+        }
+
+        val subscription = db.collection("stores")
+            .whereEqualTo("status", "active")
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val stores = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            Store(
+                                id = doc.id,
+                                name = doc.getString("storeName") ?: "Unnamed Store",
+                                ownerId = doc.getString("ownerId") ?: "",
+                                ownerUsername = doc.getString("ownerUsername") ?: "",
+                                logoUrl = doc.getString("logoUrl"),
+                                description = doc.getString("description") ?: "",
+                                followersCount = (doc.getLong("followersCount") ?: 0).toInt(),
+                                status = doc.getString("status") ?: "active",
+                                createdAt = (doc.getTimestamp("createdAt") ?: Timestamp.now()).toDate().time
+                            )
+                        } catch (e: Exception) {
+                            Log.e(tag, "Failed to parse store document: ${doc.id}", e)
+                            null
+                        }
+                    }
+                    trySend(Result.success(stores))
+                } else {
+                    trySend(Result.success(emptyList()))
+                }
+            }
+        awaitClose { subscription.remove() }
     }
 
     override suspend fun createStoreAndFirstProduct(
