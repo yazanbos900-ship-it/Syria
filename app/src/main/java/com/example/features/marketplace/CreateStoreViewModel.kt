@@ -70,11 +70,45 @@ class CreateStoreViewModel(
     }
 
     fun onLogoSelected(uriString: String?) {
-        _state.update { it.copy(logoUriString = uriString) }
+        if (uriString == null) {
+            _state.update { it.copy(logoUriString = null) }
+            return
+        }
+        val uid = _state.value.currentUser?.id ?: UUID.randomUUID().toString()
+        viewModelScope.launch {
+            _state.update { it.copy(isLogoUploading = true, error = null) }
+            try {
+                val uploadResult = uploader.uploadFile(
+                    localUriString = uriString,
+                    storagePath = "store_logos/$uid/${UUID.randomUUID()}.jpg"
+                )
+                val url = uploadResult.getOrThrow()
+                _state.update { it.copy(logoUriString = url, isLogoUploading = false) }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLogoUploading = false, error = "فشل رفع شعار المتجر. الرجاء المحاولة مرة أخرى.") }
+            }
+        }
     }
 
     fun onBannerSelected(uriString: String?) {
-        _state.update { it.copy(bannerUriString = uriString) }
+        if (uriString == null) {
+            _state.update { it.copy(bannerUriString = null) }
+            return
+        }
+        val uid = _state.value.currentUser?.id ?: UUID.randomUUID().toString()
+        viewModelScope.launch {
+            _state.update { it.copy(isBannerUploading = true, error = null) }
+            try {
+                val uploadResult = uploader.uploadFile(
+                    localUriString = uriString,
+                    storagePath = "store_banners/$uid/${UUID.randomUUID()}.jpg"
+                )
+                val url = uploadResult.getOrThrow()
+                _state.update { it.copy(bannerUriString = url, isBannerUploading = false) }
+            } catch (e: Exception) {
+                _state.update { it.copy(isBannerUploading = false, error = "فشل رفع غلاف المتجر. الرجاء المحاولة مرة أخرى.") }
+            }
+        }
     }
 
     fun onProductNameChange(name: String) {
@@ -153,22 +187,11 @@ class CreateStoreViewModel(
                     return@launch
                 }
                 
-                // 1. Upload Store Logo (Required to transition step 2)
-                val logoUrlResult = uploader.uploadFile(
-                    localUriString = currentState.logoUriString!!,
-                    storagePath = "store_logos/$uid/logo.jpg"
-                )
-                val logoUrl = logoUrlResult.getOrThrow()
-
-                // 2. Upload Store Banner if provided (Optional)
-                var bannerUrl: String? = null
-                if (currentState.bannerUriString != null) {
-                    val bannerUrlResult = uploader.uploadFile(
-                        localUriString = currentState.bannerUriString,
-                        storagePath = "store_banners/$uid/banner.jpg"
-                    )
-                    bannerUrl = bannerUrlResult.getOrThrow()
-                }
+                // 1. Store Logo is already uploaded, just use its URL
+                val logoUrl = currentState.logoUriString!!
+                
+                // 2. Store Banner is already uploaded if provided
+                val bannerUrl = currentState.bannerUriString
 
                 // 3. Upload First Product Images (Sequential for deterministic ordering)
                 val uploadedProductImages = mutableListOf<String>()

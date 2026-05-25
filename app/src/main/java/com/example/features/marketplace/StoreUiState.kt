@@ -15,6 +15,8 @@ data class StoreUiState(
     // Step 2 - Store Identity (Images)
     val logoUriString: String? = null,
     val bannerUriString: String? = null,
+    val isLogoUploading: Boolean = false,
+    val isBannerUploading: Boolean = false,
     
     // Step 3 - First Product
     val productName: String = "",

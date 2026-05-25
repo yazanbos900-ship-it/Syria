@@ -187,7 +187,7 @@ fun CreateStoreScreen(
                             currentStep = state.currentStep,
                             isLoading = state.isLoading,
                             isStep1Valid = state.isStep1Valid,
-                            isStep2Valid = state.isStep2Valid,
+                            isStep2Valid = state.isStep2Valid && !state.isLogoUploading && !state.isBannerUploading,
                             isStep3Valid = state.isStep3Valid,
                             onNext = { viewModel.nextStep() },
                             onBack = { viewModel.prevStep() },
@@ -685,11 +685,13 @@ fun Step2StoreIdentity(
                     .clip(CircleShape)
                     .background(DarkCard)
                     .border(2.dp, if (state.logoUriString != null) PrimaryGreen else BorderColor, CircleShape)
-                    .clickable { logoPicker.launch("image/*") }
+                    .clickable(enabled = !state.isLogoUploading) { logoPicker.launch("image/*") }
                     .testTag("logo_upload_trigger"),
                 contentAlignment = Alignment.Center
             ) {
-                if (state.logoUriString != null) {
+                if (state.isLogoUploading) {
+                    CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.size(24.dp))
+                } else if (state.logoUriString != null) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         AsyncImage(
                             model = state.logoUriString,
@@ -754,11 +756,13 @@ fun Step2StoreIdentity(
                     .clip(RoundedCornerShape(14.dp))
                     .background(DarkCard)
                     .border(1.dp, if (state.bannerUriString != null) PrimaryGreen else BorderColor, RoundedCornerShape(14.dp))
-                    .clickable { bannerPicker.launch("image/*") }
+                    .clickable(enabled = !state.isBannerUploading) { bannerPicker.launch("image/*") }
                     .testTag("banner_upload_trigger"),
                 contentAlignment = Alignment.Center
             ) {
-                if (state.bannerUriString != null) {
+                if (state.isBannerUploading) {
+                    CircularProgressIndicator(color = PrimaryGreen, modifier = Modifier.size(32.dp))
+                } else if (state.bannerUriString != null) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         AsyncImage(
                             model = state.bannerUriString,
