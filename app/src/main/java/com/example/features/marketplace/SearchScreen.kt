@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -648,10 +649,11 @@ fun SearchScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = "🔍",
-                            fontSize = 58.sp,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                        Icon(
+                            imageVector = Icons.Default.SearchOff,
+                            contentDescription = null,
+                            tint = BrandTextMuted.copy(alpha = 0.5f),
+                            modifier = Modifier.size(64.dp).padding(bottom = 16.dp)
                         )
                         Text(
                             text = stringResource(id = R.string.no_matching_found),

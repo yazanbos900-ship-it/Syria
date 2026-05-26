@@ -25,6 +25,9 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -87,7 +90,7 @@ val mockProductRepository = listOf(
         vendorName = "Bespoke Horology Lab",
         isVerifiedVendor = true,
         deliveryPromise = "Ships today • Free 2-Day Delivery",
-        badge = "⚡ SPECIAL 50% OFF FLASH OFFER",
+        badge = "SPECIAL 50% OFF FLASH OFFER",
         images = listOf(
             "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?auto=format&fit=crop&w=800&q=80",
             "https://images.unsplash.com/photo-1517502884422-41eaaced0168?auto=format&fit=crop&w=800&q=80",
@@ -714,7 +717,12 @@ fun ProductDetailScreen(
                     ) {
                         // Trust item 1
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "🛡️", fontSize = 20.sp)
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = stringResource(id = R.string.escrow_policy),
@@ -731,7 +739,12 @@ fun ProductDetailScreen(
                         
                         // Trust item 2
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "⚡", fontSize = 20.sp)
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = null,
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = stringResource(id = R.string.immediate_dispatch),
@@ -748,7 +761,12 @@ fun ProductDetailScreen(
 
                         // Trust item 3
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "↩️", fontSize = 20.sp)
+                            Icon(
+                                imageVector = Icons.Default.Undo,
+                                contentDescription = null,
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = stringResource(id = R.string.free_returns),

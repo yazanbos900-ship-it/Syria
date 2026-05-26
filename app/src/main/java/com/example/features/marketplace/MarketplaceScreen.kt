@@ -19,6 +19,10 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -82,6 +86,7 @@ fun MarketplaceScreen(
 ) {
     val context = LocalContext.current
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     val mainViewModel: MarketplaceViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -106,12 +111,21 @@ fun MarketplaceScreen(
     
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    val promoBanners = remember(LanguageManager.getLanguage(context)) {
-        listOf(
-            PromoBanner(Color(0xFF1DB954), context.getString(if (LanguageManager.isArabic(context)) R.string.arabic else R.string.arabic), "خصم يصل لـ 50%"),
-            PromoBanner(Color(0xFF1A1A2E), "متاجر جديدة", "اكتشف أحدث المتاجر"),
-            PromoBanner(Color(0xFF0D1F0D), "توصيل مجاني", "على الطلبات فوق $30")
-        )
+    val isAr = LanguageManager.isArabic(context)
+    val promoBanners = remember(isAr) {
+        if (isAr) {
+            listOf(
+                PromoBanner(Color(0xFF1DB954), "خصومات الصيف الكبرى", "خصم يصل لـ 50% على فئات مختارة"),
+                PromoBanner(Color(0xFF1A1A2E), "متاجر حصرية جديدة", "اكتشف إبداعات ومتاجر محلية متميزة"),
+                PromoBanner(Color(0xFF0D1F0D), "توصيل آمن وسريع", "شحن مجاني للطلبات أكثر من $50")
+            )
+        } else {
+            listOf(
+                PromoBanner(Color(0xFF1DB954), "Grand Summer Deals", "Up to 50% OFF on selected categories"),
+                PromoBanner(Color(0xFF1A1A2E), "Exclusive New Stores", "Explore unique creators and local boutiques"),
+                PromoBanner(Color(0xFF0D1F0D), "Secure & Fast Delivery", "Free shipping on orders above $50")
+            )
+        }
     }
     // Wait, I should probably translate these promo banners too in a real app.
     // For now I'll just keep them as they are but localized if I had strings.
@@ -198,6 +212,24 @@ fun MarketplaceScreen(
         }
     }
 
+    if (showAccountBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAccountBottomSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Color.White
+        ) {
+            AccountBottomSheetContent(
+                user = mainState.user,
+                hasStore = mainState.hasStore,
+                onManageStore = { onManageStoreSelected(mainState.userStoreId!!) },
+                onCreateStore = onCreateStoreSelected,
+                onSelectLanguage = { showLanguageDialog = true },
+                onSignOut = onSignOut,
+                onDismiss = { showAccountBottomSheet = false }
+            )
+        }
+    }
+
     Scaffold(
         containerColor = BrandBackground,
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -266,43 +298,43 @@ fun MarketplaceScreen(
                                 .clip(CircleShape)
                                 .background(BrandBackground)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = androidx.compose.ui.res.stringResource(R.string.desc_cart),
-                                tint = BrandTextPrimary
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { showLanguageDialog = true },
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(BrandBackground)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Language,
-                                contentDescription = androidx.compose.ui.res.stringResource(R.string.desc_change_language),
-                                tint = BrandPrimary
-                            )
-                        }
-
-                        IconButton(
-                            onClick = {
-                                if (mainState.hasStore) {
-                                    onManageStoreSelected(mainState.userStoreId!!)
-                                } else {
-                                    onCreateStoreSelected()
+                            BadgedBox(
+                                badge = {
+                                    if (SharedCartState.cartItems.isNotEmpty()) {
+                                        Badge(
+                                            containerColor = BrandPrimary,
+                                            contentColor = Color.White
+                                        ) {
+                                            Text(
+                                                text = "${SharedCartState.cartItems.sumOf { it.quantity }}",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
                                 }
-                            },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingCart,
+                                    contentDescription = androidx.compose.ui.res.stringResource(R.string.desc_cart),
+                                    tint = BrandTextPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { showAccountBottomSheet = true },
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .background(BrandBackground)
-                                .testTag("home_create_store_button")
+                                .testTag("home_profile_options_button")
                         ) {
                             Icon(
-                                imageVector = if (mainState.hasStore) Icons.Default.Settings else Icons.Default.AddCircle,
-                                contentDescription = if (mainState.hasStore) androidx.compose.ui.res.stringResource(R.string.desc_manage_store) else androidx.compose.ui.res.stringResource(R.string.desc_create_store),
-                                tint = BrandPrimary
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Profile Options",
+                                tint = BrandPrimary,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -446,7 +478,7 @@ fun MarketplaceScreen(
                                 .fillMaxSize()
                                 .padding(24.dp),
                             verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.End
+                            horizontalAlignment = Alignment.Start
                         ) {
                             Box(
                                 modifier = Modifier
@@ -468,7 +500,7 @@ fun MarketplaceScreen(
                                 color = Color.White,
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Right
+                                textAlign = TextAlign.Start
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -476,7 +508,7 @@ fun MarketplaceScreen(
                                 color = Color.White.copy(alpha = 0.85f),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                textAlign = TextAlign.Right
+                                textAlign = TextAlign.Start
                             )
                         }
                     }
@@ -560,7 +592,12 @@ fun MarketplaceScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🔍", fontSize = 48.sp)
+                            Icon(
+                                imageVector = Icons.Default.SearchOff,
+                                contentDescription = null,
+                                tint = BrandTextMuted.copy(alpha = 0.5f),
+                                modifier = Modifier.size(64.dp)
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = androidx.compose.ui.res.stringResource(R.string.no_matching_products),
@@ -865,5 +902,198 @@ fun StoreStorySkeletonItem() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Box(modifier = Modifier.height(12.dp).width(50.dp).background(BrandSoftGray))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AccountBottomSheetContent(
+    user: com.example.domain.model.User?,
+    hasStore: Boolean,
+    onManageStore: () -> Unit,
+    onCreateStore: () -> Unit,
+    onSelectLanguage: () -> Unit,
+    onSignOut: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val currentLang = if (com.example.core.utils.LanguageManager.isArabic(context)) "العربية" else "English"
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .navigationBarsPadding(),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // User profile header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(BrandBackground)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(BrandPrimary),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = (user?.name?.firstOrNull()?.toString() ?: "U").uppercase(),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            }
+            Column {
+                Text(
+                    text = user?.name ?: "Guest User",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandTextPrimary
+                )
+                Text(
+                    text = user?.email ?: "",
+                    fontSize = 12.sp,
+                    color = BrandTextMuted
+                )
+            }
+        }
+
+        HorizontalDivider(color = BrandSoftGray, thickness = 1.dp)
+
+        // Options List
+        // 1. Language Option
+        Surface(
+            onClick = {
+                onDismiss()
+                onSelectLanguage()
+            },
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Transparent,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        tint = BrandPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column {
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(R.string.language_selection),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandTextPrimary
+                        )
+                        Text(
+                            text = currentLang,
+                            fontSize = 11.sp,
+                            color = BrandTextMuted
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = BrandTextMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // 2. Multi-Vendor Store Settings / Launch Center Option
+        Surface(
+            onClick = {
+                onDismiss()
+                if (hasStore) onManageStore() else onCreateStore()
+            },
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Transparent,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(
+                        imageVector = if (hasStore) Icons.Default.Settings else Icons.Default.AddCircle,
+                        contentDescription = null,
+                        tint = BrandPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column {
+                        Text(
+                            text = if (hasStore) androidx.compose.ui.res.stringResource(R.string.desc_manage_store) else androidx.compose.ui.res.stringResource(R.string.desc_create_store),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandTextPrimary
+                        )
+                        Text(
+                            text = if (hasStore) androidx.compose.ui.res.stringResource(R.string.manage_my_store) else androidx.compose.ui.res.stringResource(R.string.launch_new_store),
+                            fontSize = 11.sp,
+                            color = BrandTextMuted
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = BrandTextMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        HorizontalDivider(color = BrandSoftGray, thickness = 1.dp)
+
+        // 3. Log out Option
+        Surface(
+            onClick = {
+                onDismiss()
+                onSignOut()
+            },
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Transparent,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = null,
+                    tint = Color.Red,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = if (com.example.core.utils.LanguageManager.isArabic(context)) "تسجيل الخروج" else "Log Out",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Red
+                )
+            }
+        }
     }
 }

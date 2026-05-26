@@ -78,13 +78,13 @@
     <string name="up_to_price">Up to $%1$d</string>
     <string name="min_rating">Minimum Rating</string>
     <string name="fulfillment_mode">Fulfillment Mode</string>
-    <string name="same_day_only">⚡ Same Day Only</string>
+    <string name="same_day_only">Same Day Only</string>
     <string name="reset_filters">Reset All Filters</string>
     <string name="search_results">SEARCH RESULTS</string>
     <string name="items_found">%1$d Items Found</string>
     <string name="no_matching_found">No matching items found</string>
     <string name="try_reducing_filters">Try reducing filters, adjusting price slider limits or searching simple keywords to matching multi-vendor items.</string>
-    <string name="same_day_delivery_badge">⚡ SAME DAY</string>
+    <string name="same_day_delivery_badge">SAME DAY</string>
     <string name="fast_delivery">FAST DELIV</string>
     <string name="off_badge">%1$d%% OFF</string>
     
@@ -176,7 +176,7 @@
     <string name="shipping_fee">Shipping Fee</string>
     <string name="discount_applied">Discount Applied</string>
     <string name="order_total">Estimated Order Total</string>
-    <string name="escrow_dialog_title">Secure Escrow Checkout 🔒</string>
+    <string name="escrow_dialog_title">Secure Escrow Checkout</string>
     <string name="escrow_dialog_desc">You are checking out via WasetPlus Secure Escrow protection holding fee until delivery confirmation.</string>
     <string name="confirm_deposit">Confirm Deposit</string>
     
@@ -189,7 +189,7 @@
     <string name="saved_items_count">%1$d Saved Items</string>
     <string name="in_cart">In Cart</string>
     <string name="add_to_cart_wish">Add to Cart</string>
-    <string name="same_day_delivery">⚡ Same Day</string>
+    <string name="same_day_delivery">Same Day</string>
     <string name="newest">Newest</string>
     <string name="price_low">Price: Low</string>
     <string name="price_high">Price: High</string>
@@ -200,7 +200,7 @@
     <string name="share">Share</string>
     <string name="locked_rate">Locked Rate: %1$s</string>
     <string name="add_to_cart_securely">Add to Cart • Order Securely</string>
-    <string name="pinch_to_zoom">🔍 Pinch to Zoom</string>
+    <string name="pinch_to_zoom">Pinch to Zoom</string>
     <string name="limited_offer">Limited Offer</string>
     <string name="special_discount">Special Discount</string>
     <string name="only_left">Only %1$d left!</string>

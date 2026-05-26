@@ -78,13 +78,13 @@
     <string name="up_to_price">حتى %1$d$</string>
     <string name="min_rating">أقل تقييم</string>
     <string name="fulfillment_mode">طريقة تلبية الطلب</string>
-    <string name="same_day_only">⚡ اليوم فقط</string>
+    <string name="same_day_only">اليوم فقط</string>
     <string name="reset_filters">إرساء الفلاتر</string>
     <string name="search_results">نتائج البحث</string>
     <string name="items_found">%1$d منتجات تم العثور عليها</string>
     <string name="no_matching_found">لم يتم العثور على نتائج!</string>
     <string name="try_reducing_filters">حاول تجربة كلمات بحث مختلفة أو تقليل الفلاتر للحصول على نتائج أفضل.</string>
-    <string name="same_day_delivery_badge">⚡ اليوم</string>
+    <string name="same_day_delivery_badge">اليوم</string>
     <string name="fast_delivery">شحن سريع</string>
     <string name="off_badge">%1$d%% خصم</string>
     
@@ -176,7 +176,7 @@
     <string name="shipping_fee">رسوم الشحن</string>
     <string name="discount_applied">الخصم المطبق</string>
     <string name="order_total">إجمالي الطلب التقديري</string>
-    <string name="escrow_dialog_title">إتمام الشراء آمن 🔒</string>
+    <string name="escrow_dialog_title">إتمام الشراء آمن</string>
     <string name="escrow_dialog_desc">أنت تقوم بالشراء عبر نظام WasetPlus لحماية أموالك كرهن حتى تأكيد الاستلام.</string>
     <string name="confirm_deposit">تأكيد الإيداع</string>
     
@@ -189,7 +189,7 @@
     <string name="saved_items_count">%1$d منتجات محفوظة</string>
     <string name="in_cart">في السلة</string>
     <string name="add_to_cart_wish">أضف للسلة</string>
-    <string name="same_day_delivery">⚡ توصيل اليوم</string>
+    <string name="same_day_delivery">توصيل اليوم</string>
     <string name="newest">الأحدث</string>
     <string name="price_low">أقل سعر</string>
     <string name="price_high">أعلى سعر</string>
@@ -200,7 +200,7 @@
     <string name="share">مشاركة</string>
     <string name="locked_rate">سعر مضمون: %1$s</string>
     <string name="add_to_cart_securely">أضف للسلة • شراء آمن</string>
-    <string name="pinch_to_zoom">🔍 كبّر باللمس</string>
+    <string name="pinch_to_zoom">كبّر باللمس</string>
     <string name="limited_offer">عرض محدود</string>
     <string name="special_discount">خصم خاص</string>
     <string name="only_left">بقي %1$d فقط!</string>
