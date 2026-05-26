@@ -33,7 +33,6 @@ class FirebaseProductRepositoryImpl : ProductRepository {
 
         val dbInstance = db as FirebaseFirestore
         val subscription = dbInstance.collection("products")
-            .whereEqualTo("isAvailable", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(tag, "Error listening to products collection", error)
@@ -46,17 +45,22 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                         try {
                             Product(
                                 id = doc.id,
-                                title = doc.getString("title") ?: "",
+                                title = doc.getString("title") 
+                                    ?: doc.getString("name") ?: "",
                                 description = doc.getString("description") ?: "",
                                 price = doc.getDouble("price") ?: 0.0,
-                                imageUrls = doc.get("imageUrls") as? List<String> ?: emptyList(),
-                                categoryId = doc.getString("categoryId") ?: "",
+                                imageUrls = (doc.get("imageUrls") as? List<String>)
+                                    ?: (doc.get("images") as? List<String>) 
+                                    ?: emptyList(),
+                                categoryId = doc.getString("categoryId") 
+                                    ?: doc.getString("category") ?: "",
                                 storeId = doc.getString("storeId") ?: "",
                                 rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
                                 reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
                                 isAvailable = doc.getBoolean("isAvailable") ?: true,
                                 stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                                createdAt = doc.getLong("createdAt") 
+                                    ?: System.currentTimeMillis()
                             )
                         } catch (ex: Exception) {
                             Log.e(tag, "Failed casting product document", ex)
@@ -82,7 +86,6 @@ class FirebaseProductRepositoryImpl : ProductRepository {
         val dbInstance = db as FirebaseFirestore
         val subscription = dbInstance.collection("products")
             .whereEqualTo("categoryId", categoryId)
-            .whereEqualTo("isAvailable", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -93,17 +96,22 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                         try {
                             Product(
                                 id = doc.id,
-                                title = doc.getString("title") ?: "",
+                                title = doc.getString("title") 
+                                    ?: doc.getString("name") ?: "",
                                 description = doc.getString("description") ?: "",
                                 price = doc.getDouble("price") ?: 0.0,
-                                imageUrls = doc.get("imageUrls") as? List<String> ?: emptyList(),
-                                categoryId = doc.getString("categoryId") ?: "",
+                                imageUrls = (doc.get("imageUrls") as? List<String>)
+                                    ?: (doc.get("images") as? List<String>) 
+                                    ?: emptyList(),
+                                categoryId = doc.getString("categoryId") 
+                                    ?: doc.getString("category") ?: "",
                                 storeId = doc.getString("storeId") ?: "",
                                 rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
                                 reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
                                 isAvailable = doc.getBoolean("isAvailable") ?: true,
                                 stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                                createdAt = doc.getLong("createdAt") 
+                                    ?: System.currentTimeMillis()
                             )
                         } catch (e: Exception) {
                             null
@@ -137,17 +145,22 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 try {
                     Product(
                         id = doc.id,
-                        title = doc.getString("title") ?: doc.getString("name") ?: "",
+                        title = doc.getString("title") 
+                            ?: doc.getString("name") ?: "",
                         description = doc.getString("description") ?: "",
                         price = doc.getDouble("price") ?: 0.0,
-                        imageUrls = doc.get("imageUrls") as? List<String> ?: doc.get("images") as? List<String> ?: emptyList(),
-                        categoryId = doc.getString("categoryId") ?: "",
+                        imageUrls = (doc.get("imageUrls") as? List<String>)
+                            ?: (doc.get("images") as? List<String>) 
+                            ?: emptyList(),
+                        categoryId = doc.getString("categoryId") 
+                            ?: doc.getString("category") ?: "",
                         storeId = doc.getString("storeId") ?: "",
                         rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
                         reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
                         isAvailable = doc.getBoolean("isAvailable") ?: true,
                         stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                        createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                        createdAt = doc.getLong("createdAt") 
+                            ?: System.currentTimeMillis()
                     )
                 } catch (e: Exception) {
                     null
@@ -170,7 +183,6 @@ class FirebaseProductRepositoryImpl : ProductRepository {
         val dbInstance = db as FirebaseFirestore
         val subscription = dbInstance.collection("products")
             .whereEqualTo("storeId", storeId)
-            .whereEqualTo("isAvailable", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -181,17 +193,22 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                         try {
                             Product(
                                 id = doc.id,
-                                title = doc.getString("title") ?: doc.getString("name") ?: "",
+                                title = doc.getString("title") 
+                                    ?: doc.getString("name") ?: "",
                                 description = doc.getString("description") ?: "",
                                 price = doc.getDouble("price") ?: 0.0,
-                                imageUrls = doc.get("imageUrls") as? List<String> ?: doc.get("images") as? List<String> ?: emptyList(),
-                                categoryId = doc.getString("categoryId") ?: "",
+                                imageUrls = (doc.get("imageUrls") as? List<String>)
+                                    ?: (doc.get("images") as? List<String>) 
+                                    ?: emptyList(),
+                                categoryId = doc.getString("categoryId") 
+                                    ?: doc.getString("category") ?: "",
                                 storeId = doc.getString("storeId") ?: "",
                                 rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
                                 reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
                                 isAvailable = doc.getBoolean("isAvailable") ?: true,
                                 stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                                createdAt = doc.getLong("createdAt") 
+                                    ?: System.currentTimeMillis()
                             )
                         } catch (e: Exception) {
                             null
@@ -244,17 +261,22 @@ class FirebaseProductRepositoryImpl : ProductRepository {
             if (doc.exists()) {
                 Product(
                     id = doc.id,
-                    title = doc.getString("title") ?: "",
+                    title = doc.getString("title") 
+                        ?: doc.getString("name") ?: "",
                     description = doc.getString("description") ?: "",
                     price = doc.getDouble("price") ?: 0.0,
-                    imageUrls = doc.get("imageUrls") as? List<String> ?: emptyList(),
-                    categoryId = doc.getString("categoryId") ?: "",
+                    imageUrls = (doc.get("imageUrls") as? List<String>)
+                        ?: (doc.get("images") as? List<String>) 
+                        ?: emptyList(),
+                    categoryId = doc.getString("categoryId") 
+                        ?: doc.getString("category") ?: "",
                     storeId = doc.getString("storeId") ?: "",
                     rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
                     reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
                     isAvailable = doc.getBoolean("isAvailable") ?: true,
                     stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                    createdAt = doc.getLong("createdAt") 
+                        ?: System.currentTimeMillis()
                 )
             } else {
                 null

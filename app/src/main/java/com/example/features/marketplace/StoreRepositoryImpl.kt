@@ -113,11 +113,14 @@ class StoreRepositoryImpl : StoreRepository {
                 "storeId" to storeId,
                 "ownerUid" to ownerId,
                 "name" to productName,
+                "title" to productName,
                 "price" to productPrice,
                 "description" to productDescription,
                 "images" to productImages,
+                "imageUrls" to productImages,
                 "coverImage" to (productImages.firstOrNull() ?: ""),
                 "category" to categoryId,
+                "isAvailable" to true,
                 "createdAt" to FieldValue.serverTimestamp()
             )
 
