@@ -7,5 +7,6 @@ data class User(
     val profileImageUrl: String? = null,
     val phoneNumber: String? = null,
     val isStoreOwner: Boolean = false,
+    val role: String = "client",
     val joinedAt: Long = System.currentTimeMillis()
 )

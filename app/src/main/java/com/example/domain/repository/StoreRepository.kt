@@ -10,6 +10,7 @@ interface StoreRepository {
     suspend fun getStoreByOwnerId(ownerId: String): Store?
     suspend fun createStore(store: Store): Result<Store>
     suspend fun updateStore(store: Store): Result<Unit>
+    suspend fun deleteStore(storeId: String): Result<Unit>
     suspend fun checkIfStoreExists(ownerId: String): Boolean
 
     suspend fun createStoreAndFirstProduct(

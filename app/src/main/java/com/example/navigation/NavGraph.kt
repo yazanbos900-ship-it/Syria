@@ -16,6 +16,7 @@ import com.example.features.marketplace.CreateStoreScreen
 import com.example.features.onboarding.OnboardingScreen
 
 import com.example.features.marketplace.StoreManagementScreen
+import com.example.features.admin.AdminDashboardScreen
 
 @Composable
 fun NavigationGraph(
@@ -78,6 +79,9 @@ fun NavigationGraph(
                 },
                 onManageStoreSelected = { _ ->
                     navController.navigate(Screen.StoreManagement.route)
+                },
+                onAdminSelected = {
+                    navController.navigate(Screen.AdminDashboard.route)
                 }
             )
         }
@@ -162,6 +166,12 @@ fun NavigationGraph(
                     // For now, we can just log or show a toast as real editing requires a complex dialog/screen
                     // But I'll implement a basic add/edit logic in the screen itself
                 }
+            )
+        }
+
+        composable(route = Screen.AdminDashboard.route) {
+            AdminDashboardScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

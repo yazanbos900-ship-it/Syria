@@ -174,6 +174,17 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
         }
     }
 
+    override suspend fun deleteStore(storeId: String): Result<Unit> {
+        val db = firestore ?: return Result.failure(Exception("Firestore service is unavailable"))
+        return try {
+            db.collection("stores").document(storeId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "deleteStore failed for $storeId", e)
+            Result.failure(e)
+        }
+    }
+
     override suspend fun checkIfStoreExists(ownerId: String): Boolean {
         val db = firestore ?: return false
         return try {

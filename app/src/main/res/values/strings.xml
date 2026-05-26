@@ -226,4 +226,12 @@
     <string name="skip">تخطي</string>
     <string name="start_shopping">ابدأ التسوق</string>
     <string name="next">التالي ←</string>
+
+    <!-- Admin Control Panel -->
+    <string name="admin_control_panel">لوحة تحكم المشرف</string>
+    <string name="admin_dashboard_sub">إدارة نظام تطبيق واصل بلس</string>
+    <string name="manage_stores">إدارة المتاجر</string>
+    <string name="manage_products">إدارة المنتجات</string>
+    <string name="manage_users">إدارة المستخدمين</string>
+    <string name="admin_unauthorized">تم رفض الوصول: مطلوب صلاحية مسؤول.</string>
 </resources>

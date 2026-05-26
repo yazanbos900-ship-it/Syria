@@ -226,4 +226,12 @@
     <string name="skip">Skip</string>
     <string name="start_shopping">Start Shopping</string>
     <string name="next">Next →</string>
+
+    <!-- Admin Control Panel -->
+    <string name="admin_control_panel">Admin Control Panel</string>
+    <string name="admin_dashboard_sub">Manage WasetPlus Ecosystem</string>
+    <string name="manage_stores">Manage Stores</string>
+    <string name="manage_products">Manage Products</string>
+    <string name="manage_users">Manage Users</string>
+    <string name="admin_unauthorized">Access Denied: Admin role required.</string>
 </resources>

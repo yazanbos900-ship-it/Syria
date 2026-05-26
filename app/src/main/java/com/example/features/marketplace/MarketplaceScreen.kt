@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.*
@@ -89,7 +90,8 @@ fun MarketplaceScreen(
     onSearchSelected: () -> Unit,
     onWishlistSelected: () -> Unit,
     onCreateStoreSelected: () -> Unit,
-    onManageStoreSelected: (String) -> Unit
+    onManageStoreSelected: (String) -> Unit,
+    onAdminSelected: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -294,6 +296,7 @@ fun MarketplaceScreen(
                 onSelectLanguage = { showLanguageDialog = true },
                 onSelectTheme = { showThemeDialog = true },
                 onSignOut = onSignOut,
+                onAdminClick = onAdminSelected,
                 onDismiss = { showAccountBottomSheet = false }
             )
         }
@@ -953,6 +956,7 @@ fun AccountBottomSheetContent(
     onSelectLanguage: () -> Unit,
     onSelectTheme: () -> Unit,
     onSignOut: () -> Unit,
+    onAdminClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1151,6 +1155,54 @@ fun AccountBottomSheetContent(
                     tint = BrandTextMuted,
                     modifier = Modifier.size(20.dp)
                 )
+            }
+        }
+
+        if (user?.role == "admin") {
+            Surface(
+                onClick = {
+                    onDismiss()
+                    onAdminClick()
+                },
+                shape = RoundedCornerShape(12.dp),
+                color = Color.Transparent,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Column {
+                            Text(
+                                text = androidx.compose.ui.res.stringResource(R.string.admin_control_panel),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = BrandTextPrimary
+                            )
+                            Text(
+                                text = androidx.compose.ui.res.stringResource(R.string.admin_dashboard_sub),
+                                fontSize = 11.sp,
+                                color = BrandTextMuted
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = BrandTextMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 
