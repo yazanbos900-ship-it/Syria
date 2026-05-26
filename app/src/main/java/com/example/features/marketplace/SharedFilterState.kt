@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import com.example.domain.model.Category
 import com.example.domain.repository.ProductRepository
 import com.example.ui.theme.*
@@ -136,7 +138,7 @@ object SharedFilterState {
     val minRatingFilterState = mutableStateOf(0.0)
     val deliveryFilterSameDayOnlyState = mutableStateOf(false)
     val selectedSortOptionState = mutableStateOf(SortOption.Newest)
-    val categoriesListState = mutableStateOf(listOf(Category(id = "All", name = "All")))
+    val categoriesListState = mutableStateOf(listOf(Category(id = "All", nameAr = "الكل", nameEn = "All")))
 
     var selectedCategoryFilter by selectedCategoryFilterState
     var maxPriceRange by maxPriceRangeState
@@ -154,7 +156,7 @@ object SharedFilterState {
     fun init(productRepository: ProductRepository, scope: CoroutineScope) {
         scope.launch {
             productRepository.getCategories().collect { cats ->
-                categoriesList = listOf(Category(id = "All", name = "All")) + cats
+                categoriesList = listOf(Category(id = "All", nameAr = "الكل", nameEn = "All")) + cats
             }
         }
     }
@@ -188,7 +190,7 @@ fun FilterBottomSheetContent(
             .padding(horizontal = 24.dp, vertical = 18.dp)
     ) {
         Text(
-            text = "REFINE MULTI-VENDOR DISCOVERY",
+            text = androidx.compose.ui.res.stringResource(R.string.refine_discovery),
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = BrandTextMuted,
@@ -198,7 +200,7 @@ fun FilterBottomSheetContent(
 
         // 1. Horizontal Category Selector row in filter drawer
         Text(
-            text = "Filter by Category",
+            text = androidx.compose.ui.res.stringResource(R.string.filter_by_category),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = BrandTextPrimary,
@@ -211,18 +213,20 @@ fun FilterBottomSheetContent(
                 .padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val isArabic = com.example.core.utils.LanguageManager.isArabic(androidx.compose.ui.platform.LocalContext.current)
             filterCategories.forEach { category ->
-                val catName = category.name
-                val isSelected = selectedCategoryFilter == catName
+                val catId = category.id
+                val catDisplayName = category.getName(isArabic)
+                val isSelected = selectedCategoryFilter == catId
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (isSelected) BrandPrimary else BrandBackground)
-                        .clickable { selectedCategoryFilter = catName }
+                        .clickable { selectedCategoryFilter = catId }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        text = catName,
+                        text = catDisplayName,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isSelected) Color.White else BrandTextPrimary
@@ -238,13 +242,13 @@ fun FilterBottomSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Max Price (USD)",
+                text = stringResource(R.string.max_price_usd),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = BrandTextPrimary
             )
             Text(
-                text = "Up to $${maxPriceRange.toInt()}",
+                text = stringResource(R.string.up_to_price, maxPriceRange.toInt()),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = BrandPrimary
@@ -273,7 +277,7 @@ fun FilterBottomSheetContent(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = "Minimum Rating",
+                    text = stringResource(R.string.min_rating),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = BrandTextPrimary
@@ -283,7 +287,7 @@ fun FilterBottomSheetContent(
                 ) {
                     ratingOptions.forEach { rating ->
                         val isSelected = minRatingFilter == rating
-                        val labelText = if (rating == 0.0) "All" else "★ ${rating.toString().substringBefore(".")}"
+                        val labelText = if (rating == 0.0) stringResource(R.string.all_label) else "★ ${rating.toString().substringBefore(".")}"
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -310,7 +314,7 @@ fun FilterBottomSheetContent(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = "Fulfillment Mode",
+                    text = stringResource(R.string.fulfillment_mode),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = BrandTextPrimary
@@ -331,7 +335,7 @@ fun FilterBottomSheetContent(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "⚡ Same Day Only",
+                        text = stringResource(R.string.same_day_only),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (deliveryFilterSameDayOnly) BrandPrimary else BrandTextPrimary
@@ -353,7 +357,7 @@ fun FilterBottomSheetContent(
                 modifier = Modifier.height(44.dp)
             ) {
                 Text(
-                    text = "Reset All Filters",
+                    text = stringResource(R.string.reset_filters),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandError
@@ -367,7 +371,7 @@ fun FilterBottomSheetContent(
                 modifier = Modifier.height(44.dp)
             ) {
                 Text(
-                    text = "Apply Filters",
+                    text = stringResource(R.string.apply_filters),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

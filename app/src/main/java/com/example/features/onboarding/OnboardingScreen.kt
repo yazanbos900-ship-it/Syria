@@ -21,6 +21,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -73,7 +75,7 @@ fun OnboardingScreen(
 
         // SKIP
         Text(
-            text = "تخطي",
+            text = stringResource(id = R.string.skip),
             color = Color.White,
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -139,7 +141,7 @@ fun OnboardingScreen(
                 )
             ) {
                 Text(
-                    text = if (isLastPage) "ابدأ التسوق" else "التالي →",
+                    text = if (isLastPage) stringResource(id = R.string.start_shopping) else stringResource(id = R.string.next),
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp

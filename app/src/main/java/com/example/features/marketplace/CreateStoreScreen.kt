@@ -38,6 +38,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.R
+import com.example.core.utils.LanguageManager
+import com.example.core.di.ServiceLocator
 import com.example.domain.model.Category
 import com.example.domain.model.User
 import kotlinx.coroutines.delay
@@ -59,8 +61,11 @@ fun CreateStoreScreen(
     val state by viewModel.state.collectAsState()
     val androidContext = LocalContext.current
 
-    // Force RTL direction for fluent Arabic onboarding
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+    val isArabic = LanguageManager.isArabic(androidContext)
+    val layoutDirection = if (isArabic) LayoutDirection.Rtl else LayoutDirection.Ltr
+
+    // Use current language's natural layout direction
+    CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         
         if (state.isSuccess) {
             SuccessScreen(onNavigateHome = {
@@ -151,7 +156,7 @@ fun CreateStoreScreen(
                                     )
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "إغلاق",
+                                        contentDescription = stringResource(id = R.string.close_label),
                                         tint = Color(0xFFFFCDD2),
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -555,7 +560,7 @@ fun Step1StoreInfo(
                                 .height(100.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("لا توجد فئات متاحة حالياً", color = TextGray, fontSize = 14.sp)
+                            Text(stringResource(id = R.string.no_categories_error), color = TextGray, fontSize = 14.sp)
                         }
                     } else {
                         Column(
@@ -565,12 +570,13 @@ fun Step1StoreInfo(
                                 .verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val isAr = LanguageManager.isArabic(LocalContext.current)
                             state.categories.forEach { category ->
                                 CategorySelectionRow(
-                                    name = category.name,
+                                    name = category.getName(isAr),
                                     isSelected = state.categoryId == category.id,
                                     onClick = {
-                                        viewModel.onCategorySelected(category.id, category.name)
+                                        viewModel.onCategorySelected(category.id, category.getName(isAr))
                                         showCategoryDialog = false
                                     }
                                 )
@@ -677,7 +683,7 @@ fun Step2StoreIdentity(
                     Box(modifier = Modifier.fillMaxSize()) {
                         AsyncImage(
                             model = state.logoUriString,
-                            contentDescription = "شعار المتجر",
+                            contentDescription = stringResource(id = R.string.store_logo_label),
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -779,7 +785,7 @@ fun Step2StoreIdentity(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "رفع غلاف المتجر الرئيسي",
+                            text = stringResource(id = R.string.add_banner_label),
                             color = TextGray,
                             fontSize = 12.sp
                         )

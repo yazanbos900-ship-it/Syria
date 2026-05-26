@@ -26,6 +26,8 @@ import com.example.ui.theme.BrandBackground
 import com.example.ui.theme.BrandPrimary
 import com.example.ui.theme.BrandTextMuted
 import com.example.ui.theme.BrandTextPrimary
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import kotlinx.coroutines.launch
 
 @Composable
@@ -70,7 +72,7 @@ fun AuthScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = if (isLoginTab) "Welcome back to your marketplace" else "Join the multi-vendor network",
+                    text = if (isLoginTab) androidx.compose.ui.res.stringResource(R.string.auth_welcome_back) else androidx.compose.ui.res.stringResource(R.string.auth_join_network),
                     fontSize = 15.sp,
                     color = BrandTextMuted,
                     textAlign = TextAlign.Center
@@ -115,7 +117,7 @@ fun AuthScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Login",
+                                text = androidx.compose.ui.res.stringResource(R.string.login),
                                 fontSize = 14.sp,
                                 fontWeight = if (isLoginTab) FontWeight.Bold else FontWeight.Medium,
                                 color = if (isLoginTab) BrandTextPrimary else BrandTextMuted
@@ -136,7 +138,7 @@ fun AuthScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Register",
+                                text = androidx.compose.ui.res.stringResource(R.string.register),
                                 fontSize = 14.sp,
                                 fontWeight = if (!isLoginTab) FontWeight.Bold else FontWeight.Medium,
                                 color = if (!isLoginTab) BrandTextPrimary else BrandTextMuted
@@ -152,7 +154,7 @@ fun AuthScreen(
                                 BrandTextField(
                                     value = name,
                                     onValueChange = { name = it },
-                                    placeholder = "Full Name"
+                                    placeholder = androidx.compose.ui.res.stringResource(R.string.full_name_label)
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
@@ -160,7 +162,7 @@ fun AuthScreen(
                             BrandTextField(
                                 value = email,
                                 onValueChange = { email = it },
-                                placeholder = "Email Address",
+                                placeholder = androidx.compose.ui.res.stringResource(R.string.email_address_label),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -168,7 +170,7 @@ fun AuthScreen(
                             BrandTextField(
                                 value = password,
                                 onValueChange = { password = it },
-                                placeholder = "Security Password",
+                                placeholder = androidx.compose.ui.res.stringResource(R.string.password_label),
                                 visualTransformation = PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                             )
@@ -181,10 +183,10 @@ fun AuthScreen(
                         CircularProgressIndicator(color = BrandPrimary)
                     } else {
                         BrandButton(
-                            text = if (isLoginTab) "Sign In" else "Create Account",
+                            text = if (isLoginTab) androidx.compose.ui.res.stringResource(R.string.sign_in_button) else androidx.compose.ui.res.stringResource(R.string.create_account_button),
                             onClick = {
                                 if (email.isBlank() || password.isBlank() || (!isLoginTab && name.isBlank())) {
-                                    Toast.makeText(context, "All fields are required.", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.fields_required_error), Toast.LENGTH_SHORT).show()
                                     return@BrandButton
                                 }
                                 isLoading = true
@@ -196,10 +198,10 @@ fun AuthScreen(
                                     }
                                     isLoading = false
                                     result.onSuccess {
-                                        Toast.makeText(context, "Welcome, ${it.name}!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.welcome_user_toast, it.name), Toast.LENGTH_SHORT).show()
                                         onAuthSuccess()
                                     }.onFailure {
-                                        Toast.makeText(context, it.message ?: "Authentication failed", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, context.getString(R.string.auth_failed_error, it.message ?: ""), Toast.LENGTH_LONG).show()
                                     }
                                 }
                             }
@@ -214,7 +216,7 @@ fun AuthScreen(
                 modifier = Modifier.height(48.dp)
             ) {
                 Text(
-                    text = "Go Back to Start",
+                    text = androidx.compose.ui.res.stringResource(R.string.go_back_button),
                     fontSize = 14.sp,
                     color = BrandTextMuted,
                     fontWeight = FontWeight.Medium

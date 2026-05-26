@@ -39,6 +39,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import coil.compose.AsyncImage
 import com.example.ui.theme.*
 
@@ -82,7 +84,7 @@ fun SearchScreen(
                 originalPrice = 378.0,
                 rating = 4.9,
                 reviewsCount = 124,
-                category = "Bespoke",
+                category = "Electronics",
                 storeName = "Bespoke Horology Lab",
                 deliveryTime = "Same Day",
                 dateAdded = "2026-05-20",
@@ -173,7 +175,7 @@ fun SearchScreen(
                 originalPrice = null,
                 rating = 4.7,
                 reviewsCount = 29,
-                category = "Bespoke",
+                category = "Electronics",
                 storeName = "Bespoke Horology Lab",
                 deliveryTime = "Same Day",
                 dateAdded = "2026-05-21",
@@ -259,7 +261,7 @@ fun SearchScreen(
                     OutlinedTextField(
                         value = queryText,
                         onValueChange = { queryText = it },
-                        placeholder = { Text("Search items, vendors, styles...", fontSize = 14.sp, color = BrandTextMuted) },
+                        placeholder = { Text(stringResource(id = R.string.search_placeholder), fontSize = 14.sp, color = BrandTextMuted) },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
@@ -330,7 +332,7 @@ fun SearchScreen(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Filters",
+                            text = stringResource(id = R.string.filters_label),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (filtersVisible) BrandPrimary else BrandTextPrimary
@@ -432,7 +434,7 @@ fun SearchScreen(
 
                         // 1. Horizontal Category Selector row in filter drawer
                         Text(
-                            text = "Filter by Category",
+                            text = stringResource(id = R.string.filter_by_category),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = BrandTextPrimary,
@@ -471,13 +473,13 @@ fun SearchScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Max Price (USD)",
+                                text = stringResource(id = R.string.max_price_usd),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = BrandTextPrimary
                             )
                             Text(
-                                text = "Up to $${maxPriceRange.toInt()}",
+                                text = stringResource(id = R.string.up_to_price, maxPriceRange.toInt()),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = BrandPrimary
@@ -506,7 +508,7 @@ fun SearchScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "Minimum Rating",
+                                    text = stringResource(id = R.string.min_rating),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = BrandTextPrimary
@@ -516,7 +518,7 @@ fun SearchScreen(
                                 ) {
                                     ratingOptions.forEach { rating ->
                                         val isSelected = minRatingFilter == rating
-                                        val labelText = if (rating == 0.0) "All" else "★ ${rating.toString().substringBefore(".")}"
+                                        val labelText = if (rating == 0.0) stringResource(id = R.string.all_category) else "★ ${rating.toString().substringBefore(".")}"
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
@@ -543,7 +545,7 @@ fun SearchScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "Fulfillment Mode",
+                                    text = stringResource(id = R.string.fulfillment_mode),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = BrandTextPrimary
@@ -564,7 +566,7 @@ fun SearchScreen(
                                     horizontalArrangement = Arrangement.Center
                                 ) {
                                     Text(
-                                        text = "⚡ Same Day Only",
+                                        text = stringResource(id = R.string.same_day_only),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (deliveryFilterSameDayOnly) BrandPrimary else BrandTextPrimary
@@ -591,7 +593,7 @@ fun SearchScreen(
                                 modifier = Modifier.height(44.dp)
                             ) {
                                 Text(
-                                    text = "Reset All Filters",
+                                    text = stringResource(id = R.string.reset_filters),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandError
@@ -619,7 +621,7 @@ fun SearchScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "SEARCH RESULTS",
+                    text = stringResource(id = R.string.search_results),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandTextMuted,
@@ -627,7 +629,7 @@ fun SearchScreen(
                 )
 
                 Text(
-                    text = "${filteredProducts.size} Items Found",
+                    text = stringResource(id = R.string.items_found, filteredProducts.size),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandPrimary
@@ -652,7 +654,7 @@ fun SearchScreen(
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
                         Text(
-                            text = "No matching items found",
+                            text = stringResource(id = R.string.no_matching_found),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = BrandTextPrimary,
@@ -660,7 +662,7 @@ fun SearchScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Try reducing filters, adjusting price slider limits or searching simple keywords to matching multi-vendor items.",
+                            text = stringResource(id = R.string.try_reducing_filters),
                             fontSize = 13.sp,
                             color = BrandTextMuted,
                             textAlign = TextAlign.Center,
@@ -679,7 +681,7 @@ fun SearchScreen(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = "RESET FILTERS",
+                                text = stringResource(id = R.string.reset_filters).uppercase(),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
                                 color = Color.White
@@ -733,7 +735,7 @@ fun SearchScreen(
                                         .padding(horizontal = 6.dp, vertical = 3.dp)
                                 ) {
                                     Text(
-                                        text = if (product.deliveryTime == "Same Day") "⚡ SAME DAY" else "FAST DELIV",
+                                        text = if (product.deliveryTime == "Same Day") stringResource(id = R.string.same_day_delivery_badge) else stringResource(id = R.string.fast_delivery),
                                         color = if (product.deliveryTime == "Same Day") BrandPrimary else Color(0xFFE65100),
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold
@@ -752,7 +754,7 @@ fun SearchScreen(
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
                                         Text(
-                                            text = "$savings% OFF",
+                                            text = stringResource(id = R.string.off_badge, savings),
                                             color = Color.White,
                                             fontSize = 9.sp,
                                             fontWeight = FontWeight.ExtraBold

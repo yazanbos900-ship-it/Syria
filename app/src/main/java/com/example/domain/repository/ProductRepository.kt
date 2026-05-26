@@ -14,4 +14,5 @@ interface ProductRepository {
     suspend fun addProduct(product: Product): Result<Unit>
     suspend fun updateProduct(product: Product): Result<Unit>
     suspend fun deleteProduct(productId: String): Result<Unit>
+    suspend fun seedCategories(): Result<Unit>
 }

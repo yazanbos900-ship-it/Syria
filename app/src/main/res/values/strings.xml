@@ -1,6 +1,11 @@
 <resources>
     <string name="app_name">WasetPlus</string>
     
+    <!-- Language Selection -->
+    <string name="language_selection">اللغة</string>
+    <string name="arabic">العربية</string>
+    <string name="english">English</string>
+
     <!-- Store Creation Header -->
     <string name="create_store_title">إنشاء متجر جديد</string>
     <string name="store_info_step">بيانات المتجر</string>
@@ -38,6 +43,94 @@
     <string name="next_button">التالي</string>
     <string name="back_button">السابق</string>
     <string name="submit_button">تأكيد وإنشاء المتجر</string>
+    <string name="cancel">إلغاء</string>
+    <string name="save_changes">حفظ التغييرات</string>
+    <string name="edit">تعديل</string>
+    <string name="delete">حذف</string>
+    <string name="retry">إعادة المحاولة</string>
+    
+    <!-- Store Management -->
+    <string name="store_management_title">إدارة المتجر</string>
+    <string name="manage_products_title">إدارة المنتجات</string>
+    <string name="no_products_yet">لا توجد منتجات بعد. اضغط على + لإضافة منتج.</string>
+    <string name="add_product_dialog_title">إضافة منتج جديد</string>
+    <string name="store_settings_title">إعدادات المتجر</string>
+    <string name="followers_count">%1$d متابع</string>
+    <string name="stock_count">الكمية: %1$d</string>
+    <string name="no_description">لا يوجد وصف للمتجر حالياً.</string>
+    <string name="select_category">اختر الفئة</string>
+    <string name="product_images_count">صور المنتج (%1$d/10)</string>
+    <string name="add_label">+ إضافة</string>
+    <string name="all_label">الكل</string>
+    <string name="add_product_button">إضافة المنتج</string>
+    
+    <!-- Marketplace & Home -->
+    <string name="categories_title">الفئات</string>
+    <string name="featured_products">منتجات مختارة</string>
+    <string name="top_stores">أفضل المتاجر</string>
+    <string name="all_products">كل المنتجات</string>
+    <string name="all_category">الكل</string>
+    <string name="search_placeholder">ابحث عن منتجات، بائعين، ستايلات...</string>
+    <string name="filters_label">تصفية</string>
+    <string name="refine_discovery">نقي تجربة اكتشافك للمنتجات</string>
+    <string name="filter_by_category">تصفية حسب الفئة</string>
+    <string name="max_price_usd">أعلى سعر (بالدولار)</string>
+    <string name="up_to_price">حتى %1$d$</string>
+    <string name="min_rating">أقل تقييم</string>
+    <string name="fulfillment_mode">طريقة تلبية الطلب</string>
+    <string name="same_day_only">⚡ اليوم فقط</string>
+    <string name="reset_filters">إرساء الفلاتر</string>
+    <string name="search_results">نتائج البحث</string>
+    <string name="items_found">%1$d منتجات تم العثور عليها</string>
+    <string name="no_matching_found">لم يتم العثور على نتائج!</string>
+    <string name="try_reducing_filters">حاول تجربة كلمات بحث مختلفة أو تقليل الفلاتر للحصول على نتائج أفضل.</string>
+    <string name="same_day_delivery_badge">⚡ اليوم</string>
+    <string name="fast_delivery">شحن سريع</string>
+    <string name="off_badge">%1$d%% خصم</string>
+    
+    <!-- Bottom Nav -->
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_marketplace">المتجر</string>
+    <string name="nav_wishlist">المفضلة</string>
+    <string name="nav_cart">السلة</string>
+    <string name="nav_profile">حسابي</string>
+    <string name="waset_offers">عروض WasetPlus</string>
+    <string name="protection_title">حماية WasetPlus</string>
+    <string name="protection_subtitle">ضمان حماية بالأسكرو بنسبة 100%</string>
+    <string name="protection_desc">يتم قفل الأموال بأمان تحت خدمة الأسكرو السحابية حتى يتم فحص المنتجات والتحقق منها.</string>
+    <string name="no_matching_products">لا توجد منتجات مطابقة للفلاتر</string>
+    <string name="cloud_connected_title">متصل بالقاعدة السحابية</string>
+    <string name="cloud_connected_desc">تحديثات فورية عبر خلاصات Cloud Firestore. بمجرد تحميل الكتالوجات إلى مجموعات قاعدة البيانات، ستتم مزامنة القوائم فوراً.</string>
+    <string name="manage_my_store">إدارة متجري</string>
+    <string name="launch_new_store">إطلاق متجر جديد</string>
+    <string name="app_subtitle">تغذية متصلة للمتاجر المتعددة</string>
+    <string name="desc_wishlist">عرض قائمة المفضلة</string>
+    <string name="desc_cart">عرض سلة التسوق</string>
+    <string name="desc_manage_store">إدارة المتجر</string>
+    <string name="desc_create_store">إنشاء متجر جديد</string>
+    <string name="desc_change_language">تغيير اللغة</string>
+    <string name="products_label">منتجات</string>
+    <string name="follower_label">متابع</string>
+    <string name="follow_label">متابعة</string>
+    <string name="about_store_label">عن المتجر</string>
+    <string name="products_title">المنتجات</string>
+    <string name="follow_for_updates">تابع هذا المتجر لتكون أول من يعلم عند إضافة منتجات جديدة</string>
+    <string name="manage_store_label">إدارة المتجر</string>
+    
+    <!-- Auth -->
+    <string name="auth_welcome_back">أهلاً بك مرة أخرى في WasetPlus</string>
+    <string name="auth_join_network">انضم إلى شبكة الموردين الخاصة بنا</string>
+    <string name="login">تسجيل الدخول</string>
+    <string name="register">إنشاء حساب</string>
+    <string name="full_name_label">الاسم الكامل</string>
+    <string name="email_address_label">البريد الإلكتروني</string>
+    <string name="password_label">كلمة السر</string>
+    <string name="sign_in_button">تسجيل الدخول</string>
+    <string name="create_account_button">إنشاء حساب جديد</string>
+    <string name="fields_required_error">جميع الحقول مطلوبة لإتمام العملية</string>
+    <string name="auth_failed_error">فشلت عملية المصادقة: %1$s</string>
+    <string name="go_back_button">العودة للبداية</string>
+    <string name="welcome_user_toast">أهلاً بك، %1$s!</string>
     
     <!-- Success Screen -->
     <string name="success_title">تم إنشاء متجرك! في انتظار المراجعة</string>
@@ -55,4 +148,76 @@
     <string name="validation_error_product_image">يرجى اختيار صورة واحدة على الأقل لمنتجك</string>
     <string name="submitting_loading">جاري رفع الملفات وتوثيق متجرك في قواعد البيانات...</string>
     <string name="error_occurred">حدث خطأ أثناء المعالجة: %1$s</string>
+    <string name="add_banner_label">رفع غلاف المتجر الرئيسي</string>
+    <string name="close_label">إغلاق</string>
+    <string name="no_categories_error">لا توجد فئات متاحة حالياً</string>
+    <string name="apply_filters">تطبيق الفلاتر</string>
+    <string name="cancel_label">إلغاء</string>
+    <string name="main_image_label">الصورة الرئيسية</string>
+    <string name="saving_label">جاري الحفظ...</string>
+    <string name="save_changes_button">حفظ التغييرات</string>
+    
+    <!-- Cart -->
+    <string name="cart_title">سلة التسوق</string>
+    <string name="items_count">%1$d منتجات</string>
+    <string name="total_payable">إجمالي الدفع (شامل الضريبة)</string>
+    <string name="saving_extra">توفير إضافي</string>
+    <string name="secure_escrow">ضمان وسيط آمن</string>
+    <string name="proceed_to_checkout">إتمام الشراء</string>
+    <string name="cart_empty_title">سلتك فارغة!</string>
+    <string name="cart_empty_desc">استكشف المنتجات لتجد ما يناسبك بخصومات حصرية.</string>
+    <string name="verified_vendor">بائع موثوق</string>
+    <string name="promotion_code">كود الخصم</string>
+    <string name="promo_applied">تم تطبيق الكود!</string>
+    <string name="apply_button">تطبيق</string>
+    <string name="applied_button">تم التطبيق</string>
+    <string name="checkout_breakdown">تفاصيل الحساب</string>
+    <string name="subtotal">المجموع الفرعي</string>
+    <string name="shipping_fee">رسوم الشحن</string>
+    <string name="discount_applied">الخصم المطبق</string>
+    <string name="order_total">إجمالي الطلب التقديري</string>
+    <string name="escrow_dialog_title">إتمام الشراء آمن 🔒</string>
+    <string name="escrow_dialog_desc">أنت تقوم بالشراء عبر نظام WasetPlus لحماية أموالك كرهن حتى تأكيد الاستلام.</string>
+    <string name="confirm_deposit">تأكيد الإيداع</string>
+    
+    <!-- Wishlist -->
+    <string name="wishlist_title">قائمة الأمنيات</string>
+    <string name="shopping_queue">قائمة الانتظار</string>
+    <string name="wishlist_empty_title">قائمتك فارغة</string>
+    <string name="wishlist_empty_desc">احفظ المنتجات التي تعجبك وتابع الخصومات الحصرية لتكتمل سلتك بسهولة.</string>
+    <string name="order_queue">اطلب القائمة</string>
+    <string name="saved_items_count">%1$d منتجات محفوظة</string>
+    <string name="in_cart">في السلة</string>
+    <string name="add_to_cart_wish">أضف للسلة</string>
+    <string name="same_day_delivery">⚡ توصيل اليوم</string>
+    <string name="newest">الأحدث</string>
+    <string name="price_low">أقل سعر</string>
+    <string name="price_high">أعلى سعر</string>
+    
+    <!-- Product Detail -->
+    <string name="product_design">تصميم المنتج</string>
+    <string name="add_to_wishlist">إضافة للمفضلة</string>
+    <string name="share">مشاركة</string>
+    <string name="locked_rate">سعر مضمون: %1$s</string>
+    <string name="add_to_cart_securely">أضف للسلة • شراء آمن</string>
+    <string name="pinch_to_zoom">🔍 كبّر باللمس</string>
+    <string name="limited_offer">عرض محدود</string>
+    <string name="special_discount">خصم خاص</string>
+    <string name="only_left">بقي %1$d فقط!</string>
+    <string name="story_context">القصة والتفاصيل</string>
+    <string name="quantity_selector">تحديد الكمية</string>
+    <string name="choose_dynamic_size">اختر الكمية المطلوبة لطلبك</string>
+    <string name="multi_vendor_compare">مقارنة الأسعار</string>
+    <string name="best_rate">أفضل سعر</string>
+    <string name="verified_partner">شريك معتمد</string>
+    <string name="escrow_policy">سياسة الضمان</string>
+    <string name="protected_by">محمي بواسطة وسيط</string>
+    <string name="immediate_dispatch">شحن فوري</string>
+    <string name="free_returns">إرجاع مجاني</string>
+    <string name="thirty_day_window">خلال 30 يوماً</string>
+    
+    <!-- Onboarding -->
+    <string name="skip">تخطي</string>
+    <string name="start_shopping">ابدأ التسوق</string>
+    <string name="next">التالي ←</string>
 </resources>

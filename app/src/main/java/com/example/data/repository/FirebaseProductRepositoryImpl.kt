@@ -194,7 +194,8 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                     val list = snapshot.documents.mapNotNull { doc ->
                         Category(
                             id = doc.id,
-                            name = doc.getString("name") ?: "",
+                            nameAr = doc.getString("nameAr") ?: doc.getString("name") ?: "",
+                            nameEn = doc.getString("nameEn") ?: doc.getString("name") ?: "",
                             imageUrl = doc.getString("imageUrl"),
                             iconName = doc.getString("iconName")
                         )
@@ -284,6 +285,36 @@ class FirebaseProductRepositoryImpl : ProductRepository {
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(tag, "Error deleting product $productId", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun seedCategories(): Result<Unit> {
+        val db = firestore ?: return Result.failure(Exception("Firestore not available"))
+        return try {
+            val snapshot = db.collection("categories").limit(1).get().await()
+            if (snapshot.isEmpty) {
+                val categories = listOf(
+                    mapOf("id" to "electronics", "nameAr" to "إلكترونيات", "nameEn" to "Electronics", "iconName" to "electronics"),
+                    mapOf("id" to "fashion", "nameAr" to "أزياء", "nameEn" to "Fashion", "iconName" to "fashion"),
+                    mapOf("id" to "home", "nameAr" to "المنزل", "nameEn" to "Home", "iconName" to "home"),
+                    mapOf("id" to "beauty", "nameAr" to "الجمال", "nameEn" to "Beauty", "iconName" to "beauty"),
+                    mapOf("id" to "sports", "nameAr" to "رياضة", "nameEn" to "Sports", "iconName" to "sports"),
+                    mapOf("id" to "cars", "nameAr" to "سيارات", "nameEn" to "Cars", "iconName" to "cars"),
+                    mapOf("id" to "other", "nameAr" to "أخرى", "nameEn" to "Other", "iconName" to "other")
+                )
+
+                val batch = db.batch()
+                categories.forEach { cat ->
+                    val id = cat["id"] as String
+                    batch.set(db.collection("categories").document(id), cat)
+                }
+                batch.commit().await()
+                Log.d(tag, "Successfully seeded ${categories.size} categories")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "Error seeding categories", e)
             Result.failure(e)
         }
     }

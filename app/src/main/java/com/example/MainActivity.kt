@@ -6,13 +6,23 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import com.example.core.di.ServiceLocator
 import com.example.features.marketplace.SharedCartState
 import com.example.features.marketplace.SharedWishlistState
 import com.example.navigation.NavigationGraph
 import com.example.ui.theme.WasetPlusTheme
 
+import android.content.Context
+import com.example.core.utils.LanguageManager
+
 class MainActivity : ComponentActivity() {
+
+  override fun attachBaseContext(newBase: Context) {
+    val language = LanguageManager.getLanguage(newBase)
+    super.attachBaseContext(LanguageManager.updateBaseContextLocale(newBase, language))
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     
@@ -22,6 +32,10 @@ class MainActivity : ComponentActivity() {
     SharedCartState.init(ServiceLocator.authRepository, ServiceLocator.cartRepository, lifecycleScope)
     SharedWishlistState.init(ServiceLocator.authRepository, ServiceLocator.wishlistRepository, lifecycleScope)
     com.example.features.marketplace.SharedFilterState.init(ServiceLocator.productRepository, lifecycleScope)
+    
+    lifecycleScope.launch {
+        ServiceLocator.productRepository.seedCategories()
+    }
 
     enableEdgeToEdge()
     setContent {

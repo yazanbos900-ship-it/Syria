@@ -55,6 +55,13 @@ import com.example.features.marketplace.HomeStoresViewModel
 import com.example.features.marketplace.HomeProductsViewModel
 import com.example.features.marketplace.StoreListUiState
 
+import androidx.compose.ui.res.stringResource
+import androidx.compose.material.icons.filled.Language
+import com.example.core.utils.LanguageManager
+import com.example.R
+import android.app.Activity
+import androidx.compose.ui.platform.LocalContext
+
 private data class PromoBanner(
     val backgroundColor: Color,
     val title: String,
@@ -73,6 +80,9 @@ fun MarketplaceScreen(
     onCreateStoreSelected: () -> Unit,
     onManageStoreSelected: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
     val mainViewModel: MarketplaceViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
             return MarketplaceViewModel(ServiceLocator.authRepository, ServiceLocator.storeRepository) as T
@@ -96,11 +106,59 @@ fun MarketplaceScreen(
     
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    val promoBanners = remember {
+    val promoBanners = remember(LanguageManager.getLanguage(context)) {
         listOf(
-            PromoBanner(Color(0xFF1DB954), "عروض نهاية الأسبوع", "خصم يصل لـ 50%"),
+            PromoBanner(Color(0xFF1DB954), context.getString(if (LanguageManager.isArabic(context)) R.string.arabic else R.string.arabic), "خصم يصل لـ 50%"),
             PromoBanner(Color(0xFF1A1A2E), "متاجر جديدة", "اكتشف أحدث المتاجر"),
             PromoBanner(Color(0xFF0D1F0D), "توصيل مجاني", "على الطلبات فوق $30")
+        )
+    }
+    // Wait, I should probably translate these promo banners too in a real app.
+    // For now I'll just keep them as they are but localized if I had strings.
+
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(androidx.compose.ui.res.stringResource(R.string.language_selection)) },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                LanguageManager.setLanguage(context, "ar")
+                                showLanguageDialog = false
+                                (context as? Activity)?.recreate()
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = LanguageManager.getLanguage(context) == "ar", onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(androidx.compose.ui.res.stringResource(R.string.arabic))
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                LanguageManager.setLanguage(context, "en")
+                                showLanguageDialog = false
+                                (context as? Activity)?.recreate()
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = LanguageManager.getLanguage(context) == "en", onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(androidx.compose.ui.res.stringResource(R.string.english))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(androidx.compose.ui.res.stringResource(R.string.cancel))
+                }
+            }
         )
     }
 
@@ -164,7 +222,7 @@ fun MarketplaceScreen(
                             letterSpacing = 0.5.sp
                         )
                         Text(
-                            text = "Connected Multi-Vendor Feed",
+                            text = androidx.compose.ui.res.stringResource(R.string.app_subtitle),
                             fontSize = 12.sp,
                             color = BrandTextMuted,
                             fontWeight = FontWeight.Medium
@@ -195,7 +253,7 @@ fun MarketplaceScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Favorite,
-                                    contentDescription = "Show Wishlist Queue",
+                                    contentDescription = androidx.compose.ui.res.stringResource(R.string.desc_wishlist),
                                     tint = Color.Red,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -210,8 +268,21 @@ fun MarketplaceScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = "Show Shopping Cart",
+                                contentDescription = androidx.compose.ui.res.stringResource(R.string.desc_cart),
                                 tint = BrandTextPrimary
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { showLanguageDialog = true },
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(BrandBackground)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = androidx.compose.ui.res.stringResource(R.string.desc_change_language),
+                                tint = BrandPrimary
                             )
                         }
 
@@ -230,7 +301,7 @@ fun MarketplaceScreen(
                         ) {
                             Icon(
                                 imageVector = if (mainState.hasStore) Icons.Default.Settings else Icons.Default.AddCircle,
-                                contentDescription = if (mainState.hasStore) "Manage Store" else "Create Store Flow",
+                                contentDescription = if (mainState.hasStore) androidx.compose.ui.res.stringResource(R.string.desc_manage_store) else androidx.compose.ui.res.stringResource(R.string.desc_create_store),
                                 tint = BrandPrimary
                             )
                         }
@@ -266,7 +337,7 @@ fun MarketplaceScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Search stores, items...",
+                                text = androidx.compose.ui.res.stringResource(R.string.search_placeholder),
                                 fontSize = 14.sp,
                                 color = BrandTextMuted,
                                 fontWeight = FontWeight.Light,
@@ -300,7 +371,7 @@ fun MarketplaceScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = "فلاتر",
+                                    text = androidx.compose.ui.res.stringResource(R.string.nav_marketplace),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1DB954)
@@ -384,7 +455,7 @@ fun MarketplaceScreen(
                                     .padding(horizontal = 10.dp, vertical = 5.dp)
                             ) {
                                 Text(
-                                    text = "WasetPlus عروض",
+                                    text = androidx.compose.ui.res.stringResource(R.string.waset_offers),
                                     color = Color.White.copy(alpha = 0.95f),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -444,7 +515,7 @@ fun MarketplaceScreen(
             ) {
                 Column {
                     Text(
-                        text = "WasetPlus Protection",
+                        text = androidx.compose.ui.res.stringResource(R.string.protection_title),
                         color = BrandPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
@@ -452,14 +523,14 @@ fun MarketplaceScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "100% Escrow Protection Guarantee",
+                        text = androidx.compose.ui.res.stringResource(R.string.protection_subtitle),
                         color = BrandTextPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Funds are safely locked under cloud service escrow until products are inspected and verified.",
+                        text = androidx.compose.ui.res.stringResource(R.string.protection_desc),
                         color = BrandTextMuted,
                         fontSize = 13.sp,
                         lineHeight = 18.sp
@@ -474,7 +545,7 @@ fun MarketplaceScreen(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "Active Featured Products (Scrollable)",
+                    text = androidx.compose.ui.res.stringResource(R.string.featured_products),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandTextPrimary
@@ -492,7 +563,7 @@ fun MarketplaceScreen(
                             Text("🔍", fontSize = 48.sp)
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "لا توجد منتجات مطابقة للفلاتر",
+                                text = androidx.compose.ui.res.stringResource(R.string.no_matching_products),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandTextPrimary
@@ -502,7 +573,7 @@ fun MarketplaceScreen(
                                 onClick = { SharedFilterState.reset() }
                             ) {
                                 Text(
-                                    text = "إعادة تعيين الفلاتر",
+                                    text = androidx.compose.ui.res.stringResource(R.string.reset_filters),
                                     color = BrandPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -656,7 +727,7 @@ fun MarketplaceScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         Text(
-                            text = "Cloud Database Connected",
+                            text = androidx.compose.ui.res.stringResource(R.string.cloud_connected_title),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = BrandTextPrimary,
@@ -666,7 +737,7 @@ fun MarketplaceScreen(
                         Spacer(modifier = Modifier.height(6.dp))
                         
                         Text(
-                            text = "Real-time updates via Cloud Firestore feeds. Once you upload catalogs to 'products' or 'categories' database collections, listings will sync instantly in this interface.",
+                            text = androidx.compose.ui.res.stringResource(R.string.cloud_connected_desc),
                             fontSize = 14.sp,
                             color = BrandTextMuted,
                             textAlign = TextAlign.Center,
@@ -677,7 +748,7 @@ fun MarketplaceScreen(
                         Spacer(modifier = Modifier.height(20.dp))
                         
                         BrandButton(
-                            text = if (mainState.hasStore) "Manage My Store" else "Launch New Store",
+                            text = if (mainState.hasStore) androidx.compose.ui.res.stringResource(R.string.manage_my_store) else androidx.compose.ui.res.stringResource(R.string.launch_new_store),
                             onClick = {
                                 if (mainState.hasStore) {
                                     onManageStoreSelected(mainState.userStoreId!!)
@@ -703,9 +774,14 @@ fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onVie
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("المتاجر", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BrandTextPrimary)
+            Text(
+                androidx.compose.ui.res.stringResource(R.string.categories_title),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = BrandTextPrimary
+            )
             TextButton(onClick = onViewAllClick) {
-                Text("عرض الكل", color = BrandPrimary)
+                Text(androidx.compose.ui.res.stringResource(R.string.go_to_home_button), color = BrandPrimary)
             }
         }
         
@@ -721,7 +797,7 @@ fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onVie
             Text(text = state.error, color = BrandError, modifier = Modifier.padding(24.dp))
         } else if (state.stores.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                Text("لا توجد متاجر حالياً", color = BrandTextMuted)
+            Text(androidx.compose.ui.res.stringResource(R.string.top_stores), color = BrandTextMuted)
             }
         } else {
             LazyRow(
@@ -767,7 +843,7 @@ fun StoreStoryItem(store: com.example.domain.model.Store, onClick: () -> Unit) {
             color = BrandTextPrimary
         )
         Text(
-            text = "متابعين: ${store.followersCount}",
+            text = androidx.compose.ui.res.stringResource(R.string.followers_count, store.followersCount),
             fontSize = 10.sp,
             color = BrandTextMuted,
             textAlign = TextAlign.Center

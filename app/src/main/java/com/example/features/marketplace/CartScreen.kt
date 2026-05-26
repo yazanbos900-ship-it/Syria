@@ -31,6 +31,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import coil.compose.AsyncImage
 import com.example.ui.theme.*
 
@@ -112,7 +114,7 @@ fun CartScreen(
                 }
 
                 Text(
-                    text = "SHOPPING CART",
+                    text = stringResource(id = R.string.cart_title),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandTextPrimary,
@@ -128,7 +130,7 @@ fun CartScreen(
                 ) {
                     val itemsQuantityTotal = initialCartItems.sumOf { it.quantity }
                     Text(
-                        text = "$itemsQuantityTotal ITEMS",
+                        text = stringResource(id = R.string.items_count, itemsQuantityTotal),
                         color = BrandPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
@@ -160,7 +162,7 @@ fun CartScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "TOTAL PAYABLE (VAT INCL.)",
+                                    text = stringResource(id = R.string.total_payable),
                                     fontSize = 10.sp,
                                     color = BrandTextMuted,
                                     fontWeight = FontWeight.ExtraBold,
@@ -185,7 +187,7 @@ fun CartScreen(
                                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                                         ) {
                                             Text(
-                                                text = "SAVING EXTRA",
+                                                text = stringResource(id = R.string.saving_extra),
                                                 color = BrandPrimary,
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold
@@ -207,7 +209,7 @@ fun CartScreen(
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Text(
-                                    text = "SECURE ESCROW",
+                                    text = stringResource(id = R.string.secure_escrow),
                                     fontSize = 10.sp,
                                     color = BrandPrimary,
                                     fontWeight = FontWeight.Bold,
@@ -240,7 +242,7 @@ fun CartScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "PROCEED TO CHECKOUT",
+                                    text = stringResource(id = R.string.proceed_to_checkout),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.5.sp
@@ -272,14 +274,14 @@ fun CartScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Your cart is feeling light!",
+                        text = stringResource(id = R.string.cart_empty_title),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = BrandTextPrimary
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Explore the feed to find tailored items and exclusive discounts.",
+                        text = stringResource(id = R.string.cart_empty_desc),
                         fontSize = 13.sp,
                         color = BrandTextMuted,
                         textAlign = TextAlign.Center
@@ -291,7 +293,7 @@ fun CartScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "START SHOPPING",
+                            text = stringResource(id = R.string.start_shopping),
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
                             color = Color.White
@@ -343,7 +345,7 @@ fun CartScreen(
                                             .size(5.dp)
                                     )
                                     Text(
-                                        text = "Verified Vendor",
+                                        text = stringResource(id = R.string.verified_vendor),
                                         fontSize = 11.sp,
                                         color = BrandPrimary,
                                         fontWeight = FontWeight.Medium
@@ -530,7 +532,7 @@ fun CartScreen(
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
-                                text = "PROMOTION CODE",
+                                text = stringResource(id = R.string.promotion_code),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandTextMuted,
@@ -581,7 +583,7 @@ fun CartScreen(
                                     modifier = Modifier.height(50.dp)
                                 ) {
                                     Text(
-                                        text = if (isCouponActive) "APPLIED" else "APPLY",
+                                        text = if (isCouponActive) stringResource(id = R.string.applied_button) else stringResource(id = R.string.apply_button),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp
                                     )
@@ -611,7 +613,7 @@ fun CartScreen(
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Text(
-                                                text = "Promo '${state.code}' applied! Saved ${state.discountPercent.toInt()}% (-$${String.format("%.2f", state.discountAmount)})",
+                                                text = stringResource(id = R.string.promo_applied) + " SAVED ${state.discountPercent.toInt()}% (-$${String.format("%.2f", state.discountAmount)})",
                                                 color = BrandSecondary,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold
@@ -647,7 +649,7 @@ fun CartScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "CHECKOUT BREAKDOWN",
+                                text = stringResource(id = R.string.checkout_breakdown),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandTextMuted,
@@ -661,7 +663,7 @@ fun CartScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Store Items Subtotal",
+                                    text = stringResource(id = R.string.subtotal),
                                     fontSize = 13.sp,
                                     color = BrandTextMuted
                                 )
@@ -681,13 +683,8 @@ fun CartScreen(
                             ) {
                                 Column {
                                     Text(
-                                        text = "Multi-Vendor Shipping",
+                                        text = stringResource(id = R.string.shipping_fee),
                                         fontSize = 13.sp,
-                                        color = BrandTextMuted
-                                    )
-                                    Text(
-                                        text = "Grouped from $uniqueStoresCount vendors",
-                                        fontSize = 10.sp,
                                         color = BrandTextMuted
                                     )
                                 }
@@ -707,7 +704,7 @@ fun CartScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "Discount Applied",
+                                        text = stringResource(id = R.string.discount_applied),
                                         fontSize = 13.sp,
                                         color = BrandSecondary,
                                         fontWeight = FontWeight.Bold
@@ -730,7 +727,7 @@ fun CartScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Estimated Order Total",
+                                    text = stringResource(id = R.string.order_total),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandTextPrimary
@@ -755,7 +752,7 @@ fun CartScreen(
             onDismissRequest = { isCheckoutDialogOpen = false },
             title = {
                 Text(
-                    text = "🔒 Secure Escrow Checkout",
+                    text = stringResource(id = R.string.escrow_dialog_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandTextPrimary
@@ -766,7 +763,7 @@ fun CartScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "You are checking out via WasetPlus Secure Escrow protection holding fee until delivery confirmation.",
+                        text = stringResource(id = R.string.escrow_dialog_desc),
                         fontSize = 13.sp,
                         color = BrandTextPrimary,
                         lineHeight = 18.sp
@@ -789,7 +786,7 @@ fun CartScreen(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Escrow protection activated",
+                            text = stringResource(id = R.string.secure_escrow),
                             color = BrandSecondary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -805,7 +802,7 @@ fun CartScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
                 ) {
-                    Text("CONFIRM DEPOSIT", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(stringResource(id = R.string.confirm_deposit), color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -813,7 +810,7 @@ fun CartScreen(
                     onClick = { isCheckoutDialogOpen = false },
                     colors = ButtonDefaults.textButtonColors(contentColor = BrandTextMuted)
                 ) {
-                    Text("CANCEL", fontWeight = FontWeight.Bold)
+                    Text(stringResource(id = R.string.cancel_label), fontWeight = FontWeight.Bold)
                 }
             },
             shape = RoundedCornerShape(16.dp),

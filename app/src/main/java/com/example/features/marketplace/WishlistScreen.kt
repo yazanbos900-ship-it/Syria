@@ -31,6 +31,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import coil.compose.AsyncImage
 import com.example.ui.theme.*
 import kotlinx.coroutines.delay
@@ -115,14 +117,14 @@ fun WishlistScreen(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "SHOPPING QUEUE",
+                            text = stringResource(id = R.string.shopping_queue),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = BrandPrimary,
                             letterSpacing = 1.2.sp
                         )
                         Text(
-                            text = "Saved Wishlist",
+                            text = stringResource(id = R.string.wishlist_title),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = BrandTextPrimary
@@ -238,11 +240,11 @@ fun WishlistScreen(
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
-                                Text(
-                                    text = "ORDER QUEUE",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            Text(
+                                text = stringResource(id = R.string.order_queue),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             }
                         }
                     }
@@ -270,7 +272,7 @@ fun WishlistScreen(
                     )
                     
                     Text(
-                        text = "Your Wishlist is Empty",
+                        text = stringResource(id = R.string.wishlist_empty_title),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = BrandTextPrimary,
@@ -280,7 +282,7 @@ fun WishlistScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Text(
-                        text = "Curate your ideal collection here. Save products you love, track exclusive discounts, and complete checkout instantly. No clutter, pure convenience.",
+                        text = stringResource(id = R.string.wishlist_empty_desc),
                         fontSize = 13.sp,
                         color = BrandTextMuted,
                         textAlign = TextAlign.Center,
@@ -299,7 +301,7 @@ fun WishlistScreen(
                             .testTag("wishlist_empty_cta")
                     ) {
                         Text(
-                            text = "Start exploring products",
+                            text = stringResource(id = R.string.start_shopping),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -323,7 +325,7 @@ fun WishlistScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "${wishlist.size} Saved Items",
+                        text = stringResource(id = R.string.saved_items_count, wishlist.size),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = BrandTextMuted
@@ -351,9 +353,9 @@ fun WishlistScreen(
                             ) {
                                 Text(
                                     text = when (option) {
-                                        WishlistSortOption.NewestSaved -> "Newest"
-                                        WishlistSortOption.PriceLowToHigh -> "$ Low"
-                                        WishlistSortOption.PriceHighToLow -> "$ High"
+                                        WishlistSortOption.NewestSaved -> stringResource(id = R.string.newest)
+                                        WishlistSortOption.PriceLowToHigh -> stringResource(id = R.string.price_low)
+                                        WishlistSortOption.PriceHighToLow -> stringResource(id = R.string.price_high)
                                     },
                                     color = if (isSelected) Color.White else BrandTextMuted,
                                     fontSize = 11.sp,
@@ -415,7 +417,7 @@ fun WishlistScreen(
                                                 .padding(horizontal = 5.dp, vertical = 2.dp)
                                         ) {
                                             Text(
-                                                text = "⚡ Same Day",
+                                                text = stringResource(id = R.string.same_day_delivery),
                                                 fontSize = 8.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color(0xFFF57F17)
@@ -543,7 +545,7 @@ fun WishlistScreen(
                                                 )
                                                 Spacer(modifier = Modifier.width(3.dp))
                                                 Text(
-                                                    text = "In Cart",
+                                                    text = stringResource(id = R.string.in_cart),
                                                     fontSize = 11.sp,
                                                     fontWeight = FontWeight.ExtraBold
                                                 )
@@ -555,7 +557,7 @@ fun WishlistScreen(
                                                 )
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(
-                                                    text = "Add to Cart",
+                                                    text = stringResource(id = R.string.add_to_cart_wish),
                                                     fontSize = 11.sp,
                                                     fontWeight = FontWeight.Bold
                                                 )

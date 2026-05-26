@@ -1,0 +1,223 @@
+<resources>
+    <string name="app_name">WasetPlus</string>
+    
+    <!-- Language Selection -->
+    <string name="language_selection">Language</string>
+    <string name="arabic">Arabic</string>
+    <string name="english">English</string>
+    
+    <!-- Store Creation Header -->
+    <string name="create_store_title">Create New Store</string>
+    <string name="store_info_step">Store Info</string>
+    <string name="store_identity_step">Store Identity</string>
+    <string name="first_product_step">First Product</string>
+    
+    <!-- Step 1 Labels -->
+    <string name="store_name_label">Store Name</string>
+    <string name="store_name_placeholder">Enter store name (e.g. Trendy Fashion Store)</string>
+    <string name="username_label">Admin Username</string>
+    <string name="category_label">Primary Store Category</string>
+    <string name="category_placeholder">Select store category</string>
+    <string name="store_description_label">Full Store Description</string>
+    <string name="store_description_placeholder">Details about the store and products you will sell (min 50 characters)</string>
+    
+    <!-- Step 2 Labels -->
+    <string name="store_logo_label">Store Logo (Required)</string>
+    <string name="store_logo_helper">The logo appears circular to customers to easily identify your brand</string>
+    <string name="store_banner_label">Store Banner Image (Optional)</string>
+    <string name="store_banner_helper">A distinctive 16:9 rectangular image appearing at the top of your store page</string>
+    <string name="delete_image">Delete Image</string>
+    
+    <!-- Step 3 Labels -->
+    <string name="product_name_label">First Product Name</string>
+    <string name="product_name_placeholder">Enter product or service name</string>
+    <string name="product_price_label">Price (Local Currency)</string>
+    <string name="product_price_placeholder">Example: 250.0</string>
+    <string name="product_description_label">Product Description</string>
+    <string name="product_description_placeholder">Write product details, specs, warranty, and usage</string>
+    <string name="product_images_label">Product Images (at least one, max 10 images)</string>
+    <string name="add_image_button">Add Image</string>
+    <string name="cover_image_badge">Cover Image</string>
+    
+    <!-- Buttons -->
+    <string name="next_button">Next</string>
+    <string name="back_button">Back</string>
+    <string name="submit_button">Confirm &amp; Create Store</string>
+    <string name="cancel">Cancel</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="retry">Retry</string>
+    
+    <!-- Store Management -->
+    <string name="store_management_title">Store Management</string>
+    <string name="manage_products_title">Manage Products</string>
+    <string name="no_products_yet">No products yet. Tap + to add one.</string>
+    <string name="add_product_dialog_title">Add New Product</string>
+    <string name="store_settings_title">Store Settings</string>
+    <string name="followers_count">%1$d Followers</string>
+    <string name="stock_count">Stock: %1$d</string>
+    <string name="no_description">No store description available.</string>
+    <string name="select_category">Select Category</string>
+    <string name="product_images_count">Product Images (%1$d/10)</string>
+    <string name="add_label">+ Add</string>
+    <string name="all_label">All</string>
+    <string name="add_product_button">Add Product</string>
+    
+    <!-- Marketplace & Home -->
+    <string name="categories_title">Categories</string>
+    <string name="featured_products">Featured Products</string>
+    <string name="top_stores">Top Stores</string>
+    <string name="all_products">All Products</string>
+    <string name="all_category">All</string>
+    <string name="search_placeholder">Search items, vendors, styles...</string>
+    <string name="filters_label">Filters</string>
+    <string name="refine_discovery">Refine multi-vendor discovery</string>
+    <string name="filter_by_category">Filter by Category</string>
+    <string name="max_price_usd">Max Price (USD)</string>
+    <string name="up_to_price">Up to $%1$d</string>
+    <string name="min_rating">Minimum Rating</string>
+    <string name="fulfillment_mode">Fulfillment Mode</string>
+    <string name="same_day_only">⚡ Same Day Only</string>
+    <string name="reset_filters">Reset All Filters</string>
+    <string name="search_results">SEARCH RESULTS</string>
+    <string name="items_found">%1$d Items Found</string>
+    <string name="no_matching_found">No matching items found</string>
+    <string name="try_reducing_filters">Try reducing filters, adjusting price slider limits or searching simple keywords to matching multi-vendor items.</string>
+    <string name="same_day_delivery_badge">⚡ SAME DAY</string>
+    <string name="fast_delivery">FAST DELIV</string>
+    <string name="off_badge">%1$d%% OFF</string>
+    
+    <!-- Bottom Nav -->
+    <string name="nav_home">Home</string>
+    <string name="nav_marketplace">Store</string>
+    <string name="nav_wishlist">Wishlist</string>
+    <string name="nav_cart">Cart</string>
+    <string name="nav_profile">Profile</string>
+    <string name="waset_offers">WasetPlus Offers</string>
+    <string name="protection_title">WasetPlus Protection</string>
+    <string name="protection_subtitle">100% Escrow Protection Guarantee</string>
+    <string name="protection_desc">Funds are safely locked under cloud service escrow until products are inspected and verified.</string>
+    <string name="no_matching_products">No matching products found for filters</string>
+    <string name="cloud_connected_title">Cloud Database Connected</string>
+    <string name="cloud_connected_desc">Real-time updates via Cloud Firestore feeds. Once you upload catalogs to collections, listings will sync instantly.</string>
+    <string name="manage_my_store">Manage My Store</string>
+    <string name="launch_new_store">Launch New Store</string>
+    <string name="app_subtitle">Connected Multi-Vendor Feed</string>
+    <string name="desc_wishlist">Show Wishlist Queue</string>
+    <string name="desc_cart">Show Shopping Cart</string>
+    <string name="desc_manage_store">Manage Store</string>
+    <string name="desc_create_store">Create Store Flow</string>
+    <string name="desc_change_language">Change Language</string>
+    <string name="products_label">Products</string>
+    <string name="follower_label">Follower</string>
+    <string name="follow_label">Follow</string>
+    <string name="about_store_label">About Store</string>
+    <string name="products_title">Products</string>
+    <string name="follow_for_updates">Follow this store to be the first to know about new products</string>
+    <string name="manage_store_label">Manage Store</string>
+    
+    <!-- Auth -->
+    <string name="auth_welcome_back">Welcome back to WasetPlus</string>
+    <string name="auth_join_network">Join the multi-vendor network</string>
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <string name="full_name_label">Full Name</string>
+    <string name="email_address_label">Email Address</string>
+    <string name="password_label">Security Password</string>
+    <string name="sign_in_button">Sign In</string>
+    <string name="create_account_button">Create Account</string>
+    <string name="fields_required_error">All fields are required.</string>
+    <string name="auth_failed_error">Authentication failed: %1$s</string>
+    <string name="go_back_button">Go Back to Start</string>
+    <string name="welcome_user_toast">Welcome, %1$s!</string>
+    
+    <!-- Success Screen -->
+    <string name="success_title">Your store has been created! Pending review.</string>
+    <string name="success_subtitle">Thank you for joining us. We are reviewing your data and verifying identity to ensure a safe trading environment. Your account will be activated soon.</string>
+    <string name="go_to_home_button">Back to Home</string>
+    
+    <!-- Validation & Status Alerts -->
+    <string name="validation_error_store_name">Please enter a suitable and complete store name</string>
+    <string name="validation_error_category">Please select a category for the store products</string>
+    <string name="validation_error_description">Description must be at least 50 characters long for identity clarity</string>
+    <string name="validation_error_logo">You must upload a store logo to complete this step</string>
+    <string name="validation_error_product_title">Please enter the required product name</string>
+    <string name="validation_error_product_price">Please enter a correct and valid numerical price</string>
+    <string name="validation_error_product_desc">Please enter product details and description</string>
+    <string name="validation_error_product_image">Please select at least one image for your product</string>
+    <string name="submitting_loading">Uploading files and documenting your store in the database...</string>
+    <string name="error_occurred">An error occurred during processing: %1$s</string>
+    <string name="add_banner_label">Upload main store banner</string>
+    <string name="close_label">Close</string>
+    <string name="no_categories_error">No categories available at the moment</string>
+    <string name="apply_filters">Apply Filters</string>
+    <string name="cancel_label">Cancel</string>
+    <string name="main_image_label">Main Image</string>
+    <string name="saving_label">Saving...</string>
+    <string name="save_changes_button">Save Changes</string>
+    
+    <!-- Cart -->
+    <string name="cart_title">Shopping Cart</string>
+    <string name="items_count">%1$d Items</string>
+    <string name="total_payable">Total Payable (VAT Incl.)</string>
+    <string name="saving_extra">Saving Extra</string>
+    <string name="secure_escrow">Secure Escrow</string>
+    <string name="proceed_to_checkout">Proceed to Checkout</string>
+    <string name="cart_empty_title">Your cart is feeling light!</string>
+    <string name="cart_empty_desc">Explore the feed to find tailored items and exclusive discounts.</string>
+    <string name="verified_vendor">Verified Vendor</string>
+    <string name="promotion_code">Promotion Code</string>
+    <string name="promo_applied">Promo Code Applied!</string>
+    <string name="apply_button">Apply</string>
+    <string name="applied_button">Applied</string>
+    <string name="checkout_breakdown">Checkout Breakdown</string>
+    <string name="subtotal">Subtotal</string>
+    <string name="shipping_fee">Shipping Fee</string>
+    <string name="discount_applied">Discount Applied</string>
+    <string name="order_total">Estimated Order Total</string>
+    <string name="escrow_dialog_title">Secure Escrow Checkout 🔒</string>
+    <string name="escrow_dialog_desc">You are checking out via WasetPlus Secure Escrow protection holding fee until delivery confirmation.</string>
+    <string name="confirm_deposit">Confirm Deposit</string>
+    
+    <!-- Wishlist -->
+    <string name="wishlist_title">Wishlist</string>
+    <string name="shopping_queue">Shopping Queue</string>
+    <string name="wishlist_empty_title">Your Wishlist is Empty</string>
+    <string name="wishlist_empty_desc">Curate your ideal collection here. Save products you love, track exclusive discounts, and complete checkout instantly.</string>
+    <string name="order_queue">Order Queue</string>
+    <string name="saved_items_count">%1$d Saved Items</string>
+    <string name="in_cart">In Cart</string>
+    <string name="add_to_cart_wish">Add to Cart</string>
+    <string name="same_day_delivery">⚡ Same Day</string>
+    <string name="newest">Newest</string>
+    <string name="price_low">Price: Low</string>
+    <string name="price_high">Price: High</string>
+
+    <!-- Product Detail -->
+    <string name="product_design">Product Design</string>
+    <string name="add_to_wishlist">Add to Wishlist</string>
+    <string name="share">Share</string>
+    <string name="locked_rate">Locked Rate: %1$s</string>
+    <string name="add_to_cart_securely">Add to Cart • Order Securely</string>
+    <string name="pinch_to_zoom">🔍 Pinch to Zoom</string>
+    <string name="limited_offer">Limited Offer</string>
+    <string name="special_discount">Special Discount</string>
+    <string name="only_left">Only %1$d left!</string>
+    <string name="story_context">Story &amp; Context</string>
+    <string name="quantity_selector">Quantity Selector</string>
+    <string name="choose_dynamic_size">Choose your dynamic order size</string>
+    <string name="multi_vendor_compare">Multi-Vendor Compare Pool</string>
+    <string name="best_rate">Best Rate</string>
+    <string name="verified_partner">Verified Premium Partner</string>
+    <string name="escrow_policy">Escrow Policy</string>
+    <string name="protected_by">WasetPlus Protected</string>
+    <string name="immediate_dispatch">Immediate Dispatch</string>
+    <string name="free_returns">Free Returns</string>
+    <string name="thirty_day_window">30-Day Window</string>
+    
+    <!-- Onboarding -->
+    <string name="skip">Skip</string>
+    <string name="start_shopping">Start Shopping</string>
+    <string name="next">Next →</string>
+</resources>

@@ -41,6 +41,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.R
 import coil.compose.AsyncImage
 import com.example.ui.theme.BrandBackground
 import com.example.ui.theme.BrandPrimary
@@ -300,7 +302,7 @@ fun ProductDetailScreen(
                 }
 
                 Text(
-                    text = "PRODUCT DESIGN",
+                    text = stringResource(id = R.string.product_design),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandTextPrimary,
@@ -320,7 +322,7 @@ fun ProductDetailScreen(
                     ) {
                         Icon(
                             imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Add to Wishlist",
+                            contentDescription = stringResource(id = R.string.add_to_wishlist),
                             tint = if (isLiked) Color.Red else BrandTextPrimary
                         )
                     }
@@ -333,7 +335,7 @@ fun ProductDetailScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Share,
-                            contentDescription = "Share",
+                            contentDescription = stringResource(id = R.string.share),
                             tint = BrandTextPrimary
                         )
                     }
@@ -364,7 +366,7 @@ fun ProductDetailScreen(
                     ) {
                         Column {
                             Text(
-                                text = "ORDER TOTAL",
+                                text = stringResource(id = R.string.order_total),
                                 fontSize = 10.sp,
                                 color = BrandTextMuted,
                                 fontWeight = FontWeight.Bold,
@@ -395,7 +397,7 @@ fun ProductDetailScreen(
                                     .background(Color(0xFFD32F2F))
                             )
                             Text(
-                                text = "LOCKED RATE: $timerString",
+                                text = stringResource(id = R.string.locked_rate, timerString),
                                 color = Color(0xFF856404),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -429,7 +431,7 @@ fun ProductDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "ADD TO CART • ORDER SECURELY",
+                                text = stringResource(id = R.string.add_to_cart_securely),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp
@@ -532,7 +534,7 @@ fun ProductDetailScreen(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "🔍 Pinch to Zoom",
+                        text = stringResource(id = R.string.pinch_to_zoom),
                         color = BrandTextPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium
@@ -564,7 +566,7 @@ fun ProductDetailScreen(
                                 .graphicsLayer(alpha = pulseAlpha)
                         )
                         Text(
-                            text = product.badge,
+                            text = if (product.badge == "Limited Offer") stringResource(id = R.string.limited_offer) else stringResource(id = R.string.special_discount),
                             color = BrandPrimary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -575,7 +577,7 @@ fun ProductDetailScreen(
                     // Scarcity state (stock)
                     if (product.stockCount <= 5) {
                         Text(
-                            text = "Only ${product.stockCount} left!",
+                            text = stringResource(id = R.string.only_left, product.stockCount),
                             color = Color(0xFFC62828), // Dark warning red
                             fontSize = 11.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -715,13 +717,13 @@ fun ProductDetailScreen(
                             Text(text = "🛡️", fontSize = 20.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Escrow Policy",
+                                text = stringResource(id = R.string.escrow_policy),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandTextPrimary
                             )
                             Text(
-                                text = "WasetPlus Protected",
+                                text = stringResource(id = R.string.protected_by),
                                 fontSize = 9.sp,
                                 color = BrandTextMuted
                             )
@@ -732,7 +734,7 @@ fun ProductDetailScreen(
                             Text(text = "⚡", fontSize = 20.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Immediate dispatch",
+                                text = stringResource(id = R.string.immediate_dispatch),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandTextPrimary
@@ -749,13 +751,13 @@ fun ProductDetailScreen(
                             Text(text = "↩️", fontSize = 20.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Free Returns",
+                                text = stringResource(id = R.string.free_returns),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BrandTextPrimary
                             )
                             Text(
-                                text = "30-Day Window",
+                                text = stringResource(id = R.string.thirty_day_window),
                                 fontSize = 9.sp,
                                 color = BrandTextMuted
                             )
@@ -768,7 +770,7 @@ fun ProductDetailScreen(
 
                     // Description
                     Text(
-                        text = "STORY & CONTEXT",
+                        text = stringResource(id = R.string.story_context),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = BrandTextMuted,
@@ -801,7 +803,7 @@ fun ProductDetailScreen(
                 ) {
                     Column {
                         Text(
-                            text = "QUANTITY SELECTOR",
+                            text = stringResource(id = R.string.quantity_selector),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = BrandTextMuted,
@@ -809,7 +811,7 @@ fun ProductDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Choose your dynamic order size",
+                            text = stringResource(id = R.string.choose_dynamic_size),
                             fontSize = 12.sp,
                             color = BrandTextPrimary
                         )
@@ -882,7 +884,7 @@ fun ProductDetailScreen(
                     modifier = Modifier.padding(24.dp)
                 ) {
                     Text(
-                        text = "MULTI-VENDOR COMPARE POOL",
+                        text = stringResource(id = R.string.multi_vendor_compare),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = BrandTextMuted,
@@ -922,7 +924,7 @@ fun ProductDetailScreen(
                                         .padding(horizontal = 5.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = "BEST RATE",
+                                        text = stringResource(id = R.string.best_rate),
                                         color = Color.White,
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold
