@@ -2,6 +2,7 @@ package com.example.features.marketplace
 
 import android.net.Uri
 import android.util.Log
+import android.webkit.MimeTypeMap
 import com.example.core.di.ServiceLocator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,75 +15,78 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class CloudinaryUploader {
     private val tag = "CloudinaryUploader"
-    private val client = OkHttpClient()
+    
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
 
-    // 🔴 IMPORTANT: Replace with your actual Cloudinary Cloud Name and Unsigned Upload Preset
-    // Configure them in Cloudinary Dashboard -> Settings -> Upload -> Enable Unsigned Uploading
-    private val cloudName = "your_cloud_name" // e.g. "dxxxxxxxx"
-    private val uploadPreset = "your_unsigned_preset" // e.g. "ml_default" or "unsigned_preset"
+    private val cloudName = "dnp7vrwws"
+    private val uploadPreset = "wasetplus_upload"
 
-    /**
-     * Uploads an image from local URI to Cloudinary via unsigned HTTP request.
-     * Returns the secure download URL.
-     */
-    suspend fun uploadFile(localUriString: String): Result<String> = withContext(Dispatchers.IO) {
-        if (cloudName == "your_cloud_name" || uploadPreset == "your_unsigned_preset") {
-            Log.e(tag, "Cloudinary configuration missing. Please add your cloud_name and unsigned upload_preset.")
-            // Falling back to a dummy URL so the flow doesn't break for testing if not configured
-            return@withContext Result.success("https://via.placeholder.com/500?text=Cloudinary+Not+Configured")
-        }
-
+    suspend fun uploadFile(localUriString: String): Result<String> = 
+        withContext(Dispatchers.IO) {
         try {
             val uri = Uri.parse(localUriString)
             val context = ServiceLocator.applicationContext
-            
-            // 1. Copy Content Uri to a temporary java.io.File for OkHttp
-            val inputStream = context.contentResolver.openInputStream(uri)
-                ?: return@withContext Result.failure(Exception("Cannot open local URI stream"))
-            
-            val tempFile = File(context.cacheDir, "upload_${UUID.randomUUID()}.jpg")
-            val outputStream = FileOutputStream(tempFile)
-            inputStream.copyTo(outputStream)
-            inputStream.close()
-            outputStream.close()
 
-            // 2. Build Multipart Body for Cloudinary
+            val mimeType = context.contentResolver.getType(uri) ?: "image/*"
+            val ext = MimeTypeMap.getSingleton()
+                .getExtensionFromMimeType(mimeType) ?: "jpg"
+
+            val inputStream = context.contentResolver.openInputStream(uri)
+                ?: return@withContext Result.failure(
+                    Exception("Cannot open local URI stream")
+                )
+
+            val tempFile = File(
+                context.cacheDir, 
+                "upload_${UUID.randomUUID()}.$ext"
+            )
+            FileOutputStream(tempFile).use { out ->
+                inputStream.copyTo(out)
+            }
+            inputStream.close()
+
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("upload_preset", uploadPreset)
                 .addFormDataPart(
-                    "file", 
+                    "file",
                     tempFile.name,
-                    tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                    tempFile.asRequestBody(mimeType.toMediaTypeOrNull())
                 )
                 .build()
 
-            // 3. Make HTTP POST
             val request = Request.Builder()
                 .url("https://api.cloudinary.com/v1_1/$cloudName/image/upload")
                 .post(requestBody)
                 .build()
 
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string()
+            client.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string()
+                tempFile.delete()
 
-            tempFile.delete() // Clean up temp file
-
-            if (response.isSuccessful && responseBody != null) {
-                val json = JSONObject(responseBody)
-                val secureUrl = json.getString("secure_url")
-                Log.d(tag, "Successful upload to Cloudinary. Url: $secureUrl")
-                Result.success(secureUrl)
-            } else {
-                Log.e(tag, "Cloudinary upload failed: ${response.code} $responseBody")
-                Result.failure(Exception("Cloudinary upload failed: ${response.code}"))
+                if (response.isSuccessful && responseBody != null) {
+                    val json = JSONObject(responseBody)
+                    val secureUrl = json.getString("secure_url")
+                    Log.d(tag, "Upload success: $secureUrl")
+                    Result.success(secureUrl)
+                } else {
+                    Log.e(tag, "Upload failed: ${response.code} $responseBody")
+                    Result.failure(
+                        Exception("Cloudinary upload failed: ${response.code}")
+                    )
+                }
             }
 
         } catch (e: Exception) {
-            Log.e(tag, "Exception during Cloudinary upload: ${e.message}", e)
+            Log.e(tag, "Exception: ${e.message}", e)
             Result.failure(e)
         }
     }
