@@ -3,6 +3,7 @@ package com.example.features.marketplace
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.di.ServiceLocator
+import com.example.domain.repository.StoreRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +12,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 class CreateStoreViewModel(
-    private val storeRepository: StoreRepository = StoreRepositoryImpl(),
+    private val storeRepository: StoreRepository = ServiceLocator.storeRepository,
     private val uploader: CloudinaryUploader = CloudinaryUploader()
 ) : ViewModel() {
 

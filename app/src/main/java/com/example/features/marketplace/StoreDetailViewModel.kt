@@ -10,47 +10,90 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-sealed class StoreDetailUiState {
-    object Loading : StoreDetailUiState()
-    data class Error(val msg: String) : StoreDetailUiState()
-    data class Success(
-        val store: Store,
-        val products: List<Product>,
-        val isFollowing: Boolean = false
-    ) : StoreDetailUiState()
-}
+data class StoreDetailUiState(
+    val isLoading: Boolean = true,
+    val error: String? = null,
+    val store: Store? = null,
+    val products: List<Product> = emptyList(),
+    val isFollowing: Boolean = false,
+    val currentUserId: String? = null
+)
 
 class StoreDetailViewModel(
     private val storeRepo: StoreRepository,
-    private val productRepo: ProductRepository
+    private val productRepo: ProductRepository,
+    private val authRepo: com.example.domain.repository.AuthRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow<StoreDetailUiState>(StoreDetailUiState.Loading)
+    private val _state = MutableStateFlow(StoreDetailUiState())
     val state: StateFlow<StoreDetailUiState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            authRepo.currentUser.collect { user ->
+                _state.update { it.copy(currentUserId = user?.id) }
+            }
+        }
+    }
 
     fun loadStore(storeId: String) {
         viewModelScope.launch {
-            _state.value = StoreDetailUiState.Loading
+            _state.update { it.copy(isLoading = true, error = null) }
             try {
+                android.util.Log.d("DEBUG_STORE", "=== loadStore called with storeId: $storeId ===")
+                
                 val store = storeRepo.getStoreById(storeId)
                 if (store == null) {
-                    _state.value = StoreDetailUiState.Error("لم يتم العثور على المتجر")
+                    android.util.Log.d("DEBUG_STORE", "Store NOT FOUND for id: $storeId")
+                    _state.update { 
+                        it.copy(
+                            isLoading = false,
+                            error = "لم يتم العثور على المتجر"
+                        )
+                    }
                     return@launch
                 }
                 
-                productRepo.getProductsByStoreId(storeId)
-                    .catch { e ->
-                        _state.value = StoreDetailUiState.Success(store, emptyList())
-                    }
-                    .collect { products ->
-                        _state.value = StoreDetailUiState.Success(store, products)
-                    }
-
+                android.util.Log.d("DEBUG_STORE", "Store found: ${store.name}, id: ${store.id}")
+                
+                _state.update { 
+                    it.copy(
+                        isLoading = false,
+                        store = store
+                    )
+                }
+                
+                loadProducts(storeId)
+                
             } catch (e: Exception) {
-                _state.value = StoreDetailUiState.Error(e.message ?: "حدث خطأ غير معروف")
+                android.util.Log.e("DEBUG_STORE", "Exception in loadStore: ${e.message}", e)
+                _state.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "حدث خطأ"
+                    )
+                }
             }
+        }
+    }
+    
+    private fun loadProducts(storeId: String) {
+        viewModelScope.launch {
+            productRepo.getProductsByStoreId(storeId)
+                .catch { e ->
+                    android.util.Log.e("DEBUG_STORE", "Products flow error: ${e.message}", e)
+                    _state.update { it.copy(products = emptyList()) }
+                }
+                .collect { products ->
+                    android.util.Log.d("DEBUG_STORE", "Products received: ${products.size}")
+                    products.forEach { 
+                        android.util.Log.d("DEBUG_STORE", "  Product: ${it.title}, storeId: ${it.storeId}")
+                    }
+                    _state.update { it.copy(products = products) }
+                }
         }
     }
 }

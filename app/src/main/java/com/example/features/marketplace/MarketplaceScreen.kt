@@ -43,6 +43,7 @@ import com.example.ui.theme.BrandTextPrimary
 import com.example.ui.theme.BrandError
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.platform.testTag
 
 import androidx.compose.foundation.lazy.LazyRow
@@ -51,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.core.di.ServiceLocator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.features.marketplace.HomeStoresViewModel
+import com.example.features.marketplace.HomeProductsViewModel
 import com.example.features.marketplace.StoreListUiState
 
 private data class PromoBanner(
@@ -68,14 +70,29 @@ fun MarketplaceScreen(
     onCartSelected: () -> Unit,
     onSearchSelected: () -> Unit,
     onWishlistSelected: () -> Unit,
-    onCreateStoreSelected: () -> Unit
+    onCreateStoreSelected: () -> Unit,
+    onManageStoreSelected: (String) -> Unit
 ) {
+    val mainViewModel: MarketplaceViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            return MarketplaceViewModel(ServiceLocator.authRepository, ServiceLocator.storeRepository) as T
+        }
+    })
+    val mainState by mainViewModel.state.collectAsStateWithLifecycle()
+
     val storeViewModel: HomeStoresViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
             return HomeStoresViewModel(ServiceLocator.storeRepository) as T
         }
     })
     val storeState by storeViewModel.state.collectAsStateWithLifecycle()
+
+    val productViewModel: HomeProductsViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            return HomeProductsViewModel(ServiceLocator.productRepository) as T
+        }
+    })
+    val productState by productViewModel.state.collectAsStateWithLifecycle()
     
     var showBottomSheet by remember { mutableStateOf(false) }
 
@@ -96,16 +113,17 @@ fun MarketplaceScreen(
     }
 
     val filteredHomeProducts = remember(
+        productState.products,
         SharedFilterState.selectedCategoryFilter,
         SharedFilterState.maxPriceRange,
         SharedFilterState.minRatingFilter,
         SharedFilterState.deliveryFilterSameDayOnly
     ) {
-        productCatalog.filter { product ->
-            val matchesCategory = SharedFilterState.selectedCategoryFilter == "All" || product.category == SharedFilterState.selectedCategoryFilter
+        productState.products.filter { product ->
+            val matchesCategory = SharedFilterState.selectedCategoryFilter == "All" || product.categoryId == SharedFilterState.selectedCategoryFilter
             val matchesPrice = product.price <= SharedFilterState.maxPriceRange
             val matchesRating = product.rating >= SharedFilterState.minRatingFilter
-            val matchesDelivery = !SharedFilterState.deliveryFilterSameDayOnly || product.deliveryTime == "Same Day"
+            val matchesDelivery = true 
             matchesCategory && matchesPrice && matchesRating && matchesDelivery
         }
     }
@@ -132,7 +150,6 @@ fun MarketplaceScreen(
                     .background(Color.White)
                     .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
-                // Editorial Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -157,7 +174,6 @@ fun MarketplaceScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // High-retention Wishlist trigger button (Heart toggle) with badge
                         IconButton(
                             onClick = onWishlistSelected,
                             modifier = Modifier
@@ -200,15 +216,21 @@ fun MarketplaceScreen(
                         }
 
                         IconButton(
-                            onClick = onCreateStoreSelected,
+                            onClick = {
+                                if (mainState.hasStore) {
+                                    onManageStoreSelected(mainState.userStoreId!!)
+                                } else {
+                                    onCreateStoreSelected()
+                                }
+                            },
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .background(BrandBackground)
                                 .testTag("home_create_store_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.AddCircle,
-                                contentDescription = "Create Store Flow",
+                                imageVector = if (mainState.hasStore) Icons.Default.Settings else Icons.Default.AddCircle,
+                                contentDescription = if (mainState.hasStore) "Manage Store" else "Create Store Flow",
                                 tint = BrandPrimary
                             )
                         }
@@ -217,7 +239,6 @@ fun MarketplaceScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Primary Custom Styled Search Bar alongside Outlined Filters Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -309,14 +330,12 @@ fun MarketplaceScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Top
         ) {
-            // Stores Section
             StoresSection(
                 state = storeState,
                 onStoreClick = onStoreSelected,
                 onViewAllClick = { /* TODO: navigation to all stores */ }
             )
 
-            // Professional Banner Carousel (3 Banners, height: 180dp, rounded corners 16dp, auto-scrolling)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -336,7 +355,6 @@ fun MarketplaceScreen(
                             .clip(RoundedCornerShape(16.dp))
                             .background(banner.backgroundColor)
                     ) {
-                        // Luxurious ambient geometric design ornaments for professional look
                         Box(
                             modifier = Modifier
                                 .size(130.dp)
@@ -352,7 +370,6 @@ fun MarketplaceScreen(
                                 .background(Color.White.copy(alpha = 0.04f), CircleShape)
                         )
 
-                        // Rich Editorial Content (Right-aligned / RTL Arabic typography)
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -396,7 +413,6 @@ fun MarketplaceScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Pagination Indicator Dots matching active dot = #1DB954 exactly
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
@@ -417,7 +433,6 @@ fun MarketplaceScreen(
                 }
             }
 
-            // Promotional Design Hero Card
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -452,7 +467,6 @@ fun MarketplaceScreen(
                 }
             }
 
-            // Real Production-Ready Architecture Skeletons & Status Card
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -467,7 +481,6 @@ fun MarketplaceScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // High-End Selectable Product Grid / Row
                 if (filteredHomeProducts.isEmpty()) {
                     Box(
                         modifier = Modifier
@@ -515,13 +528,27 @@ fun MarketplaceScreen(
                                 ) {
                                     Box(modifier = Modifier.fillMaxWidth().height(140.dp)) {
                                         AsyncImage(
-                                            model = product.imageUrl,
-                                            contentDescription = product.name,
+                                            model = product.imageUrls.firstOrNull() ?: "",
+                                            contentDescription = product.title,
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier.fillMaxSize()
                                         )
-                                        // Heart Favorite button for high conversion wishlist adding directly from home feed
-                                         val isWishlisted = SharedWishlistState.isWishlisted(product)
+                                        
+                                        val marketProduct = MarketProduct(
+                                            id = product.id,
+                                            name = product.title,
+                                            price = product.price,
+                                            originalPrice = product.price * 1.5,
+                                            rating = product.rating.toDouble(),
+                                            reviewsCount = product.reviewCount,
+                                            category = product.categoryId,
+                                            storeName = "Store",
+                                            deliveryTime = "Standard",
+                                            dateAdded = "2026",
+                                            imageUrl = product.imageUrls.firstOrNull() ?: ""
+                                        )
+                                        
+                                         val isWishlisted = SharedWishlistState.isWishlisted(marketProduct)
                                          Box(
                                              modifier = Modifier
                                                  .align(Alignment.TopEnd)
@@ -530,7 +557,7 @@ fun MarketplaceScreen(
                                                  .clip(CircleShape)
                                                  .background(Color.White.copy(alpha = 0.9f))
                                                  .clickable {
-                                                     SharedWishlistState.toggleWishlist(product)
+                                                     SharedWishlistState.toggleWishlist(marketProduct)
                                                  }
                                                  .testTag("home_wishlist_toggle_${product.id}"),
                                              contentAlignment = Alignment.Center
@@ -542,43 +569,26 @@ fun MarketplaceScreen(
                                                  modifier = Modifier.size(14.dp)
                                              )
                                          }
-
-                                         if (product.originalPrice != null) {
-                                            val savings = ((product.originalPrice - product.price) / product.originalPrice * 100).toInt()
-                                            Box(
-                                                modifier = Modifier
-                                                    .padding(8.dp)
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(Color(0xFFE8F5E9))
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            ) {
-                                                Text(
-                                                    text = "$savings% OFF",
-                                                    color = BrandPrimary,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        } else if (product.id == "woolen_trench_coat") {
-                                            Box(
-                                                modifier = Modifier
-                                                    .padding(8.dp)
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(Color(0xFFFFEBEE))
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            ) {
-                                                Text(
-                                                    text = "LIMITED",
-                                                    color = Color(0xFFC62828),
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        }
+                                         
+                                         val savings = 33
+                                         Box(
+                                             modifier = Modifier
+                                                 .padding(8.dp)
+                                                 .clip(RoundedCornerShape(6.dp))
+                                                 .background(Color(0xFFE8F5E9))
+                                                 .padding(horizontal = 6.dp, vertical = 2.dp)
+                                         ) {
+                                             Text(
+                                                 text = "$savings% OFF",
+                                                 color = BrandPrimary,
+                                                 fontSize = 10.sp,
+                                                 fontWeight = FontWeight.Bold
+                                             )
+                                         }
                                     }
                                     Column(modifier = Modifier.padding(12.dp)) {
                                         Text(
-                                            text = product.name,
+                                            text = product.title,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = BrandTextPrimary,
@@ -586,7 +596,7 @@ fun MarketplaceScreen(
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
-                                            text = product.storeName,
+                                            text = "Store",
                                             fontSize = 11.sp,
                                             color = BrandTextMuted,
                                             maxLines = 1,
@@ -623,7 +633,6 @@ fun MarketplaceScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Large Design Card instructing how live dynamic products populate.
                 BrandCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -668,8 +677,14 @@ fun MarketplaceScreen(
                         Spacer(modifier = Modifier.height(20.dp))
                         
                         BrandButton(
-                            text = "Launch New Store",
-                            onClick = { onCreateStoreSelected() }
+                            text = if (mainState.hasStore) "Manage My Store" else "Launch New Store",
+                            onClick = {
+                                if (mainState.hasStore) {
+                                    onManageStoreSelected(mainState.userStoreId!!)
+                                } else {
+                                    onCreateStoreSelected()
+                                }
+                            }
                         )
                     }
                 }
@@ -703,7 +718,6 @@ fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onVie
                 items(4) { StoreStorySkeletonItem() }
             }
         } else if (state.error != null) {
-            // Simple error handling
             Text(text = state.error, color = BrandError, modifier = Modifier.padding(24.dp))
         } else if (state.stores.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {

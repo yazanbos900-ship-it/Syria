@@ -16,7 +16,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.domain.model.Category
+import com.example.domain.repository.ProductRepository
 import com.example.ui.theme.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 internal val productCatalog = listOf(
     MarketProduct(
@@ -131,18 +136,28 @@ object SharedFilterState {
     val minRatingFilterState = mutableStateOf(0.0)
     val deliveryFilterSameDayOnlyState = mutableStateOf(false)
     val selectedSortOptionState = mutableStateOf(SortOption.Newest)
+    val categoriesListState = mutableStateOf(listOf(Category(id = "All", name = "All")))
 
     var selectedCategoryFilter by selectedCategoryFilterState
     var maxPriceRange by maxPriceRangeState
     var minRatingFilter by minRatingFilterState
     var deliveryFilterSameDayOnly by deliveryFilterSameDayOnlyState
     var selectedSortOption by selectedSortOptionState
+    var categoriesList by categoriesListState
 
     val isActive: Boolean
         get() = selectedCategoryFilter != "All" ||
                 maxPriceRange < 300f ||
                 minRatingFilter > 0.0 ||
                 deliveryFilterSameDayOnly
+
+    fun init(productRepository: ProductRepository, scope: CoroutineScope) {
+        scope.launch {
+            productRepository.getCategories().collect { cats ->
+                categoriesList = listOf(Category(id = "All", name = "All")) + cats
+            }
+        }
+    }
 
     fun reset() {
         selectedCategoryFilter = "All"
@@ -162,8 +177,8 @@ fun FilterBottomSheetContent(
     var maxPriceRange by SharedFilterState.maxPriceRangeState
     var minRatingFilter by SharedFilterState.minRatingFilterState
     var deliveryFilterSameDayOnly by SharedFilterState.deliveryFilterSameDayOnlyState
+    val filterCategories = SharedFilterState.categoriesList
 
-    val filterCategories = listOf("All", "Apparel", "Artisanal", "Bespoke", "Furniture", "Wellness")
     val ratingOptions = listOf(0.0, 4.0, 4.5, 4.8)
 
     Column(
@@ -196,17 +211,18 @@ fun FilterBottomSheetContent(
                 .padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            filterCategories.forEach { cat ->
-                val isSelected = selectedCategoryFilter == cat
+            filterCategories.forEach { category ->
+                val catName = category.name
+                val isSelected = selectedCategoryFilter == catName
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (isSelected) BrandPrimary else BrandBackground)
-                        .clickable { selectedCategoryFilter = cat }
+                        .clickable { selectedCategoryFilter = catName }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        text = cat,
+                        text = catName,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isSelected) Color.White else BrandTextPrimary

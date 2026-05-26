@@ -5,6 +5,7 @@ import com.example.domain.model.Category
 import com.example.domain.model.Product
 import com.example.domain.repository.ProductRepository
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -13,6 +14,61 @@ import kotlinx.coroutines.tasks.await
 
 class FirebaseProductRepositoryImpl : ProductRepository {
     private val tag = "FirebaseProduct"
+
+    private fun getCreatedAt(doc: com.google.firebase.firestore.DocumentSnapshot): Long {
+        return try {
+            val timestamp = doc.getTimestamp("createdAt")
+            if (timestamp != null) {
+                timestamp.toDate().time
+            } else {
+                doc.getLong("createdAt") ?: System.currentTimeMillis()
+            }
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
+
+    private fun DocumentSnapshot.toProduct(): Product? {
+        return try {
+            val id = id
+            val title = getString("title") ?: getString("name") ?: ""
+            val description = getString("description") ?: ""
+            
+            // Safe number casting
+            val price = (get("price") as? Number)?.toDouble() ?: 0.0
+            
+            val imageUrls = (get("imageUrls") as? List<String>)
+                ?: (get("images") as? List<String>)
+                ?: (get("coverImage") as? String)?.let { listOf(it) }
+                ?: emptyList()
+                
+            val categoryId = getString("categoryId") ?: getString("category") ?: ""
+            val storeId = getString("storeId") ?: ""
+            
+            val rating = (get("rating") as? Number)?.toFloat() ?: 4.5f
+            val reviewCount = (get("reviewCount") as? Number)?.toInt() ?: 0
+            val isAvailable = getBoolean("isAvailable") ?: true
+            val stockCount = (get("stockCount") as? Number)?.toInt() ?: 10
+            
+            Product(
+                id = id,
+                title = title,
+                description = description,
+                price = price,
+                imageUrls = imageUrls,
+                categoryId = categoryId,
+                storeId = storeId,
+                rating = rating,
+                reviewCount = reviewCount,
+                isAvailable = isAvailable,
+                stockCount = stockCount,
+                createdAt = getCreatedAt(this)
+            )
+        } catch (e: Exception) {
+            Log.e("FirebaseProduct", "Error parsing product $id", e)
+            null
+        }
+    }
 
     private val firestore: FirebaseFirestore? by lazy {
         try {
@@ -24,15 +80,12 @@ class FirebaseProductRepositoryImpl : ProductRepository {
     }
 
     override fun getProducts(): Flow<List<Product>> = callbackFlow {
-        val db = firestore ?: {
+        val db = firestore ?: run {
             trySend(emptyList<Product>())
             close()
+            return@callbackFlow
         }
-        
-        if (db is Function0<*>) return@callbackFlow
-
-        val dbInstance = db as FirebaseFirestore
-        val subscription = dbInstance.collection("products")
+        val subscription = db.collection("products")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(tag, "Error listening to products collection", error)
@@ -41,32 +94,7 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 }
 
                 if (snapshot != null) {
-                    val list = snapshot.documents.mapNotNull { doc ->
-                        try {
-                            Product(
-                                id = doc.id,
-                                title = doc.getString("title") 
-                                    ?: doc.getString("name") ?: "",
-                                description = doc.getString("description") ?: "",
-                                price = doc.getDouble("price") ?: 0.0,
-                                imageUrls = (doc.get("imageUrls") as? List<String>)
-                                    ?: (doc.get("images") as? List<String>) 
-                                    ?: emptyList(),
-                                categoryId = doc.getString("categoryId") 
-                                    ?: doc.getString("category") ?: "",
-                                storeId = doc.getString("storeId") ?: "",
-                                rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
-                                reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
-                                isAvailable = doc.getBoolean("isAvailable") ?: true,
-                                stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                                createdAt = doc.getLong("createdAt") 
-                                    ?: System.currentTimeMillis()
-                            )
-                        } catch (ex: Exception) {
-                            Log.e(tag, "Failed casting product document", ex)
-                            null
-                        }
-                    }
+                    val list = snapshot.documents.mapNotNull { it.toProduct() }
                     trySend(list)
                 } else {
                     trySend(emptyList())
@@ -77,14 +105,12 @@ class FirebaseProductRepositoryImpl : ProductRepository {
     }
 
     override fun getProductsByCategory(categoryId: String): Flow<List<Product>> = callbackFlow {
-        val db = firestore ?: {
+        val db = firestore ?: run {
             trySend(emptyList<Product>())
             close()
+            return@callbackFlow
         }
-        if (db is Function0<*>) return@callbackFlow
-
-        val dbInstance = db as FirebaseFirestore
-        val subscription = dbInstance.collection("products")
+        val subscription = db.collection("products")
             .whereEqualTo("categoryId", categoryId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -92,31 +118,7 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    val list = snapshot.documents.mapNotNull { doc ->
-                        try {
-                            Product(
-                                id = doc.id,
-                                title = doc.getString("title") 
-                                    ?: doc.getString("name") ?: "",
-                                description = doc.getString("description") ?: "",
-                                price = doc.getDouble("price") ?: 0.0,
-                                imageUrls = (doc.get("imageUrls") as? List<String>)
-                                    ?: (doc.get("images") as? List<String>) 
-                                    ?: emptyList(),
-                                categoryId = doc.getString("categoryId") 
-                                    ?: doc.getString("category") ?: "",
-                                storeId = doc.getString("storeId") ?: "",
-                                rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
-                                reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
-                                isAvailable = doc.getBoolean("isAvailable") ?: true,
-                                stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                                createdAt = doc.getLong("createdAt") 
-                                    ?: System.currentTimeMillis()
-                            )
-                        } catch (e: Exception) {
-                            null
-                        }
-                    }
+                    val list = snapshot.documents.mapNotNull { it.toProduct() }
                     trySend(list)
                 } else {
                     trySend(emptyList())
@@ -127,7 +129,6 @@ class FirebaseProductRepositoryImpl : ProductRepository {
     }
 
     override fun searchProducts(query: String): Flow<List<Product>> = flow {
-        // Advanced client-side or partial firestore queries
         val db = firestore
         if (db == null) {
             emit(emptyList())
@@ -141,31 +142,7 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 .get()
                 .await()
 
-            val products = snapshot.documents.mapNotNull { doc ->
-                try {
-                    Product(
-                        id = doc.id,
-                        title = doc.getString("title") 
-                            ?: doc.getString("name") ?: "",
-                        description = doc.getString("description") ?: "",
-                        price = doc.getDouble("price") ?: 0.0,
-                        imageUrls = (doc.get("imageUrls") as? List<String>)
-                            ?: (doc.get("images") as? List<String>) 
-                            ?: emptyList(),
-                        categoryId = doc.getString("categoryId") 
-                            ?: doc.getString("category") ?: "",
-                        storeId = doc.getString("storeId") ?: "",
-                        rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
-                        reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
-                        isAvailable = doc.getBoolean("isAvailable") ?: true,
-                        stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                        createdAt = doc.getLong("createdAt") 
-                            ?: System.currentTimeMillis()
-                    )
-                } catch (e: Exception) {
-                    null
-                }
-            }
+            val products = snapshot.documents.mapNotNull { it.toProduct() }
             emit(products)
         } catch (e: Exception) {
             Log.e(tag, "Search products query failed", e)
@@ -174,47 +151,25 @@ class FirebaseProductRepositoryImpl : ProductRepository {
     }
 
     override fun getProductsByStoreId(storeId: String): Flow<List<Product>> = callbackFlow {
-        val db = firestore ?: {
+        val db = firestore ?: run {
             trySend(emptyList<Product>())
             close()
+            return@callbackFlow
         }
-        if (db is Function0<*>) return@callbackFlow
-
-        val dbInstance = db as FirebaseFirestore
-        val subscription = dbInstance.collection("products")
+        Log.d(tag, "=== getProductsByStoreId CALLED with storeId: '$storeId' ===")
+        
+        val subscription = db.collection("products")
             .whereEqualTo("storeId", storeId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    Log.e(tag, "Firestore error for storeId $storeId: ${error.message}", error)
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    val list = snapshot.documents.mapNotNull { doc ->
-                        try {
-                            Product(
-                                id = doc.id,
-                                title = doc.getString("title") 
-                                    ?: doc.getString("name") ?: "",
-                                description = doc.getString("description") ?: "",
-                                price = doc.getDouble("price") ?: 0.0,
-                                imageUrls = (doc.get("imageUrls") as? List<String>)
-                                    ?: (doc.get("images") as? List<String>) 
-                                    ?: emptyList(),
-                                categoryId = doc.getString("categoryId") 
-                                    ?: doc.getString("category") ?: "",
-                                storeId = doc.getString("storeId") ?: "",
-                                rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
-                                reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
-                                isAvailable = doc.getBoolean("isAvailable") ?: true,
-                                stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                                createdAt = doc.getLong("createdAt") 
-                                    ?: System.currentTimeMillis()
-                            )
-                        } catch (e: Exception) {
-                            null
-                        }
-                    }
-                    trySend(list)
+                    Log.d(tag, "Products found for storeId $storeId: ${snapshot.documents.size}")
+                    val products = snapshot.documents.mapNotNull { it.toProduct() }
+                    trySend(products)
                 } else {
                     trySend(emptyList())
                 }
@@ -224,14 +179,12 @@ class FirebaseProductRepositoryImpl : ProductRepository {
     }
 
     override fun getCategories(): Flow<List<Category>> = callbackFlow {
-        val db = firestore ?: {
+        val db = firestore ?: run {
             trySend(emptyList<Category>())
             close()
+            return@callbackFlow
         }
-        if (db is Function0<*>) return@callbackFlow
-
-        val dbInstance = db as FirebaseFirestore
-        val subscription = dbInstance.collection("categories")
+        val subscription = db.collection("categories")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -259,31 +212,79 @@ class FirebaseProductRepositoryImpl : ProductRepository {
         return try {
             val doc = db.collection("products").document(productId).get().await()
             if (doc.exists()) {
-                Product(
-                    id = doc.id,
-                    title = doc.getString("title") 
-                        ?: doc.getString("name") ?: "",
-                    description = doc.getString("description") ?: "",
-                    price = doc.getDouble("price") ?: 0.0,
-                    imageUrls = (doc.get("imageUrls") as? List<String>)
-                        ?: (doc.get("images") as? List<String>) 
-                        ?: emptyList(),
-                    categoryId = doc.getString("categoryId") 
-                        ?: doc.getString("category") ?: "",
-                    storeId = doc.getString("storeId") ?: "",
-                    rating = doc.getDouble("rating")?.toFloat() ?: 4.5f,
-                    reviewCount = doc.getLong("reviewCount")?.toInt() ?: 0,
-                    isAvailable = doc.getBoolean("isAvailable") ?: true,
-                    stockCount = doc.getLong("stockCount")?.toInt() ?: 10,
-                    createdAt = doc.getLong("createdAt") 
-                        ?: System.currentTimeMillis()
-                )
+                doc.toProduct()
             } else {
                 null
             }
         } catch (e: Exception) {
             Log.e(tag, "Failed fetching details for product $productId", e)
             null
+        }
+    }
+
+    override suspend fun addProduct(product: Product): Result<Unit> {
+        val db = firestore ?: return Result.failure(Exception("Firestore not available"))
+        return try {
+            val productMap = hashMapOf(
+                "title" to product.title,
+                "name" to product.title,
+                "description" to product.description,
+                "price" to product.price,
+                "imageUrls" to product.imageUrls,
+                "images" to product.imageUrls,
+                "coverImage" to (product.imageUrls.firstOrNull() ?: ""),
+                "categoryId" to product.categoryId,
+                "category" to product.categoryId,
+                "storeId" to product.storeId,
+                "rating" to product.rating,
+                "reviewCount" to product.reviewCount,
+                "isAvailable" to product.isAvailable,
+                "stockCount" to product.stockCount,
+                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+            db.collection("products").add(productMap).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "Error adding product", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateProduct(product: Product): Result<Unit> {
+        val db = firestore ?: return Result.failure(Exception("Firestore not available"))
+        return try {
+            val productMap = hashMapOf(
+                "title" to product.title,
+                "name" to product.title,
+                "description" to product.description,
+                "price" to product.price,
+                "imageUrls" to product.imageUrls,
+                "images" to product.imageUrls,
+                "coverImage" to (product.imageUrls.firstOrNull() ?: ""),
+                "categoryId" to product.categoryId,
+                "category" to product.categoryId,
+                "storeId" to product.storeId,
+                "rating" to product.rating,
+                "reviewCount" to product.reviewCount,
+                "isAvailable" to product.isAvailable,
+                "stockCount" to product.stockCount
+            )
+            db.collection("products").document(product.id).update(productMap as Map<String, Any>).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "Error updating product ${product.id}", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deleteProduct(productId: String): Result<Unit> {
+        val db = firestore ?: return Result.failure(Exception("Firestore not available"))
+        return try {
+            db.collection("products").document(productId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "Error deleting product $productId", e)
+            Result.failure(e)
         }
     }
 }

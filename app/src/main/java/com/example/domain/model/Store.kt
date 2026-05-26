@@ -8,6 +8,7 @@ data class Store(
     val logoUrl: String? = null,
     val bannerUrl: String? = null,
     val description: String,
+    val categoryId: String = "",
     val followersCount: Int = 0,
     val status: String = "active",
     val rating: Float = 5.0f,

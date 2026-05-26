@@ -15,6 +15,8 @@ import com.example.features.marketplace.WishlistScreen
 import com.example.features.marketplace.CreateStoreScreen
 import com.example.features.onboarding.OnboardingScreen
 
+import com.example.features.marketplace.StoreManagementScreen
+
 @Composable
 fun NavigationGraph(
     navController: NavHostController,
@@ -73,6 +75,9 @@ fun NavigationGraph(
                 },
                 onCreateStoreSelected = {
                     navController.navigate(Screen.CreateStore.route)
+                },
+                onManageStoreSelected = { _ ->
+                    navController.navigate(Screen.StoreManagement.route)
                 }
             )
         }
@@ -133,6 +138,9 @@ fun NavigationGraph(
                 onBack = { navController.popBackStack() },
                 onProductClick = { productId ->
                     navController.navigate(Screen.ProductDetail.createRoute(productId))
+                },
+                onManageStore = {
+                    navController.navigate(Screen.StoreManagement.route)
                 }
             )
         }
@@ -143,6 +151,16 @@ fun NavigationGraph(
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
+                }
+            )
+        }
+
+        composable(route = Screen.StoreManagement.route) {
+            StoreManagementScreen(
+                onBack = { navController.popBackStack() },
+                onEditProduct = { product ->
+                    // For now, we can just log or show a toast as real editing requires a complex dialog/screen
+                    // But I'll implement a basic add/edit logic in the screen itself
                 }
             )
         }

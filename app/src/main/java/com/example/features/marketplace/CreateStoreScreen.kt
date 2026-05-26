@@ -549,31 +549,13 @@ fun Step1StoreInfo(
                             CircularProgressIndicator(color = PrimaryGreen)
                         }
                     } else if (state.categories.isEmpty()) {
-                        // Resilient Fallback categories list matching search/home collection metrics
-                        val fallbackCategories = listOf<Category>(
-                            Category("bespoke", "شخصي ومميز"),
-                            Category("apparel", "الملابس والأناقة"),
-                            Category("furniture", "أثاث منزلي"),
-                            Category("artisanal", "منتجات يدوية"),
-                            Category("wellness", "صحة وعناية")
-                        )
-                        Column(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 250.dp)
-                                .verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .height(100.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            fallbackCategories.forEach { category ->
-                                CategorySelectionRow(
-                                    name = category.name,
-                                    isSelected = state.categoryId == category.id,
-                                    onClick = {
-                                        viewModel.onCategorySelected(category.id, category.name)
-                                        showCategoryDialog = false
-                                    }
-                                )
-                            }
+                            Text("لا توجد فئات متاحة حالياً", color = TextGray, fontSize = 14.sp)
                         }
                     } else {
                         Column(

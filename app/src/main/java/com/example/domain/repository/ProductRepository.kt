@@ -11,4 +11,7 @@ interface ProductRepository {
     fun getProductsByStoreId(storeId: String): Flow<List<Product>>
     fun getCategories(): Flow<List<Category>>
     suspend fun getProductDetails(productId: String): Product?
+    suspend fun addProduct(product: Product): Result<Unit>
+    suspend fun updateProduct(product: Product): Result<Unit>
+    suspend fun deleteProduct(productId: String): Result<Unit>
 }

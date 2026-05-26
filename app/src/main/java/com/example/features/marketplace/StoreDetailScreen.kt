@@ -37,13 +37,15 @@ import com.example.ui.theme.BrandTextPrimary
 fun StoreDetailScreen(
     storeId: String,
     onBack: () -> Unit,
-    onProductClick: (String) -> Unit
+    onProductClick: (String) -> Unit,
+    onManageStore: () -> Unit
 ) {
     val viewModel: StoreDetailViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
             return StoreDetailViewModel(
                 storeRepo = ServiceLocator.storeRepository,
-                productRepo = ServiceLocator.productRepository
+                productRepo = ServiceLocator.productRepository,
+                authRepo = ServiceLocator.authRepository
             ) as T
         }
     })
@@ -58,24 +60,25 @@ fun StoreDetailScreen(
         containerColor = BrandBackground,
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (state) {
-                is StoreDetailUiState.Loading -> {
+            when {
+                state.isLoading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-                is StoreDetailUiState.Error -> {
+                state.error != null -> {
                     Text(
-                        text = (state as StoreDetailUiState.Error).msg,
+                        text = state.error!!,
                         color = BrandTextMuted,
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
-                is StoreDetailUiState.Success -> {
-                    val successState = state as StoreDetailUiState.Success
+                state.store != null -> {
                     StoreContent(
-                        store = successState.store,
-                        products = successState.products,
+                        store = state.store!!,
+                        products = state.products,
                         onBack = onBack,
-                        onProductClick = onProductClick
+                        onProductClick = onProductClick,
+                        isOwner = state.store!!.ownerId == state.currentUserId,
+                        onManageClick = onManageStore
                     )
                 }
             }
@@ -88,7 +91,9 @@ fun StoreContent(
     store: Store,
     products: List<Product>,
     onBack: () -> Unit,
-    onProductClick: (String) -> Unit
+    onProductClick: (String) -> Unit,
+    isOwner: Boolean,
+    onManageClick: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -162,6 +167,16 @@ fun StoreContent(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+
+                if (isOwner) {
+                    Button(
+                        onClick = onManageClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("إدارة المتجر", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

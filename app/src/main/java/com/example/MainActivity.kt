@@ -21,6 +21,7 @@ class MainActivity : ComponentActivity() {
     
     SharedCartState.init(ServiceLocator.authRepository, ServiceLocator.cartRepository, lifecycleScope)
     SharedWishlistState.init(ServiceLocator.authRepository, ServiceLocator.wishlistRepository, lifecycleScope)
+    com.example.features.marketplace.SharedFilterState.init(ServiceLocator.productRepository, lifecycleScope)
 
     enableEdgeToEdge()
     setContent {

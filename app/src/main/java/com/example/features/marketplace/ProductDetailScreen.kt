@@ -48,6 +48,9 @@ import com.example.ui.theme.BrandSoftGray
 import com.example.ui.theme.BrandSurface
 import com.example.ui.theme.BrandTextMuted
 import com.example.ui.theme.BrandTextPrimary
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.features.marketplace.ProductDetailViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -163,10 +166,67 @@ fun ProductDetailScreen(
     productId: String?,
     onBack: () -> Unit
 ) {
-    // Lookup matching product, fallback to first item if null or not found
-    val product = remember(productId) {
-        mockProductRepository.firstOrNull { it.id == productId } ?: mockProductRepository.first()
+    val viewModel: ProductDetailViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            return ProductDetailViewModel(com.example.core.di.ServiceLocator.productRepository) as T
+        }
+    })
+    
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(productId) {
+        if (productId != null) {
+            viewModel.loadProduct(productId)
+        }
     }
+
+    // Adapt Product model to DetailProduct or use directly. 
+    // Since DetailProduct is used for UI, we can map it.
+    val domainProduct = state.product
+    
+    if (state.isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = BrandPrimary)
+        }
+        return
+    }
+
+    if (state.error != null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = state.error!!, color = Color.Red)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = onBack) { Text("Back") }
+            }
+        }
+        return
+    }
+
+    if (domainProduct == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    // Mapping logic
+    val product = DetailProduct(
+        id = domainProduct.id,
+        name = domainProduct.title,
+        price = domainProduct.price,
+        originalPrice = domainProduct.price * 1.5, // Mocking original price
+        discountPercent = 33,
+        rating = domainProduct.rating.toDouble(),
+        reviewsCount = domainProduct.reviewCount,
+        vendorName = "Vendor", // We'd need to fetch vendor name too, but let's keep it simple for now
+        isVerifiedVendor = true,
+        deliveryPromise = "Ships today",
+        badge = if (domainProduct.stockCount < 5) "Limited Offer" else "Special Discount",
+        images = if (domainProduct.imageUrls.isNotEmpty()) domainProduct.imageUrls else listOf("https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80"),
+        description = domainProduct.description,
+        specifications = listOf("Shipping" to "International", "Support" to "24/7"),
+        stockCount = domainProduct.stockCount
+    )
 
     val marketProduct = remember(product.id) {
         productCatalog.find { it.id == product.id } ?: MarketProduct(

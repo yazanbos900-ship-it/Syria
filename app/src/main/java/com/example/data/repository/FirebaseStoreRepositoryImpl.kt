@@ -63,6 +63,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 logoUrl = doc.getString("logoUrl"),
                 bannerUrl = doc.getString("bannerUrl"),
                 description = doc.getString("description") ?: "",
+                categoryId = doc.getString("categoryId") ?: "",
                 followersCount = (doc.getLong("followersCount") ?: 0).toInt(),
                 status = doc.getString("status") ?: "active",
                 rating = doc.getDouble("rating")?.toFloat() ?: 5.0f,
@@ -123,6 +124,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "logoUrl" to store.logoUrl,
                 "bannerUrl" to store.bannerUrl,
                 "description" to store.description,
+                "categoryId" to store.categoryId,
                 "rating" to store.rating,
                 "isVerified" to store.isVerified,
                 "status" to "active",
@@ -132,6 +134,117 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
             Result.success(store)
         } catch (e: Exception) {
             Log.e(tag, "Could not create store", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getStoreByOwnerId(ownerId: String): Store? {
+        val db = firestore ?: return null
+        return try {
+            val snapshot = db.collection("stores")
+                .whereEqualTo("ownerId", ownerId)
+                .limit(1)
+                .get()
+                .await()
+            val doc = snapshot.documents.firstOrNull() ?: return null
+            mapFirestoreDocToStore(doc)
+        } catch (e: Exception) {
+            Log.e(tag, "getStoreByOwnerId failed for $ownerId", e)
+            null
+        }
+    }
+
+    override suspend fun updateStore(store: Store): Result<Unit> {
+        val db = firestore ?: return Result.failure(Exception("Firestore service is unavailable"))
+        return try {
+            val storeMap = hashMapOf(
+                "storeName" to store.name,
+                "name" to store.name,
+                "description" to store.description,
+                "categoryId" to store.categoryId,
+                "logoUrl" to store.logoUrl,
+                "bannerUrl" to store.bannerUrl,
+                "status" to store.status
+            )
+            db.collection("stores").document(store.id).update(storeMap as Map<String, Any>).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(tag, "updateStore failed for ${store.id}", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun checkIfStoreExists(ownerId: String): Boolean {
+        val db = firestore ?: return false
+        return try {
+            val snapshot = db.collection("stores")
+                .whereEqualTo("ownerId", ownerId)
+                .limit(1)
+                .get()
+                .await()
+            !snapshot.isEmpty
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun createStoreAndFirstProduct(
+        storeId: String,
+        ownerId: String,
+        ownerUsername: String,
+        storeName: String,
+        categoryId: String,
+        categoryName: String,
+        description: String,
+        logoUrl: String,
+        bannerUrl: String?,
+        productName: String,
+        productPrice: Double,
+        productDescription: String,
+        productImages: List<String>
+    ): Result<Unit> {
+        val db = firestore ?: return Result.failure(Exception("Firestore service not available"))
+
+        return try {
+            val storeRef = db.collection("stores").document(storeId)
+            val productRef = db.collection("products").document()
+
+            val storeMap = hashMapOf(
+                "ownerId" to ownerId,
+                "ownerUsername" to ownerUsername,
+                "storeName" to storeName,
+                "categoryId" to categoryId,
+                "categoryName" to categoryName,
+                "description" to description,
+                "logoUrl" to logoUrl,
+                "bannerUrl" to bannerUrl,
+                "status" to "active",
+                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+
+            val productMap = hashMapOf(
+                "productId" to productRef.id,
+                "storeId" to storeId,
+                "ownerUid" to ownerId,
+                "name" to productName,
+                "title" to productName,
+                "price" to productPrice,
+                "description" to productDescription,
+                "images" to productImages,
+                "imageUrls" to productImages,
+                "coverImage" to (productImages.firstOrNull() ?: ""),
+                "categoryId" to categoryId,
+                "isAvailable" to true,
+                "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+
+            val batch = db.batch()
+            batch.set(storeRef, storeMap)
+            batch.set(productRef, productMap)
+            
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
