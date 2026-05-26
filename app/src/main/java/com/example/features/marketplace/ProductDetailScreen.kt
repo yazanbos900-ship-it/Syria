@@ -286,7 +286,7 @@ fun ProductDetailScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(BrandSurface)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -352,7 +352,7 @@ fun ProductDetailScreen(
                     .fillMaxWidth()
                     .shadow(16.dp, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                     .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = BrandSurface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 Column(
@@ -459,7 +459,7 @@ fun ProductDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(340.dp)
-                    .background(Color.White)
+                    .background(BrandSurface)
             ) {
                 HorizontalPager(
                     state = pagerState,
@@ -532,7 +532,7 @@ fun ProductDetailScreen(
                         .align(Alignment.TopStart)
                         .padding(16.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White.copy(alpha = 0.85f))
+                        .background(BrandSurface.copy(alpha = 0.85f))
                         .border(1.dp, BrandSoftGray, RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
@@ -596,7 +596,7 @@ fun ProductDetailScreen(
                     .fillMaxWidth()
                     .padding(24.dp),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = BrandSurface)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -810,7 +810,7 @@ fun ProductDetailScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = BrandSurface)
             ) {
                 Row(
                     modifier = Modifier
@@ -849,7 +849,7 @@ fun ProductDetailScreen(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White)
+                                .background(BrandBackground)
                                 .clickable { if (quantity > 1) quantity-- }
                                 .border(1.dp, BrandSoftGray, RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
@@ -874,7 +874,7 @@ fun ProductDetailScreen(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color.White)
+                                .background(BrandBackground)
                                 .clickable { if (quantity < product.stockCount) quantity++ }
                                 .border(1.dp, BrandSoftGray, RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
@@ -896,7 +896,7 @@ fun ProductDetailScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 24.dp),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = BrandSurface)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp)
@@ -1045,7 +1045,7 @@ fun ProductDetailScreen(
                                 },
                             shape = RoundedCornerShape(12.dp),
                             border = BorderStroke(1.dp, BrandSoftGray),
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                            colors = CardDefaults.cardColors(containerColor = BrandSurface)
                         ) {
                             Column {
                                 AsyncImage(

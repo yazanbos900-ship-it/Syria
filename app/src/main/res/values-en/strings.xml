@@ -5,6 +5,12 @@
     <string name="language_selection">Language</string>
     <string name="arabic">Arabic</string>
     <string name="english">English</string>
+
+    <!-- Theme Selection -->
+    <string name="theme_selection">App Theme</string>
+    <string name="theme_light">Light Mode</string>
+    <string name="theme_dark">Dark Mode</string>
+    <string name="theme_system">System Default</string>
     
     <!-- Store Creation Header -->
     <string name="create_store_title">Create New Store</string>

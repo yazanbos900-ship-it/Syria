@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.BrandPrimary
 import com.example.ui.theme.BrandSoftGray
+import com.example.ui.theme.BrandSurface
 import com.example.ui.theme.BrandTextMuted
 import com.example.ui.theme.BrandTextPrimary
 
@@ -105,7 +106,7 @@ fun BrandTextField(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
-            .background(Color.White, RoundedCornerShape(16.dp))
+            .background(BrandSurface, RoundedCornerShape(16.dp))
             .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart
@@ -168,7 +169,7 @@ fun BrandCard(
             ),
         shape = RoundedCornerShape(cornerRadius),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = BrandSurface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {

@@ -15,6 +15,7 @@ import com.example.ui.theme.WasetPlusTheme
 
 import android.content.Context
 import com.example.core.utils.LanguageManager
+import com.example.ui.theme.ThemeManager
 
 class MainActivity : ComponentActivity() {
 
@@ -25,6 +26,9 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    
+    // Initialize ThemeManager to load user's theme mode selection
+    ThemeManager.init(applicationContext)
     
     // Initialize Clean Architecture dependency nodes and dynamic Firebase instances
     ServiceLocator.init(applicationContext)

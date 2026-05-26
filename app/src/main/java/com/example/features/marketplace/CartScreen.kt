@@ -95,7 +95,7 @@ fun CartScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(BrandSurface)
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -316,7 +316,7 @@ fun CartScreen(
                 itemsByStore.forEach { (storeName, storeItems) ->
                     item {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = BrandSurface),
                             shape = RoundedCornerShape(20.dp),
                             border = BorderStroke(1.dp, BrandSoftGray),
                             modifier = Modifier.fillMaxWidth()
@@ -443,7 +443,7 @@ fun CartScreen(
                                                         modifier = Modifier
                                                             .size(28.dp)
                                                             .clip(RoundedCornerShape(6.dp))
-                                                            .background(Color.White)
+                                                            .background(BrandSurface)
                                                             .clickable {
                                                                 if (currentQty > 1) {
                                                                     SharedCartState.updateQuantity(item.id, currentQty - 1)
@@ -470,7 +470,7 @@ fun CartScreen(
                                                         modifier = Modifier
                                                             .size(28.dp)
                                                             .clip(RoundedCornerShape(6.dp))
-                                                            .background(Color.White)
+                                                            .background(BrandSurface)
                                                             .clickable {
                                                                 if (currentQty < item.keyStockLimit) {
                                                                     SharedCartState.updateQuantity(item.id, currentQty + 1)
@@ -522,7 +522,7 @@ fun CartScreen(
                     val isCouponActive = promoState is PromoState.Applied
 
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(1.dp, BrandSoftGray),
                         modifier = Modifier.fillMaxWidth()
@@ -639,7 +639,7 @@ fun CartScreen(
                 // Summary calculations card
                 item {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(1.dp, BrandSoftGray),
                         modifier = Modifier.fillMaxWidth()
@@ -814,7 +814,7 @@ fun CartScreen(
                 }
             },
             shape = RoundedCornerShape(16.dp),
-            containerColor = Color.White
+            containerColor = BrandSurface
         )
     }
 }

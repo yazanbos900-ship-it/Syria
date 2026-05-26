@@ -231,7 +231,7 @@ fun SearchScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(BrandSurface)
                     .shadow(1.dp)
             ) {
                 // Main sticky Row containing Search Input Bar
@@ -396,7 +396,7 @@ fun SearchScreen(
                         DropdownMenu(
                             expanded = sortExpanded,
                             onDismissRequest = { sortExpanded = false },
-                            modifier = Modifier.background(Color.White)
+                            modifier = Modifier.background(BrandSurface)
                         ) {
                             SortOption.values().forEach { sortOpt ->
                                 DropdownMenuItem(
@@ -420,7 +420,7 @@ fun SearchScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color.White)
+                            .background(BrandSurface)
                             .border(BorderStroke(1.dp, BrandBackground))
                             .padding(horizontal = 24.dp, vertical = 18.dp)
                     ) {
@@ -705,7 +705,7 @@ fun SearchScreen(
                 ) {
                     items(filteredProducts, key = { it.id }) { product ->
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = BrandSurface),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, BrandSoftGray),
                             modifier = Modifier

@@ -26,6 +26,7 @@ import com.example.ui.theme.BrandBackground
 import com.example.ui.theme.BrandPrimary
 import com.example.ui.theme.BrandTextMuted
 import com.example.ui.theme.BrandTextPrimary
+import com.example.ui.theme.BrandSurface
 import androidx.compose.ui.res.stringResource
 import com.example.R
 import kotlinx.coroutines.launch
@@ -90,7 +91,7 @@ fun AuthScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White, RoundedCornerShape(24.dp))
+                        .background(BrandSurface, RoundedCornerShape(24.dp))
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -108,7 +109,7 @@ fun AuthScreen(
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .background(
-                                    if (isLoginTab) Color.White else Color.Transparent,
+                                    if (isLoginTab) BrandSurface else Color.Transparent,
                                     RoundedCornerShape(8.dp)
                                 )
                                 .align(Alignment.CenterVertically)
@@ -129,7 +130,7 @@ fun AuthScreen(
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .background(
-                                    if (!isLoginTab) Color.White else Color.Transparent,
+                                    if (!isLoginTab) BrandSurface else Color.Transparent,
                                     RoundedCornerShape(8.dp)
                                 )
                                 .align(Alignment.CenterVertically)

@@ -42,6 +42,7 @@ import com.example.components.BrandTextField
 import com.example.ui.theme.BrandBackground
 import com.example.ui.theme.BrandPrimary
 import com.example.ui.theme.BrandSoftGray
+import com.example.ui.theme.BrandSurface
 import com.example.ui.theme.BrandTextMuted
 import com.example.ui.theme.BrandTextPrimary
 import com.example.ui.theme.BrandError
@@ -63,7 +64,9 @@ import com.example.features.marketplace.StoreListUiState
 
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Palette
 import com.example.core.utils.LanguageManager
+import com.example.ui.theme.ThemeManager
 import com.example.R
 import android.app.Activity
 import androidx.compose.ui.platform.LocalContext
@@ -90,6 +93,7 @@ fun MarketplaceScreen(
 ) {
     val context = LocalContext.current
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     val mainViewModel: MarketplaceViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -182,6 +186,64 @@ fun MarketplaceScreen(
         )
     }
 
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text(androidx.compose.ui.res.stringResource(R.string.theme_selection)) },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                ThemeManager.setTheme(context, "light")
+                                showThemeDialog = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = ThemeManager.themeModeState.value == "light", onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(androidx.compose.ui.res.stringResource(R.string.theme_light))
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                ThemeManager.setTheme(context, "dark")
+                                showThemeDialog = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = ThemeManager.themeModeState.value == "dark", onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(androidx.compose.ui.res.stringResource(R.string.theme_dark))
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                ThemeManager.setTheme(context, "system")
+                                showThemeDialog = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = ThemeManager.themeModeState.value == "system", onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(androidx.compose.ui.res.stringResource(R.string.theme_system))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text(androidx.compose.ui.res.stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     val pagerState = rememberPagerState(pageCount = { promoBanners.size })
 
     LaunchedEffect(pagerState.currentPage) {
@@ -210,7 +272,7 @@ fun MarketplaceScreen(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Color.White
+            containerColor = BrandSurface
         ) {
             FilterBottomSheetContent(
                 onApply = { showBottomSheet = false }
@@ -222,7 +284,7 @@ fun MarketplaceScreen(
         ModalBottomSheet(
             onDismissRequest = { showAccountBottomSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Color.White
+            containerColor = BrandSurface
         ) {
             AccountBottomSheetContent(
                 user = mainState.user,
@@ -230,6 +292,7 @@ fun MarketplaceScreen(
                 onManageStore = { onManageStoreSelected(mainState.userStoreId!!) },
                 onCreateStore = onCreateStoreSelected,
                 onSelectLanguage = { showLanguageDialog = true },
+                onSelectTheme = { showThemeDialog = true },
                 onSignOut = onSignOut,
                 onDismiss = { showAccountBottomSheet = false }
             )
@@ -243,7 +306,7 @@ fun MarketplaceScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(BrandSurface)
                     .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {
                 Row(
@@ -357,7 +420,7 @@ fun MarketplaceScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp)
-                            .background(Color.White, RoundedCornerShape(16.dp))
+                            .background(BrandBackground, RoundedCornerShape(16.dp))
                             .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
                             .clickable { onSearchSelected() }
                             .padding(horizontal = 16.dp),
@@ -605,7 +668,7 @@ fun MarketplaceScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clip(RoundedCornerShape(16.dp))
-                                        .background(Color.White)
+                                        .background(BrandSurface)
                                         .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
                                         .clickable { onProductSelected(product.id) }
                                 ) {
@@ -638,7 +701,7 @@ fun MarketplaceScreen(
                                                  .padding(8.dp)
                                                  .size(28.dp)
                                                  .clip(CircleShape)
-                                                 .background(Color.White.copy(alpha = 0.9f))
+                                                 .background(BrandSurface.copy(alpha = 0.9f))
                                                  .clickable {
                                                      SharedWishlistState.toggleWishlist(marketProduct)
                                                  }
@@ -888,6 +951,7 @@ fun AccountBottomSheetContent(
     onManageStore: () -> Unit,
     onCreateStore: () -> Unit,
     onSelectLanguage: () -> Unit,
+    onSelectTheme: () -> Unit,
     onSignOut: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -976,6 +1040,59 @@ fun AccountBottomSheetContent(
                         )
                         Text(
                             text = currentLang,
+                            fontSize = 11.sp,
+                            color = BrandTextMuted
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = BrandTextMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // 1.5. Theme Option
+        Surface(
+            onClick = {
+                onDismiss()
+                onSelectTheme()
+            },
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Transparent,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = null,
+                        tint = BrandPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column {
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(R.string.theme_selection),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandTextPrimary
+                        )
+                        val themeMode = ThemeManager.themeModeState.value
+                        val currentThemeLabel = when (themeMode) {
+                            "dark" -> androidx.compose.ui.res.stringResource(R.string.theme_dark)
+                            "light" -> androidx.compose.ui.res.stringResource(R.string.theme_light)
+                            else -> androidx.compose.ui.res.stringResource(R.string.theme_system)
+                        }
+                        Text(
+                            text = currentThemeLabel,
                             fontSize = 11.sp,
                             color = BrandTextMuted
                         )

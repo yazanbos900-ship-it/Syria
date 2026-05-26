@@ -37,13 +37,13 @@ import com.example.domain.model.Product
 import com.example.domain.model.Store
 import com.example.ui.theme.*
 
-// Premium Dark Theme Palette
-private val DarkBg = Color(0xFF0A0B0D)
-private val DarkCard = Color(0xFF13151A)
-private val PrimaryGreen = Color(0xFF1DB954)
-private val TextWhite = Color(0xFFFFFFFF)
-private val TextGray = Color(0xFF9E9E9E)
-private val BorderColor = Color(0xFF22262F)
+// Premium Dynamic Theme Palette
+private val DarkBg: Color get() = BrandBackground
+private val DarkCard: Color get() = BrandSurface
+private val PrimaryGreen: Color get() = BrandPrimary
+private val TextWhite: Color get() = BrandTextPrimary
+private val TextGray: Color get() = BrandTextMuted
+private val BorderColor: Color get() = BrandSoftGray
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -186,7 +186,7 @@ fun FilterBottomSheetContent(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(BrandSurface)
             .padding(horizontal = 24.dp, vertical = 18.dp)
     ) {
         Text(

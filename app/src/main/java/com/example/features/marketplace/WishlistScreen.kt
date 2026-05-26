@@ -341,7 +341,7 @@ fun WishlistScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isSelected) BrandPrimary else Color.White)
+                                    .background(if (isSelected) BrandPrimary else BrandSurface)
                                     .border(
                                         width = 1.dp,
                                         color = if (isSelected) Color.Transparent else BrandSoftGray,
@@ -383,7 +383,7 @@ fun WishlistScreen(
                     ) { product ->
                         // Clean interactive cards, no heavy shadows
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            colors = CardDefaults.cardColors(containerColor = BrandSurface),
                             shape = RoundedCornerShape(16.dp),
                             border = BorderStroke(1.dp, BrandSoftGray),
                             modifier = Modifier
@@ -432,7 +432,7 @@ fun WishlistScreen(
                                             .padding(6.dp)
                                             .size(32.dp)
                                             .clip(CircleShape)
-                                            .background(Color.White.copy(alpha = 0.9f))
+                                            .background(BrandSurface.copy(alpha = 0.9f))
                                             .clickable {
                                                 coroutineScope.launch {
                                                     SharedWishlistState.toggleWishlist(product)
