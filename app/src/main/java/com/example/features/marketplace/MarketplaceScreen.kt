@@ -57,6 +57,8 @@ import com.example.core.di.ServiceLocator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.features.marketplace.HomeStoresViewModel
 import com.example.features.marketplace.HomeProductsViewModel
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import com.example.features.marketplace.StoreListUiState
 
 import androidx.compose.ui.res.stringResource
@@ -69,7 +71,9 @@ import androidx.compose.ui.platform.LocalContext
 private data class PromoBanner(
     val backgroundColor: Color,
     val title: String,
-    val subtitle: String
+    val subtitle: String,
+    val imageResId: Int? = null,
+    val darkText: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -111,21 +115,23 @@ fun MarketplaceScreen(
     
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    val isAr = LanguageManager.isArabic(context)
-    val promoBanners = remember(isAr) {
-        if (isAr) {
-            listOf(
-                PromoBanner(Color(0xFF1DB954), "خصومات الصيف الكبرى", "خصم يصل لـ 50% على فئات مختارة"),
-                PromoBanner(Color(0xFF1A1A2E), "متاجر حصرية جديدة", "اكتشف إبداعات ومتاجر محلية متميزة"),
-                PromoBanner(Color(0xFF0D1F0D), "توصيل آمن وسريع", "شحن مجاني للطلبات أكثر من $50")
+    val promoBanners = remember {
+        listOf(
+            PromoBanner(
+                backgroundColor = Color(0xFF101114),
+                title = "WasetPlus Banner 1",
+                subtitle = "",
+                imageResId = R.drawable.banner_1,
+                darkText = false
+            ),
+            PromoBanner(
+                backgroundColor = Color(0xFFF9FBFD),
+                title = "WasetPlus Banner 2",
+                subtitle = "",
+                imageResId = R.drawable.banner_2,
+                darkText = true
             )
-        } else {
-            listOf(
-                PromoBanner(Color(0xFF1DB954), "Grand Summer Deals", "Up to 50% OFF on selected categories"),
-                PromoBanner(Color(0xFF1A1A2E), "Exclusive New Stores", "Explore unique creators and local boutiques"),
-                PromoBanner(Color(0xFF0D1F0D), "Secure & Fast Delivery", "Free shipping on orders above $50")
-            )
-        }
+        )
     }
     // Wait, I should probably translate these promo banners too in a real app.
     // For now I'll just keep them as they are but localized if I had strings.
@@ -446,69 +452,38 @@ fun MarketplaceScreen(
             ) {
                 HorizontalPager(
                     state = pagerState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) { page ->
                     val banner = promoBanners[page]
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
                             .padding(horizontal = 24.dp)
+                            .aspectRatio(16f / 9f)
                             .clip(RoundedCornerShape(16.dp))
                             .background(banner.backgroundColor)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(130.dp)
-                                .align(Alignment.TopEnd)
-                                .offset(x = 20.dp, y = (-20).dp)
-                                .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(170.dp)
-                                .align(Alignment.BottomStart)
-                                .offset(x = (-30).dp, y = 30.dp)
-                                .background(Color.White.copy(alpha = 0.04f), CircleShape)
-                        )
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.Start
-                        ) {
+                        if (banner.imageResId != null) {
+                            Image(
+                                painter = painterResource(id = banner.imageResId),
+                                contentDescription = banner.title,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.White.copy(alpha = 0.15f))
-                                    .padding(horizontal = 10.dp, vertical = 5.dp)
-                            ) {
-                                Text(
-                                    text = androidx.compose.ui.res.stringResource(R.string.waset_offers),
-                                    color = Color.White.copy(alpha = 0.95f),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = banner.title,
-                                color = Color.White,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Start
+                                    .size(130.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 20.dp, y = (-20).dp)
+                                    .background(Color.White.copy(alpha = 0.08f), CircleShape)
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = banner.subtitle,
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                textAlign = TextAlign.Start
+                            Box(
+                                modifier = Modifier
+                                    .size(170.dp)
+                                    .align(Alignment.BottomStart)
+                                    .offset(x = (-30).dp, y = 30.dp)
+                                    .background(Color.White.copy(alpha = 0.04f), CircleShape)
                             )
                         }
                     }
