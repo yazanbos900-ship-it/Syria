@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -790,14 +791,40 @@ fun SearchScreen(
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 // Multi-Vendor badge info
-                                Text(
-                                    text = product.storeName,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = product.storeName,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BrandPrimary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    val matchedStore = storesList.find {
+                                        it.name.contains(product.storeName, ignoreCase = true) ||
+                                                product.storeName.contains(it.name, ignoreCase = true)
+                                    }
+                                    if (matchedStore != null) {
+                                        if (matchedStore.sellerBadge == "Pro Seller") {
+                                            Icon(
+                                                imageVector = Icons.Default.Star,
+                                                contentDescription = "Pro Seller",
+                                                tint = Color(0xFFFFB300),
+                                                modifier = Modifier.size(10.dp)
+                                            )
+                                        } else if (matchedStore.verificationStatus == "Verified" || matchedStore.isVerified || matchedStore.sellerBadge == "Verified Seller") {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = "Verified Store",
+                                                tint = Color(0xFF1DB954),
+                                                modifier = Modifier.size(10.dp)
+                                            )
+                                        }
+                                    }
+                                }
 
                                 Text(
                                     text = product.name,

@@ -46,6 +46,17 @@ object SharedWishlistState {
                 ServiceLocator.wishlistRepository.removeFromWishlist(uid, product.id)
             } else {
                 ServiceLocator.wishlistRepository.addToWishlist(uid, product)
+                try {
+                    ServiceLocator.recommendationRepository.trackProductInteraction(
+                        productId = product.id,
+                        categoryId = product.category,
+                        storeId = "",
+                        userId = uid,
+                        interactionType = "favorite"
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.e("SharedWishlistState", "Failed to track favorite interaction", e)
+                }
             }
         }
     }
@@ -92,6 +103,17 @@ object SharedCartState {
                     keyStockLimit = 10
                 )
                 ServiceLocator.cartRepository.addToCart(uid, cartItem, 1)
+            }
+            try {
+                ServiceLocator.recommendationRepository.trackProductInteraction(
+                    productId = product.id,
+                    categoryId = product.category,
+                    storeId = "",
+                    userId = uid,
+                    interactionType = "add_to_cart"
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("SharedCartState", "Failed to track add_to_cart interaction", e)
             }
         }
     }

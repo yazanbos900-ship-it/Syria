@@ -121,8 +121,18 @@ class FirebaseRecommendationRepositoryImpl : RecommendationRepository {
                             emptyList()
                         }
 
-                        val targetUserInteractions = if (!userId.isNullOrEmpty()) {
-                            interactions.filter { it["userId"] == userId }
+                        val resolvedUserId = if (!userId.isNullOrEmpty()) {
+                            userId
+                        } else {
+                            try {
+                                com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+
+                        val targetUserInteractions = if (!resolvedUserId.isNullOrEmpty()) {
+                            interactions.filter { it["userId"] == resolvedUserId }
                         } else {
                             interactions
                         }
@@ -223,11 +233,39 @@ class FirebaseRecommendationRepositoryImpl : RecommendationRepository {
     ): Result<Unit> {
         val db = firestore ?: return Result.failure(Exception("Firestore not initialized"))
         return try {
+            val resolvedUserId = if (!userId.isNullOrEmpty()) {
+                userId
+            } else {
+                try {
+                    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                } catch (e: Exception) {
+                    null
+                }
+            } ?: "anonymous"
+
+            var resolvedCategoryId = categoryId
+            var resolvedStoreId = storeId
+            if (productId.isNotEmpty() && (resolvedCategoryId.isEmpty() || resolvedStoreId.isEmpty())) {
+                try {
+                    val prodDoc = db.collection("products").document(productId).get().await()
+                    if (prodDoc.exists()) {
+                        if (resolvedCategoryId.isEmpty()) {
+                            resolvedCategoryId = prodDoc.getString("categoryId") ?: prodDoc.getString("category") ?: ""
+                        }
+                        if (resolvedStoreId.isEmpty()) {
+                            resolvedStoreId = prodDoc.getString("storeId") ?: ""
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(tag, "Failed to resolve product/category/store inside trackProductInteraction", e)
+                }
+            }
+
             val interactionMap = hashMapOf(
                 "productId" to productId,
-                "categoryId" to categoryId,
-                "storeId" to storeId,
-                "userId" to (userId ?: "anonymous"),
+                "categoryId" to resolvedCategoryId,
+                "storeId" to resolvedStoreId,
+                "userId" to resolvedUserId,
                 "interactionType" to interactionType,
                 "timestamp" to System.currentTimeMillis()
             )

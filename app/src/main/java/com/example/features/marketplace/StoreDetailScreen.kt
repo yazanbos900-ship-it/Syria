@@ -228,6 +228,9 @@ fun StoreContent(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                StoreBadgesContainer(store = store)
             }
         }
 

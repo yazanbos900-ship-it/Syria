@@ -10,7 +10,9 @@ import com.example.domain.repository.AuthRepository
 import com.example.domain.repository.CartRepository
 import com.example.domain.repository.ProductRepository
 import com.example.domain.repository.StoreRepository
+import com.example.domain.repository.SubscriptionRepository
 import com.example.domain.repository.WishlistRepository
+import com.example.data.repository.FirebaseSubscriptionRepositoryImpl
 import com.example.firebase.FirebaseInitializer
 
 object ServiceLocator {
@@ -31,6 +33,10 @@ object ServiceLocator {
 
     val storeRepository: StoreRepository by lazy {
         FirebaseStoreRepositoryImpl()
+    }
+
+    val subscriptionRepository: SubscriptionRepository by lazy {
+        FirebaseSubscriptionRepositoryImpl()
     }
 
     val cartRepository: CartRepository by lazy {

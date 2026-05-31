@@ -62,6 +62,33 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
         awaitClose { subscription.remove() }
     }
 
+    override fun getTopStores(limit: Int): Flow<Result<List<Store>>> = callbackFlow {
+        val db = firestore ?: run {
+            trySend(Result.failure(Exception("Firestore service is unavailable")))
+            close()
+            return@callbackFlow
+        }
+
+        val subscription = db.collection("stores")
+            .whereEqualTo("status", "active")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        mapFirestoreDocToStore(doc)
+                    }.sortedByDescending { it.rating }
+                     .take(limit)
+                    trySend(Result.success(list))
+                } else {
+                    trySend(Result.success(emptyList()))
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
     private fun mapFirestoreDocToStore(doc: com.google.firebase.firestore.DocumentSnapshot): Store? {
         if (!doc.exists()) return null
         return try {
@@ -79,6 +106,9 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 rating = (doc.get("rating") as? Number)?.toFloat() ?: 5.0f,
                 isVerified = doc.getBoolean("isVerified") ?: false,
                 usdExchangeRate = (doc.get("usdExchangeRate") as? Number)?.toDouble() ?: 13500.0,
+                subscriptionTier = doc.getString("subscriptionTier") ?: "Starter",
+                verificationStatus = doc.getString("verificationStatus") ?: "Pending",
+                sellerBadge = doc.getString("sellerBadge") ?: "None",
                 createdAt = try {
                     doc.getTimestamp("createdAt")?.toDate()?.time 
                         ?: doc.getLong("createdAt") 
@@ -147,6 +177,9 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "isVerified" to store.isVerified,
                 "status" to "active",
                 "usdExchangeRate" to store.usdExchangeRate,
+                "subscriptionTier" to store.subscriptionTier,
+                "verificationStatus" to store.verificationStatus,
+                "sellerBadge" to store.sellerBadge,
                 "createdAt" to store.createdAt
             )
             db.collection("stores").document(store.id).set(storeMap).await()
@@ -184,7 +217,10 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "logoUrl" to store.logoUrl,
                 "bannerUrl" to store.bannerUrl,
                 "status" to store.status,
-                "usdExchangeRate" to store.usdExchangeRate
+                "usdExchangeRate" to store.usdExchangeRate,
+                "subscriptionTier" to store.subscriptionTier,
+                "verificationStatus" to store.verificationStatus,
+                "sellerBadge" to store.sellerBadge
             )
             db.collection("stores").document(store.id).update(storeMap as Map<String, Any>).await()
             Result.success(Unit)
@@ -250,6 +286,9 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "logoUrl" to logoUrl,
                 "bannerUrl" to bannerUrl,
                 "status" to "active",
+                "subscriptionTier" to "Starter",
+                "verificationStatus" to "Pending",
+                "sellerBadge" to "None",
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
 

@@ -13,6 +13,8 @@ import com.example.features.marketplace.ProductDetailScreen
 import com.example.features.marketplace.SearchScreen
 import com.example.features.marketplace.WishlistScreen
 import com.example.features.marketplace.CreateStoreScreen
+import com.example.features.marketplace.ProfileScreen
+import com.example.features.marketplace.AddProductScreen
 import com.example.features.onboarding.OnboardingScreen
 
 import com.example.features.marketplace.StoreManagementScreen
@@ -61,7 +63,7 @@ fun NavigationGraph(
                     navController.navigate(Screen.StoreDetail.createRoute(storeId))
                 },
                 onSignOut = {
-                    navController.navigate(Screen.Onboarding.route) {
+                    navController.navigate(Screen.Authentication.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 },
@@ -152,8 +154,34 @@ fun NavigationGraph(
         composable(route = Screen.CreateStore.route) {
             CreateStoreScreen(
                 onNavigateHome = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Screen.AddProduct.route) {
+                        popUpTo(Screen.Home.route)
+                    }
+                }
+            )
+        }
+
+        composable(route = Screen.Profile.route) {
+            ProfileScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToWishlist = { navController.navigate(Screen.Wishlist.route) },
+                onNavigateToCreateStore = { navController.navigate(Screen.CreateStore.route) },
+                onNavigateToStoreManagement = { navController.navigate(Screen.StoreManagement.route) },
+                onNavigateToAdmin = { navController.navigate(Screen.AdminDashboard.route) },
+                onSignOut = {
+                    navController.navigate(Screen.Authentication.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(route = Screen.AddProduct.route) {
+            AddProductScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCreateStore = {
+                    navController.navigate(Screen.CreateStore.route) {
+                        popUpTo(Screen.Home.route)
                     }
                 }
             )

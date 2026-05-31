@@ -21,5 +21,6 @@ sealed class Screen(val route: String) {
     object Wishlist : Screen("wishlist")
     object CreateStore : Screen("create_store")
     object StoreManagement : Screen("store_management")
+    object AddProduct : Screen("add_product")
     object AdminDashboard : Screen("admin_dashboard")
 }

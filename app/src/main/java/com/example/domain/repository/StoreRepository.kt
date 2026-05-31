@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface StoreRepository {
     fun getAllStores(): Flow<Result<List<Store>>>
     fun getActiveStores(): Flow<Result<List<Store>>>
+    fun getTopStores(limit: Int): Flow<Result<List<Store>>>
     suspend fun getStoreById(storeId: String): Store?
     suspend fun getStoreByOwnerId(ownerId: String): Store?
     suspend fun createStore(store: Store): Result<Store>

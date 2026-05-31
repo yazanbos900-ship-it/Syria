@@ -14,5 +14,8 @@ data class Store(
     val rating: Float = 5.0f,
     val isVerified: Boolean = false,
     val usdExchangeRate: Double = 13500.0,
+    val subscriptionTier: String = "Starter", // "Starter", "Growth", "Pro"
+    val verificationStatus: String = "Pending", // "Pending", "Verified", "Rejected"
+    val sellerBadge: String = "None", // "None", "Verified Seller", "Pro Seller"
     val createdAt: Long = System.currentTimeMillis()
 )

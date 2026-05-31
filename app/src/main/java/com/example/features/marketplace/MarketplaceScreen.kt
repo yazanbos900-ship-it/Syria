@@ -24,6 +24,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,6 +50,8 @@ import com.example.ui.theme.BrandSurface
 import com.example.ui.theme.BrandTextMuted
 import com.example.ui.theme.BrandTextPrimary
 import com.example.ui.theme.BrandError
+import com.example.domain.usecase.SubmitSubscriptionRequestUseCase
+import com.example.domain.usecase.GetSubscriptionRequestsByStoreUseCase
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
@@ -105,7 +110,12 @@ fun MarketplaceScreen(
 
     val mainViewModel: MarketplaceViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-            return MarketplaceViewModel(ServiceLocator.authRepository, ServiceLocator.storeRepository) as T
+            return MarketplaceViewModel(
+                ServiceLocator.authRepository,
+                ServiceLocator.storeRepository,
+                SubmitSubscriptionRequestUseCase(ServiceLocator.subscriptionRepository),
+                GetSubscriptionRequestsByStoreUseCase(ServiceLocator.subscriptionRepository)
+            ) as T
         }
     })
     val mainState by mainViewModel.state.collectAsStateWithLifecycle()
@@ -119,10 +129,18 @@ fun MarketplaceScreen(
 
     val productViewModel: HomeProductsViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-            return HomeProductsViewModel(ServiceLocator.productRepository) as T
+            return HomeProductsViewModel(
+                ServiceLocator.productRepository,
+                ServiceLocator.recommendationRepository,
+                ServiceLocator.authRepository
+            ) as T
         }
     })
-    val productState by productViewModel.state.collectAsStateWithLifecycle()
+    val featuredState by productViewModel.featuredState.collectAsStateWithLifecycle()
+    val newArrivalsState by productViewModel.newArrivalsState.collectAsStateWithLifecycle()
+    val trendingState by productViewModel.trendingState.collectAsStateWithLifecycle()
+    val recommendationsState by productViewModel.recommendationsState.collectAsStateWithLifecycle()
+    val bestRatedState by productViewModel.bestRatedState.collectAsStateWithLifecycle()
     
     var showBottomSheet by remember { mutableStateOf(false) }
 
@@ -305,13 +323,13 @@ fun MarketplaceScreen(
     }
 
     val filteredHomeProducts = remember(
-        productState.products,
+        featuredState.products,
         SharedFilterState.selectedCategoryFilter,
         SharedFilterState.maxPriceRange,
         SharedFilterState.minRatingFilter,
         SharedFilterState.deliveryFilterSameDayOnly
     ) {
-        productState.products.filter { product ->
+        featuredState.products.filter { product ->
             val matchesCategory = SharedFilterState.selectedCategoryFilter == "All" || product.categoryId == SharedFilterState.selectedCategoryFilter
             val matchesPrice = product.price <= SharedFilterState.maxPriceRange
             val matchesRating = product.rating >= SharedFilterState.minRatingFilter
@@ -331,6 +349,68 @@ fun MarketplaceScreen(
             storeState.stores.filter { store ->
                 store.categoryId == SharedFilterState.selectedCategoryFilter
             }
+        }
+    }
+
+    val filteredTopStores = remember(
+        storeState.topStores,
+        SharedFilterState.selectedCategoryFilter
+    ) {
+        if (SharedFilterState.selectedCategoryFilter == "All" || 
+            SharedFilterState.selectedCategoryFilter.isBlank()) {
+            storeState.topStores
+        } else {
+            storeState.topStores.filter { store ->
+                store.categoryId == SharedFilterState.selectedCategoryFilter
+            }
+        }
+    }
+
+    val filteredNewArrivals = remember(
+        newArrivalsState.products,
+        SharedFilterState.selectedCategoryFilter
+    ) {
+        if (SharedFilterState.selectedCategoryFilter == "All" || 
+            SharedFilterState.selectedCategoryFilter.isBlank()) {
+            newArrivalsState.products
+        } else {
+            newArrivalsState.products.filter { it.categoryId == SharedFilterState.selectedCategoryFilter }
+        }
+    }
+
+    val filteredTrending = remember(
+        trendingState.products,
+        SharedFilterState.selectedCategoryFilter
+    ) {
+        if (SharedFilterState.selectedCategoryFilter == "All" || 
+            SharedFilterState.selectedCategoryFilter.isBlank()) {
+            trendingState.products
+        } else {
+            trendingState.products.filter { it.categoryId == SharedFilterState.selectedCategoryFilter }
+        }
+    }
+
+    val filteredRecommendations = remember(
+        recommendationsState.products,
+        SharedFilterState.selectedCategoryFilter
+    ) {
+        if (SharedFilterState.selectedCategoryFilter == "All" || 
+            SharedFilterState.selectedCategoryFilter.isBlank()) {
+            recommendationsState.products
+        } else {
+            recommendationsState.products.filter { it.categoryId == SharedFilterState.selectedCategoryFilter }
+        }
+    }
+
+    val filteredBestRated = remember(
+        bestRatedState.products,
+        SharedFilterState.selectedCategoryFilter
+    ) {
+        if (SharedFilterState.selectedCategoryFilter == "All" || 
+            SharedFilterState.selectedCategoryFilter.isBlank()) {
+            bestRatedState.products
+        } else {
+            bestRatedState.products.filter { it.categoryId == SharedFilterState.selectedCategoryFilter }
         }
     }
 
@@ -364,6 +444,14 @@ fun MarketplaceScreen(
                 onAdminClick = onAdminSelected,
                 onDismiss = { showAccountBottomSheet = false }
             )
+        }
+    }
+
+    LaunchedEffect(mainState.actionMessage) {
+        val msg = mainState.actionMessage
+        if (msg != null) {
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+            mainViewModel.clearActionMessage()
         }
     }
 
@@ -571,9 +659,9 @@ fun MarketplaceScreen(
             verticalArrangement = Arrangement.Top
         ) {
             StoresSection(
-                stores = filteredStores,
-                isLoading = storeState.isLoading,
-                error = storeState.error,
+                stores = filteredTopStores,
+                isLoading = storeState.isLoadingTopStores,
+                error = storeState.errorTopStores,
                 onStoreClick = onStoreSelected,
                 onViewAllClick = { /* TODO: navigation to all stores */ }
             )
@@ -644,39 +732,57 @@ fun MarketplaceScreen(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(BrandPrimary.copy(alpha = 0.08f))
-                    .border(1.dp, BrandPrimary.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
-                    .padding(24.dp)
-            ) {
-                Column {
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(R.string.protection_title),
-                        color = BrandPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(R.string.protection_subtitle),
-                        color = BrandTextPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(R.string.protection_desc),
-                        color = BrandTextMuted,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp
-                    )
-                }
-            }
+            SubscriptionPlansSection(
+                state = mainState,
+                onRequestPlan = { tier -> mainViewModel.requestSubscription(tier) },
+                isAr = com.example.core.utils.LanguageManager.isArabic(context)
+            )
+
+            // 1. New Arrivals Section
+            ProductHorizontalSection(
+                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "وصل حديثاً" else "New Arrivals",
+                products = filteredNewArrivals,
+                isLoading = newArrivalsState.isLoading,
+                error = newArrivalsState.error,
+                stores = storeState.stores,
+                onProductClick = onProductSelected,
+                context = context
+            )
+
+            // 2. Trending Now Section
+            ProductHorizontalSection(
+                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "الأكثر رواجاً الآن" else "Trending Now",
+                products = filteredTrending,
+                isLoading = trendingState.isLoading,
+                error = trendingState.error,
+                stores = storeState.stores,
+                onProductClick = onProductSelected,
+                context = context
+            )
+
+            // 3. Community Recommendations Section
+            ProductHorizontalSection(
+                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "توصيات مجتمعية" else "Community Recommendations",
+                products = filteredRecommendations,
+                isLoading = recommendationsState.isLoading,
+                error = recommendationsState.error,
+                stores = storeState.stores,
+                onProductClick = onProductSelected,
+                context = context
+            )
+
+            // 4. Best Rated Products Section
+            ProductHorizontalSection(
+                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "المنتجات الأعلى تقييماً" else "Best Rated Products",
+                products = filteredBestRated,
+                isLoading = bestRatedState.isLoading,
+                error = bestRatedState.error,
+                stores = storeState.stores,
+                onProductClick = onProductSelected,
+                context = context
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Column(
                 modifier = Modifier
@@ -978,18 +1084,73 @@ fun StoreStoryItem(store: com.example.domain.model.Store, onClick: () -> Unit) {
         modifier = Modifier.width(80.dp).clickable(onClick = onClick)
     ) {
         Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .border(2.dp, if (store.status == "active") Color(0xFF1DB954) else Color.Transparent, CircleShape)
-                .padding(2.dp)
+            modifier = Modifier.size(72.dp)
         ) {
-            AsyncImage(
-                model = store.logoUrl,
-                contentDescription = store.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().clip(CircleShape)
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .border(2.dp, if (store.status == "active") Color(0xFF1DB954) else Color.Transparent, CircleShape)
+                    .padding(2.dp)
+            ) {
+                AsyncImage(
+                    model = store.logoUrl,
+                    contentDescription = store.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                )
+            }
+
+            // High priority Badge Overlays on bottom-right of avatar
+            if (store.sellerBadge == "Pro Seller") {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(20.dp)
+                        .background(Color(0xFFFFB300), CircleShape)
+                        .border(1.5.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "Pro Seller",
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
+                    )
+                }
+            } else if (store.verificationStatus == "Verified" || store.isVerified || store.sellerBadge == "Verified Seller") {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(20.dp)
+                        .background(Color(0xFF1DB954), CircleShape)
+                        .border(1.5.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Verified Store",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            } else if (store.subscriptionTier == "Pro") {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(20.dp)
+                        .background(Color(0xFF8A2BE2), CircleShape)
+                        .border(1.5.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Bolt,
+                        contentDescription = "Pro Tier",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
         }
         Text(
             text = store.name,
@@ -1373,5 +1534,244 @@ fun AccountBottomSheetContent(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun ProductHorizontalSection(
+    title: String,
+    products: List<com.example.domain.model.Product>,
+    isLoading: Boolean,
+    error: String?,
+    stores: List<com.example.domain.model.Store>,
+    onProductClick: (String) -> Unit,
+    context: android.content.Context
+) {
+    val isAr = com.example.core.utils.LanguageManager.isArabic(context)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = BrandTextPrimary,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+        )
+
+        if (isLoading) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(3) {
+                    ProductSkeletonCard()
+                }
+            }
+        } else if (error != null) {
+            Text(
+                text = error,
+                color = BrandError,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+            )
+        } else if (products.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isAr) "لا توجد منتجات حالياً" else "No products found",
+                    color = BrandTextMuted,
+                    fontSize = 14.sp
+                )
+            }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(products, key = { it.id }) { product ->
+                    ProductRowCard(
+                        product = product,
+                        stores = stores,
+                        onProductClick = onProductClick,
+                        context = context
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProductRowCard(
+    product: com.example.domain.model.Product,
+    stores: List<com.example.domain.model.Store>,
+    onProductClick: (String) -> Unit,
+    context: android.content.Context
+) {
+    val isAr = com.example.core.utils.LanguageManager.isArabic(context)
+    val matchingStore = stores.find { it.id == product.storeId }
+    val productStoreName = matchingStore?.name ?: (if (isAr) "متجر مرخّص" else "Licensed Store")
+    val productRate = matchingStore?.usdExchangeRate ?: 13500.0
+    val formattedPrice = CurrencyManager.formatPrice(
+        product.price,
+        productRate,
+        isAr
+    )
+
+    Column(
+        modifier = Modifier
+            .width(160.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandSurface)
+            .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
+            .clickable { onProductClick(product.id) }
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().height(110.dp)) {
+            AsyncImage(
+                model = product.imageUrls.firstOrNull() ?: "",
+                contentDescription = product.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            val marketProduct = MarketProduct(
+                id = product.id,
+                name = product.title,
+                price = product.price,
+                originalPrice = product.price * 1.5,
+                rating = product.rating.toDouble(),
+                reviewsCount = product.reviewCount,
+                category = product.categoryId,
+                storeName = productStoreName,
+                deliveryTime = "Standard",
+                dateAdded = "2026",
+                imageUrl = product.imageUrls.firstOrNull() ?: ""
+            )
+
+            val isWishlisted = SharedWishlistState.isWishlisted(marketProduct)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(BrandSurface.copy(alpha = 0.9f))
+                    .clickable {
+                        SharedWishlistState.toggleWishlist(marketProduct)
+                    }
+                    .testTag("home_wishlist_toggle_${product.id}"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isWishlisted) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Toggle Wishlist",
+                    tint = if (isWishlisted) Color.Red else BrandTextMuted,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+        Column(modifier = Modifier.padding(10.dp)) {
+            Text(
+                text = product.title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = BrandTextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(top = 2.dp)
+            ) {
+                Text(
+                    text = productStoreName,
+                    fontSize = 11.sp,
+                    color = BrandTextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (matchingStore != null) {
+                    if (matchingStore.sellerBadge == "Pro Seller") {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Pro Seller",
+                            tint = Color(0xFFFFB300),
+                            modifier = Modifier.size(11.dp)
+                        )
+                    } else if (matchingStore.verificationStatus == "Verified" || matchingStore.isVerified || matchingStore.sellerBadge == "Verified Seller") {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Verified Store",
+                            tint = Color(0xFF1DB954),
+                            modifier = Modifier.size(11.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formattedPrice,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = BrandPrimary
+                )
+                Text(
+                    text = "★ ${product.rating}",
+                    fontSize = 11.sp,
+                    color = Color(0xFFFFB300),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ProductSkeletonCard() {
+    Column(
+        modifier = Modifier
+            .width(160.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandSurface)
+            .border(1.dp, BrandSoftGray, RoundedCornerShape(16.dp))
+            .padding(bottom = 12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(110.dp)
+                .background(BrandSoftGray)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .height(14.dp)
+                .fillMaxWidth()
+                .background(BrandSoftGray)
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .height(10.dp)
+                .width(80.dp)
+                .background(BrandSoftGray)
+        )
     }
 }

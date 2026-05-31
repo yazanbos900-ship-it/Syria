@@ -3,7 +3,10 @@ package com.example.features.marketplace
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.Product
+import com.example.domain.model.RecommendationCriteria
 import com.example.domain.repository.ProductRepository
+import com.example.domain.repository.RecommendationRepository
+import com.example.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -14,25 +17,114 @@ data class ProductListUiState(
 )
 
 class HomeProductsViewModel(
-    private val productRepo: ProductRepository
+    private val productRepo: ProductRepository,
+    private val recommendationRepo: RecommendationRepository,
+    private val authRepo: AuthRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ProductListUiState())
-    val state: StateFlow<ProductListUiState> = _state.asStateFlow()
+    // 1. Featured / All Products
+    private val _featuredState = MutableStateFlow(ProductListUiState(isLoading = true))
+    val featuredState: StateFlow<ProductListUiState> = _featuredState.asStateFlow()
+
+    // 2. New Arrivals
+    private val _newArrivalsState = MutableStateFlow(ProductListUiState(isLoading = true))
+    val newArrivalsState: StateFlow<ProductListUiState> = _newArrivalsState.asStateFlow()
+
+    // 3. Trending Now
+    private val _trendingState = MutableStateFlow(ProductListUiState(isLoading = true))
+    val trendingState: StateFlow<ProductListUiState> = _trendingState.asStateFlow()
+
+    // 4. Community Recommendations (existing engine)
+    private val _recommendationsState = MutableStateFlow(ProductListUiState(isLoading = true))
+    val recommendationsState: StateFlow<ProductListUiState> = _recommendationsState.asStateFlow()
+
+    // 5. Best Rated Products
+    private val _bestRatedState = MutableStateFlow(ProductListUiState(isLoading = true))
+    val bestRatedState: StateFlow<ProductListUiState> = _bestRatedState.asStateFlow()
 
     init {
-        loadProducts()
+        loadAllSections()
     }
 
-    fun loadProducts() {
+    fun loadAllSections() {
+        loadFeatured()
+        loadNewArrivals()
+        loadTrending()
+        loadRecommendations()
+        loadBestRated()
+    }
+
+    private fun loadFeatured() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _featuredState.update { it.copy(isLoading = true, error = null) }
             productRepo.getProducts()
                 .catch { e ->
-                    _state.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل المنتجات") }
+                    _featuredState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل المنتجات المميزة") }
                 }
                 .collect { products ->
-                    _state.update { it.copy(isLoading = false, products = products) }
+                    _featuredState.update { it.copy(isLoading = false, products = products) }
+                }
+        }
+    }
+
+    private fun loadNewArrivals() {
+        viewModelScope.launch {
+            _newArrivalsState.update { it.copy(isLoading = true, error = null) }
+            productRepo.getNewArrivals(10)
+                .catch { e ->
+                    _newArrivalsState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل أحدث المنتجات") }
+                }
+                .collect { products ->
+                    _newArrivalsState.update { it.copy(isLoading = false, products = products) }
+                }
+        }
+    }
+
+    private fun loadTrending() {
+        viewModelScope.launch {
+            _trendingState.update { it.copy(isLoading = true, error = null) }
+            val currentUserId = authRepo.getCurrentUserSession()?.id
+            recommendationRepo.getRecommendations(RecommendationCriteria.TRENDING, currentUserId, limit = 10, offset = 0)
+                .catch { e ->
+                    _trendingState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل المنتجات الشائعة") }
+                }
+                .collect { result ->
+                    result.onSuccess { products ->
+                        _trendingState.update { it.copy(isLoading = false, products = products, error = null) }
+                    }.onFailure { e ->
+                        _trendingState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ") }
+                    }
+                }
+        }
+    }
+
+    private fun loadRecommendations() {
+        viewModelScope.launch {
+            _recommendationsState.update { it.copy(isLoading = true, error = null) }
+            val currentUserId = authRepo.getCurrentUserSession()?.id
+            recommendationRepo.getRecommendations(RecommendationCriteria.CATEGORY_PREFERENCE, currentUserId, limit = 10, offset = 0)
+                .catch { e ->
+                    _recommendationsState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل المقترحات") }
+                }
+                .collect { result ->
+                    result.onSuccess { products ->
+                        _recommendationsState.update { it.copy(isLoading = false, products = products, error = null) }
+                    }.onFailure { e ->
+                        _recommendationsState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ") }
+                    }
+                }
+        }
+    }
+
+    private fun loadBestRated() {
+        viewModelScope.launch {
+            _bestRatedState.update { it.copy(isLoading = true, error = null) }
+            productRepo.getBestRatedProducts(10)
+                .catch { e ->
+                    _bestRatedState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل المنتجات الأعلى تقييماً") }
+                }
+                .collect { products ->
+                    _bestRatedState.update { it.copy(isLoading = false, products = products) }
                 }
         }
     }

@@ -65,6 +65,21 @@ class StoreDetailViewModel(
                         store = store
                     )
                 }
+
+                // Track store view interaction
+                viewModelScope.launch {
+                    try {
+                        com.example.core.di.ServiceLocator.recommendationRepository.trackProductInteraction(
+                            productId = "",
+                            categoryId = store.categoryId,
+                            storeId = store.id,
+                            userId = _state.value.currentUserId,
+                            interactionType = "store_view"
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("StoreDetailVM", "Failed to track store_view interaction", e)
+                    }
+                }
                 
                 loadProducts(storeId)
                 

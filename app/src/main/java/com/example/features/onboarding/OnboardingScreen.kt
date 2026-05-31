@@ -31,6 +31,17 @@ import kotlinx.coroutines.launch
 fun OnboardingScreen(
     onFinish: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val handleFinish = {
+        try {
+            val sharedPrefs = context.getSharedPreferences("waset_preferences", android.content.Context.MODE_PRIVATE)
+            sharedPrefs.edit().putBoolean("onboarding_completed", true).apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        onFinish()
+    }
+
     val slides = listOf(
         "https://i.imgur.com/zU4pWho.png",
         "https://i.imgur.com/4IhcFrL.png",
@@ -83,7 +94,7 @@ fun OnboardingScreen(
                 .clickable {
                     scope.launch {
                         pagerState.animateScrollToPage(slides.lastIndex)
-                        onFinish()
+                        handleFinish()
                     }
                 }
         )
@@ -123,7 +134,7 @@ fun OnboardingScreen(
             Button(
                 onClick = {
                     if (isLastPage) {
-                        onFinish()
+                        handleFinish()
                     } else {
                         scope.launch {
                             pagerState.animateScrollToPage(

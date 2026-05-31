@@ -104,6 +104,46 @@ class FirebaseProductRepositoryImpl : ProductRepository {
         awaitClose { subscription.remove() }
     }
 
+    override fun getNewArrivals(limit: Int): Flow<List<Product>> = callbackFlow {
+        val db = firestore ?: run {
+            trySend(emptyList<Product>())
+            close()
+            return@callbackFlow
+        }
+        val subscription = db.collection("products")
+            .addSnapshotListener { snapshot, error ->
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { it.toProduct() }
+                        .sortedByDescending { it.createdAt }
+                        .take(limit)
+                    trySend(list)
+                } else {
+                    trySend(emptyList())
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
+    override fun getBestRatedProducts(limit: Int): Flow<List<Product>> = callbackFlow {
+        val db = firestore ?: run {
+            trySend(emptyList<Product>())
+            close()
+            return@callbackFlow
+        }
+        val subscription = db.collection("products")
+            .addSnapshotListener { snapshot, error ->
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { it.toProduct() }
+                        .sortedByDescending { it.rating }
+                        .take(limit)
+                    trySend(list)
+                } else {
+                    trySend(emptyList())
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
     override fun getProductsByCategory(categoryId: String): Flow<List<Product>> = callbackFlow {
         val db = firestore ?: run {
             trySend(emptyList<Product>())

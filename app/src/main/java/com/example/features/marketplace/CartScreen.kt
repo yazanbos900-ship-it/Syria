@@ -40,6 +40,7 @@ import com.example.core.di.ServiceLocator
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Stable
 data class CartItem(
@@ -72,6 +73,7 @@ fun CartScreen(
     val context = LocalContext.current
     val isAr = LanguageManager.isArabic(context)
     val currentCurrencyState by CurrencyManager.currentCurrency.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
 
     var productStoreRates by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     LaunchedEffect(initialCartItems.size) {
@@ -863,6 +865,21 @@ fun CartScreen(
                 Button(
                     onClick = {
                         isCheckoutDialogOpen = false
+                        initialCartItems.forEach { item ->
+                            coroutineScope.launch {
+                                try {
+                                    ServiceLocator.recommendationRepository.trackProductInteraction(
+                                        productId = item.id,
+                                        categoryId = "",
+                                        storeId = "",
+                                        userId = null,
+                                        interactionType = "purchase"
+                                    )
+                                } catch (e: Exception) {
+                                    android.util.Log.e("CartScreen", "Failed to track purchase interaction", e)
+                                }
+                            }
+                        }
                         onCheckoutSuccess()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)

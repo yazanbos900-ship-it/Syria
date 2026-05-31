@@ -613,23 +613,28 @@ fun ProductDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = product.vendorName,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandTextMuted
-                            )
-                            if (product.isVerifiedVendor) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Verified Vendor",
-                                    tint = BrandPrimary,
-                                    modifier = Modifier.size(14.dp)
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = product.vendorName,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandTextMuted
                                 )
+                                if (product.isVerifiedVendor && state.store == null) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Verified Vendor",
+                                        tint = BrandPrimary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                            if (state.store != null) {
+                                StoreBadgesContainer(store = state.store!!)
                             }
                         }
 
