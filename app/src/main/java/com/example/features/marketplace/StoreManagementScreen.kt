@@ -30,6 +30,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.res.stringResource
 import com.example.R
 import com.example.core.utils.LanguageManager
+import com.example.core.utils.CurrencyManager
 import com.example.domain.model.Category
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -154,6 +155,7 @@ fun StoreManagementScreen(
                     items(state.products) { product ->
                         ProductManagementItem(
                             product = product,
+                            usdExchangeRate = state.store?.usdExchangeRate ?: 13500.0,
                             onEdit = { onEditProduct(product) },
                             onDelete = { viewModel.deleteProduct(product.id) }
                         )
@@ -177,8 +179,8 @@ fun StoreManagementScreen(
         StoreSettingsDialog(
             store = state.store!!,
             onDismiss = { showSettingsDialog = false },
-            onSave = { name, desc, categoryId, logoUrl, bannerUrl ->
-                viewModel.updateStore(name, desc, categoryId, logoUrl, bannerUrl)
+            onSave = { name, desc, rate, categoryId, logoUrl, bannerUrl ->
+                viewModel.updateStore(name, desc, rate, categoryId, logoUrl, bannerUrl)
                 showSettingsDialog = false
             }
         )
@@ -213,9 +215,11 @@ fun StoreHeaderCard(store: Store) {
 @Composable
 fun ProductManagementItem(
     product: Product,
+    usdExchangeRate: Double,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     BrandCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AsyncImage(
@@ -227,7 +231,11 @@ fun ProductManagementItem(
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(product.title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("$${product.price}", color = BrandPrimary, fontWeight = FontWeight.Bold)
+                Text(
+                    text = CurrencyManager.formatPrice(product.price, usdExchangeRate, LanguageManager.isArabic(context)),
+                    color = BrandPrimary,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(androidx.compose.ui.res.stringResource(R.string.stock_count, product.stockCount), fontSize = 12.sp, color = BrandTextMuted)
             }
             Row {
@@ -599,10 +607,11 @@ fun AddProductDialog(
 fun StoreSettingsDialog(
     store: Store,
     onDismiss: () -> Unit,
-    onSave: (String, String, String, String?, String?) -> Unit
+    onSave: (String, String, Double, String, String?, String?) -> Unit
 ) {
     var name by remember { mutableStateOf(store.name) }
     var desc by remember { mutableStateOf(store.description) }
+    var exchangeRateStr by remember { mutableStateOf(store.usdExchangeRate.toString()) }
     var logoUrl by remember { mutableStateOf(store.logoUrl) }
     var bannerUrl by remember { mutableStateOf(store.bannerUrl) }
     
@@ -747,6 +756,16 @@ fun StoreSettingsDialog(
                     helperText = null
                 )
 
+                StoreInputField(
+                    label = if (LanguageManager.isArabic(LocalContext.current)) "سعر الصرف (ليرة سورية لكل 1 دولار)" else "Exchange Rate (SYP per 1 USD)",
+                    value = exchangeRateStr,
+                    onValueChange = { exchangeRateStr = it },
+                    placeholder = "13700",
+                    testTag = "edit_store_rate",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    helperText = if (LanguageManager.isArabic(LocalContext.current)) "سعر صرف الليرة السورية المعتمد في متجرك مقابل الدولار الأمريكي" else " Syrian Pound exchange rate per 1 USD in your store"
+                )
+
                 // Store Description
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -825,7 +844,8 @@ fun StoreSettingsDialog(
                     Button(
                         onClick = {
                             if (name.isNotBlank() && desc.isNotBlank() && selectedCategory != null) {
-                                onSave(name, desc, selectedCategory!!.id, logoUrl, bannerUrl)
+                                val rate = exchangeRateStr.toDoubleOrNull() ?: 13500.0
+                                onSave(name, desc, rate, selectedCategory!!.id, logoUrl, bannerUrl)
                             }
                         },
                         modifier = Modifier.weight(1f),

@@ -45,9 +45,19 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
 
         val subscription = db.collection("stores")
             .whereEqualTo("status", "active")
-            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
-                handleSnapshot(snapshot, error, ::trySend)
+                if (error != null) {
+                    trySend(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        mapFirestoreDocToStore(doc)
+                    }.sortedByDescending { it.createdAt }
+                    trySend(Result.success(list))
+                } else {
+                    trySend(Result.success(emptyList()))
+                }
             }
         awaitClose { subscription.remove() }
     }
@@ -64,13 +74,21 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 bannerUrl = doc.getString("bannerUrl"),
                 description = doc.getString("description") ?: "",
                 categoryId = doc.getString("categoryId") ?: "",
-                followersCount = (doc.getLong("followersCount") ?: 0).toInt(),
+                followersCount = (doc.get("followersCount") as? Number)?.toInt() ?: 0,
                 status = doc.getString("status") ?: "active",
-                rating = doc.getDouble("rating")?.toFloat() ?: 5.0f,
+                rating = (doc.get("rating") as? Number)?.toFloat() ?: 5.0f,
                 isVerified = doc.getBoolean("isVerified") ?: false,
-                createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: doc.getLong("createdAt") ?: System.currentTimeMillis()
+                usdExchangeRate = (doc.get("usdExchangeRate") as? Number)?.toDouble() ?: 13500.0,
+                createdAt = try {
+                    doc.getTimestamp("createdAt")?.toDate()?.time 
+                        ?: doc.getLong("createdAt") 
+                        ?: System.currentTimeMillis()
+                } catch (e: Exception) {
+                    doc.getLong("createdAt") ?: System.currentTimeMillis()
+                }
             )
         } catch (e: Exception) {
+            Log.e(tag, "mapFirestoreDocToStore failed for document: ${doc.id}", e)
             null
         }
     }
@@ -128,6 +146,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "rating" to store.rating,
                 "isVerified" to store.isVerified,
                 "status" to "active",
+                "usdExchangeRate" to store.usdExchangeRate,
                 "createdAt" to store.createdAt
             )
             db.collection("stores").document(store.id).set(storeMap).await()
@@ -164,7 +183,8 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "categoryId" to store.categoryId,
                 "logoUrl" to store.logoUrl,
                 "bannerUrl" to store.bannerUrl,
-                "status" to store.status
+                "status" to store.status,
+                "usdExchangeRate" to store.usdExchangeRate
             )
             db.collection("stores").document(store.id).update(storeMap as Map<String, Any>).await()
             Result.success(Unit)

@@ -33,6 +33,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
 import com.example.core.di.ServiceLocator
+import com.example.core.utils.CurrencyManager
 import com.example.domain.model.Product
 import com.example.domain.model.Store
 import com.example.domain.model.User
@@ -382,6 +383,7 @@ fun AdminDashboardScreen(
                         )
                         is AdminModule.Products -> AdminProductsManager(
                             products = state.products,
+                            stores = state.stores,
                             isArabic = isArabic,
                             viewModel = viewModel
                         )
@@ -758,6 +760,7 @@ fun AdminStoresManager(
 @Composable
 fun AdminProductsManager(
     products: List<Product>,
+    stores: List<Store>,
     isArabic: Boolean,
     viewModel: AdminViewModel
 ) {
@@ -825,8 +828,10 @@ fun AdminProductsManager(
 
                             // Prices Block
                             Column(horizontalAlignment = Alignment.End) {
+                                val adminProductStore = stores.find { it.id == product.storeId }
+                                val adminRate = adminProductStore?.usdExchangeRate ?: 13500.0
                                 Text(
-                                    text = "${product.price} ${if (isArabic) "ريال" else "SAR"}",
+                                    text = CurrencyManager.formatPrice(product.price, adminRate, isArabic),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = BrandPrimary

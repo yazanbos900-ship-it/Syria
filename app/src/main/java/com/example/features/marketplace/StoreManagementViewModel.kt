@@ -107,7 +107,7 @@ class StoreManagementViewModel(
         }
     }
 
-    fun updateStore(name: String, description: String, categoryId: String, logoUrl: String?, bannerUrl: String?) {
+    fun updateStore(name: String, description: String, usdExchangeRate: Double, categoryId: String, logoUrl: String?, bannerUrl: String?) {
         val currentStore = state.value.store ?: return
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -116,7 +116,8 @@ class StoreManagementViewModel(
                 description = description,
                 categoryId = categoryId,
                 logoUrl = logoUrl ?: currentStore.logoUrl,
-                bannerUrl = bannerUrl ?: currentStore.bannerUrl
+                bannerUrl = bannerUrl ?: currentStore.bannerUrl,
+                usdExchangeRate = usdExchangeRate
             )
             val result = storeRepo.updateStore(updatedStore)
             if (result.isSuccess) {

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import com.example.core.utils.LanguageManager
+import com.example.core.utils.CurrencyManager
 import com.example.R
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
@@ -377,6 +378,7 @@ fun StoreContent(
                         Box(modifier = Modifier.weight(1f)) {
                             ProductCard(
                                 product = product,
+                                usdExchangeRate = store.usdExchangeRate,
                                 onClick = { onProductClick(product.id) }
                             )
                         }
@@ -394,8 +396,10 @@ fun StoreContent(
 @Composable
 fun ProductCard(
     product: Product,
+    usdExchangeRate: Double,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
@@ -431,7 +435,7 @@ fun ProductCard(
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "$${product.price}",
+                        text = CurrencyManager.formatPrice(product.price, usdExchangeRate, LanguageManager.isArabic(context)),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
                         color = PrimaryGreen

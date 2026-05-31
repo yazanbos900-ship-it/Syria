@@ -43,6 +43,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.example.R
 import coil.compose.AsyncImage
+import com.example.core.utils.LanguageManager
+import com.example.core.utils.CurrencyManager
+import com.example.core.di.ServiceLocator
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.domain.model.Store
 import com.example.ui.theme.*
 
 // Catalog Data Definition
@@ -73,6 +79,19 @@ fun SearchScreen(
     onNavigateBack: () -> Unit,
     onProductSelected: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val isAr = LanguageManager.isArabic(context)
+    val currentCurrencyState by CurrencyManager.currentCurrency.collectAsStateWithLifecycle()
+
+    var storesList by remember { mutableStateOf<List<Store>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        ServiceLocator.storeRepository.getAllStores().collect { res ->
+            if (res.isSuccess) {
+                storesList = res.getOrDefault(emptyList())
+            }
+        }
+    }
+
     val focusManager = LocalFocusManager.current
 
     // Curated real-time Search & Filter Source Catalog
@@ -823,8 +842,13 @@ fun SearchScreen(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
+                                    val matchedStore = storesList.find {
+                                        it.name.contains(product.storeName, ignoreCase = true) ||
+                                                product.storeName.contains(it.name, ignoreCase = true)
+                                    }
+                                    val searchRate = matchedStore?.usdExchangeRate ?: 13500.0
                                     Text(
-                                        text = "$${String.format("%.2f", product.price)}",
+                                        text = CurrencyManager.formatPrice(product.price, searchRate, isAr),
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = BrandTextPrimary
@@ -832,7 +856,7 @@ fun SearchScreen(
 
                                     if (product.originalPrice != null) {
                                         Text(
-                                            text = "$${String.format("%.2f", product.originalPrice)}",
+                                            text = CurrencyManager.formatPrice(product.originalPrice, searchRate, isAr),
                                             fontSize = 11.sp,
                                             color = BrandTextMuted,
                                             textDecoration = TextDecoration.LineThrough

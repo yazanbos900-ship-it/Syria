@@ -47,6 +47,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.example.R
 import coil.compose.AsyncImage
+import com.example.core.utils.LanguageManager
+import com.example.core.utils.CurrencyManager
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.theme.BrandBackground
 import com.example.ui.theme.BrandPrimary
 import com.example.ui.theme.BrandSoftGray
@@ -56,6 +59,9 @@ import com.example.ui.theme.BrandTextPrimary
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.features.marketplace.ProductDetailViewModel
+import androidx.compose.ui.platform.testTag
+import com.example.domain.model.RecommendationCriteria
+import com.example.domain.model.Product
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -158,13 +164,6 @@ val mockProductRepository = listOf(
     )
 )
 
-data class PriceComparison(
-    val boutiqueName: String,
-    val price: Double,
-    val rating: String,
-    val shippingInfo: String
-)
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProductDetailScreen(
@@ -173,11 +172,17 @@ fun ProductDetailScreen(
 ) {
     val viewModel: ProductDetailViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-            return ProductDetailViewModel(com.example.core.di.ServiceLocator.productRepository) as T
+            return ProductDetailViewModel(
+                com.example.core.di.ServiceLocator.productRepository,
+                com.example.core.di.ServiceLocator.storeRepository,
+                com.example.core.di.ServiceLocator.recommendationRepository,
+                com.example.core.di.ServiceLocator.comparisonRepository
+            ) as T
         }
     })
     
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val isAr = LanguageManager.isArabic(LocalContext.current)
 
     LaunchedEffect(productId) {
         if (productId != null) {
@@ -223,7 +228,7 @@ fun ProductDetailScreen(
         discountPercent = 33,
         rating = domainProduct.rating.toDouble(),
         reviewsCount = domainProduct.reviewCount,
-        vendorName = "Vendor", // We'd need to fetch vendor name too, but let's keep it simple for now
+        vendorName = state.store?.name ?: "Bespoke Horology Lab", // Fetch real store name loaded from Firestore
         isVerifiedVendor = true,
         deliveryPromise = "Ships today",
         badge = if (domainProduct.stockCount < 5) "Limited Offer" else "Special Discount",
@@ -675,15 +680,17 @@ fun ProductDetailScreen(
                         verticalAlignment = Alignment.Bottom,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        val detailExchangeRate = state.store?.usdExchangeRate ?: 13500.0
+                        val detailIsArabic = LanguageManager.isArabic(LocalContext.current)
                         Text(
-                            text = "$${String.format("%.2f", product.price)}",
+                            text = CurrencyManager.formatPrice(product.price, detailExchangeRate, detailIsArabic),
                             fontSize = 32.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = BrandPrimary
                         )
 
                         Text(
-                            text = "$${String.format("%.2f", product.originalPrice)}",
+                            text = CurrencyManager.formatPrice(product.originalPrice, detailExchangeRate, detailIsArabic),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             textDecoration = TextDecoration.LineThrough,
@@ -891,123 +898,242 @@ fun ProductDetailScreen(
             }
 
             // Price comparison layout
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = BrandSurface)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp)
+            val compResult = state.comparisonResult
+
+            if (state.comparisonLoading) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface)
                 ) {
-                    Text(
-                        text = stringResource(id = R.string.multi_vendor_compare),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandTextMuted,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    val alternatives = listOf(
-                        PriceComparison("Aethelgard Premium Store", product.price + 12.0, "★ 4.6", "Ships free today"),
-                        PriceComparison("Meridian Wholesale Inc", product.price + 24.0, "★ 4.4", "Ships in 2 days")
-                    )
-
-                    // Current best offer signal
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(BrandPrimary.copy(alpha = 0.08f))
-                            .border(1.dp, BrandPrimary.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = if (isAr) "تحليل مقارنة الأسعار في السوق" else "MARKET PRICE COMPARISON",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandTextMuted,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.align(Alignment.Start)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        CircularProgressIndicator(
+                            color = BrandPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (isAr) "يرجى الانتظار، يجري تحميل أسعار المقارنة..." else "Loading real-time market intelligent comparisons...",
+                            fontSize = 11.sp,
+                            color = BrandTextMuted
+                        )
+                    }
+                }
+            } else if (compResult != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Text(
+                            text = if (isAr) "تحليل مقارنة الأسعار في السوق" else "MARKET PRICE COMPARISON",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandTextMuted,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Stats Grid: Min, Avg, Max
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1.1f)) {
                                 Text(
-                                    text = product.vendorName,
+                                    text = if (isAr) "أقل سعر مقارن" else "Lowest Comp Price",
+                                    fontSize = 9.sp,
+                                    color = BrandTextMuted,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = CurrencyManager.formatPrice(compResult.minPrice, state.store?.usdExchangeRate ?: 13500.0, isAr),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandTextPrimary
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(BrandPrimary)
-                                        .padding(horizontal = 5.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(id = R.string.best_rate),
-                                        color = Color.White,
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
                             }
-                            Text(
-                                text = "Verified Premium Partner",
-                                fontSize = 11.sp,
-                                color = BrandTextMuted
-                            )
+                            Column(modifier = Modifier.weight(1.2f)) {
+                                Text(
+                                    text = if (isAr) "متوسط السوق" else "Market Average",
+                                    fontSize = 9.sp,
+                                    color = BrandTextMuted,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = CurrencyManager.formatPrice(compResult.avgPrice, state.store?.usdExchangeRate ?: 13500.0, isAr),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandPrimary
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1.1f)) {
+                                Text(
+                                    text = if (isAr) "أعلى سعر مقارن" else "Highest Comp Price",
+                                    fontSize = 9.sp,
+                                    color = BrandTextMuted,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = CurrencyManager.formatPrice(compResult.maxPrice, state.store?.usdExchangeRate ?: 13500.0, isAr),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandTextPrimary
+                                )
+                            }
                         }
-                        
-                        Text(
-                            text = "$${String.format("%.2f", product.price)}",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandPrimary
-                        )
-                    }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    // Second comparisons list
-                    alternatives.forEach { alt ->
+                        // Position & Percentage stats badge
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 10.dp),
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(BrandPrimary.copy(alpha = 0.08f))
+                                .border(0.5.dp, BrandPrimary.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                                .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = alt.boutiqueName,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = BrandTextPrimary
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = alt.rating,
-                                        fontSize = 11.sp,
-                                        color = Color(0xFFC49000),
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                val positionText = when (compResult.position) {
+                                    "Low" -> if (isAr) "خيار ذكي (أقل من متوسط السوق)" else "Excellent Deal (Below Market Avg)"
+                                    "High" -> if (isAr) "خيار حصري (أعلى من متوسط السوق)" else "Premium Grade (Above Market Avg)"
+                                    else -> if (isAr) "سعر متوازن وسطي" else "Communal Average (Balanced)"
                                 }
                                 Text(
-                                    text = alt.shippingInfo,
+                                    text = positionText,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandTextPrimary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                val diffText = if (compResult.percentageDifference < 0) {
+                                    val formatted = String.format("%.1f", kotlin.math.abs(compResult.percentageDifference))
+                                    if (isAr) "أوفر بنسبة $formatted% مقارنة بباقي المتاجر المماثلة" else "$formatted% cheaper than competitor average"
+                                } else {
+                                    val formatted = String.format("%.1f", compResult.percentageDifference)
+                                    if (isAr) "أعلى بنسبة $formatted% مقارنة بباقي المتاجر المماثلة" else "$formatted% higher than competitor average"
+                                }
+                                Text(
+                                    text = diffText,
                                     fontSize = 11.sp,
                                     color = BrandTextMuted
                                 )
                             }
-                            
-                            Text(
-                                text = "$${String.format("%.2f", alt.price)}",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandTextPrimary
-                            )
                         }
-                        if (alt != alternatives.last()) {
-                            HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Subheading for other comparable stores
+                        Text(
+                            text = if (isAr) "المتاجر والمخازن البديلة المتاحة" else "AVAILABLE SOURCING & COMPETITORS",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandTextMuted,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Show list of actual comparable competitor products loaded dynamically from Firestore
+                        compResult.comparableProducts.forEachIndexed { idx, item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp)
+                                    .clickable {
+                                        viewModel.loadProduct(item.product.id)
+                                    },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = item.storeName,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = BrandTextPrimary
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "★ " + String.format("%.1f", item.storeRating),
+                                            fontSize = 11.sp,
+                                            color = Color(0xFFC49000),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = item.product.title,
+                                        fontSize = 11.sp,
+                                        color = BrandTextMuted,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                
+                                Text(
+                                    text = CurrencyManager.formatPrice(item.product.price, state.store?.usdExchangeRate ?: 13500.0, isAr),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandTextPrimary
+                                )
+                            }
+                            if (idx < compResult.comparableProducts.size - 1) {
+                                HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+                            }
                         }
+                    }
+                }
+            } else {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 24.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Text(
+                            text = if (isAr) "تحليل مقارنة الأسعار في السوق" else "MARKET PRICE COMPARISON",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandTextMuted,
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (isAr) "لا تتوفر منتجات كافية للمقارنة في السوق حالياً." else "Insufficient comparable products available.",
+                            fontSize = 13.sp,
+                            color = BrandTextMuted,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
@@ -1019,84 +1145,318 @@ fun ProductDetailScreen(
                     .padding(bottom = 32.dp)
             ) {
                 Text(
-                    text = "COMMUNAL RECOMMENDATIONS",
+                    text = if (isAr) "توصيات مجتمعية ذكية" else "COMMUNAL RECOMMENDATIONS",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = BrandTextMuted,
                     letterSpacing = 1.sp,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Active criteria filter chips row
+                RecommendationCriteriaSelector(
+                    selected = state.selectedCriteria,
+                    onSelected = { criteria -> viewModel.changeRecommendationCriteria(criteria) },
+                    isAr = isAr
+                )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    mockProductRepository.forEach { relProduct ->
-                        // Show all EXCEPT the current active product is best, or show all for beautiful variety
-                        Card(
-                            modifier = Modifier
-                                .width(160.dp)
-                                .clickable {
-                                    // Normally navigates to this product ID, we can trigger refreshing or re-route.
-                                },
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, BrandSoftGray),
-                            colors = CardDefaults.cardColors(containerColor = BrandSurface)
-                        ) {
-                            Column {
-                                AsyncImage(
-                                    model = relProduct.images.first(),
-                                    contentDescription = relProduct.name,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(115.dp)
+                Spacer(modifier = Modifier.height(6.dp))
+
+                if (state.recsLoading) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        repeat(5) {
+                            RecommendationSkeletonItem()
+                        }
+                    }
+                } else if (state.recsError != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 16.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(BrandSurface)
+                            .border(0.5.dp, BrandSoftGray, RoundedCornerShape(12.dp))
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = state.recsError ?: "",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(
+                                onClick = { viewModel.changeRecommendationCriteria(state.selectedCriteria) }
+                            ) {
+                                Text(
+                                    text = if (isAr) "إعادة المحاولة" else "Retry",
+                                    color = BrandPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
+                            }
+                        }
+                    }
+                } else if (state.recommendations.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isAr) "لا توجد توصيات مطابقة حالياً." else "No recommendations found.",
+                            color = BrandTextMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        state.recommendations.forEach { relProduct ->
+                            RecommendationCard(
+                                product = relProduct,
+                                exchangeRate = state.store?.usdExchangeRate ?: 13500.0,
+                                isAr = isAr,
+                                onClick = {
+                                    viewModel.trackRecommendationClick(relProduct.id, relProduct.categoryId, relProduct.storeId)
+                                    viewModel.loadProduct(relProduct.id)
+                                }
+                            )
+                        }
+
+                        // Infinite scroll / pagination action trigger card
+                        if (!state.hasReachedEnd) {
+                            Card(
+                                modifier = Modifier
+                                    .width(160.dp)
+                                    .height(180.dp)
+                                    .clickable { viewModel.loadMoreRecommendations() }
+                                    .testTag("load_more_recs_button"),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(0.5.dp, BrandSoftGray),
+                                colors = CardDefaults.cardColors(containerColor = BrandSurface)
+                            ) {
                                 Column(
-                                    modifier = Modifier.padding(10.dp)
+                                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                                    verticalArrangement = Arrangement.Center,
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text(
-                                        text = relProduct.name,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = BrandTextPrimary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = relProduct.vendorName,
-                                        fontSize = 10.sp,
-                                        color = BrandTextMuted,
-                                        maxLines = 1
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "$${relProduct.price}",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = BrandPrimary
+                                    if (state.recsAppending) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            color = BrandPrimary,
+                                            strokeWidth = 2.dp
                                         )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            tint = BrandPrimary,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            text = "★ ${relProduct.rating}",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color(0xFFFFB300)
+                                            text = if (isAr) "عرض المزيد" else "Show more",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = BrandTextPrimary
                                         )
                                     }
                                 }
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RecommendationCriteriaSelector(
+    selected: RecommendationCriteria,
+    onSelected: (RecommendationCriteria) -> Unit,
+    isAr: Boolean
+) {
+    val options = listOf(
+        RecommendationCriteria.BEST_RATED to (if (isAr) "الأعلى تقييماً" else "Top Rated"),
+        RecommendationCriteria.TRENDING to (if (isAr) "شائع ومقترح" else "Trending"),
+        RecommendationCriteria.MOST_VIEWED to (if (isAr) "الأكثر مشاهدة" else "Most Viewed"),
+        RecommendationCriteria.MOST_FAVORITED to (if (isAr) "المفضلة" else "Favorites"),
+        RecommendationCriteria.CATEGORY_PREFERENCE to (if (isAr) "فئات تهمك" else "Category Prefs"),
+        RecommendationCriteria.STORE_PREFERENCE to (if (isAr) "متاجر مفضلة" else "Store Prefs")
+    )
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        options.forEach { (crit, label) ->
+            val isSelected = selected == crit
+            FilterChip(
+                selected = isSelected,
+                onClick = { onSelected(crit) },
+                label = { Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = BrandPrimary,
+                    selectedLabelColor = Color.White,
+                    containerColor = BrandSurface,
+                    labelColor = BrandTextPrimary
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    borderColor = if (isSelected) Color.Transparent else BrandSoftGray,
+                    selectedBorderColor = Color.Transparent,
+                    enabled = true,
+                    selected = isSelected
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun RecommendationCard(
+    product: Product,
+    exchangeRate: Double,
+    isAr: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(160.dp)
+            .clickable(onClick = onClick)
+            .testTag("product_recommendation_${product.id}"),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(0.5.dp, BrandSoftGray),
+        colors = CardDefaults.cardColors(containerColor = BrandSurface)
+    ) {
+        Column {
+            Box(modifier = Modifier.fillMaxWidth().height(115.dp)) {
+                AsyncImage(
+                    model = product.imageUrls.firstOrNull() ?: "",
+                    contentDescription = product.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Rating overlay badge
+                Box(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .align(Alignment.TopEnd)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = Color(0xFFFFB300),
+                            modifier = Modifier.size(10.dp)
+                        )
+                        Text(
+                            text = String.format("%.1f", product.rating),
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            Column(
+                modifier = Modifier.padding(10.dp)
+            ) {
+                Text(
+                    text = product.title,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BrandTextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (product.isAvailable) {
+                        if (isAr) "متوفر للطلب" else "In stock"
+                    } else {
+                        if (isAr) "غير متوفر" else "Out of stock"
+                    },
+                    fontSize = 10.sp,
+                    color = if (product.isAvailable) BrandPrimary else BrandTextMuted,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = CurrencyManager.formatPrice(product.price, exchangeRate, isAr),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary
+                    )
+                    Text(
+                        text = "(${product.reviewCount})",
+                        fontSize = 9.sp,
+                        color = BrandTextMuted
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RecommendationSkeletonItem() {
+    Card(
+        modifier = Modifier.width(160.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(0.5.dp, BrandSoftGray),
+        colors = CardDefaults.cardColors(containerColor = BrandSurface)
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(115.dp)
+                    .background(BrandSoftGray)
+            )
+            Column(modifier = Modifier.padding(10.dp)) {
+                Box(modifier = Modifier.height(12.dp).fillMaxWidth().background(BrandSoftGray))
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(modifier = Modifier.height(10.dp).width(80.dp).background(BrandSoftGray))
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Box(modifier = Modifier.height(14.dp).width(50.dp).background(BrandSoftGray))
+                    Box(modifier = Modifier.height(10.dp).width(20.dp).background(BrandSoftGray))
                 }
             }
         }

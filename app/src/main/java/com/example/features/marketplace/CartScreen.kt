@@ -34,6 +34,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.example.R
 import coil.compose.AsyncImage
+import com.example.core.utils.LanguageManager
+import com.example.core.utils.CurrencyManager
+import com.example.core.di.ServiceLocator
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.theme.*
 
 @Stable
@@ -64,6 +69,31 @@ fun CartScreen(
     // Dynamic global cart items state synchronized across the marketplace application
     val initialCartItems = SharedCartState.cartItems
 
+    val context = LocalContext.current
+    val isAr = LanguageManager.isArabic(context)
+    val currentCurrencyState by CurrencyManager.currentCurrency.collectAsStateWithLifecycle()
+
+    var productStoreRates by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    LaunchedEffect(initialCartItems.size) {
+        val rates = productStoreRates.toMutableMap()
+        initialCartItems.forEach { item ->
+            if (!rates.containsKey(item.id)) {
+                try {
+                    val p = ServiceLocator.productRepository.getProductDetails(item.id)
+                    if (p != null) {
+                        val s = ServiceLocator.storeRepository.getStoreById(p.storeId)
+                        if (s != null) {
+                            rates[item.id] = s.usdExchangeRate
+                        }
+                    }
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
+        }
+        productStoreRates = rates
+    }
+
     var promoCodeInput by remember { mutableStateOf("") }
     var promoState by remember { mutableStateOf<PromoState>(PromoState.None) }
     var isCheckoutDialogOpen by remember { mutableStateOf(false) }
@@ -87,6 +117,40 @@ fun CartScreen(
     }
 
     val finalTotal = (subtotal + deliveryFee - promoDiscountAmount).coerceAtLeast(0.0)
+
+    val formattedSubtotal = remember(initialCartItems.size, productStoreRates, currentCurrencyState, subtotal) {
+        val totalConverted = initialCartItems.sumOf { item ->
+            val rate = productStoreRates[item.id] ?: 13500.0
+            val itemPrice = if (currentCurrencyState == CurrencyManager.Currency.SYP) item.price * rate else item.price
+            itemPrice * item.quantity
+        }
+        val prefix = if (currentCurrencyState == CurrencyManager.Currency.SYP) (if (isAr) "ل.س " else "SYP ") else "$"
+        "$prefix${String.format(if (currentCurrencyState == CurrencyManager.Currency.SYP) "%,.0f" else "%,.2f", totalConverted)}"
+    }
+
+    val formattedDeliveryFee = remember(deliveryFee, productStoreRates, currentCurrencyState) {
+        val sampleRate = initialCartItems.firstOrNull()?.let { productStoreRates[it.id] } ?: 13500.0
+        val converted = if (currentCurrencyState == CurrencyManager.Currency.SYP) deliveryFee * sampleRate else deliveryFee
+        val prefix = if (currentCurrencyState == CurrencyManager.Currency.SYP) (if (isAr) "ل.س " else "SYP ") else "$"
+        "$prefix${String.format(if (currentCurrencyState == CurrencyManager.Currency.SYP) "%,.0f" else "%,.2f", converted)}"
+    }
+
+    val formattedDiscount = remember(promoDiscountAmount, productStoreRates, currentCurrencyState) {
+        val sampleRate = initialCartItems.firstOrNull()?.let { productStoreRates[it.id] } ?: 13500.0
+        val converted = if (currentCurrencyState == CurrencyManager.Currency.SYP) promoDiscountAmount * sampleRate else promoDiscountAmount
+        if (currentCurrencyState == CurrencyManager.Currency.SYP) {
+            "- ${if (isAr) "ل.س " else "SYP "}${String.format("%,.0f", converted)}"
+        } else {
+            "-$${String.format("%.2f", converted)}"
+        }
+    }
+
+    val formattedFinalTotal = remember(finalTotal, productStoreRates, currentCurrencyState) {
+        val sampleRate = initialCartItems.firstOrNull()?.let { productStoreRates[it.id] } ?: 13500.0
+        val converted = if (currentCurrencyState == CurrencyManager.Currency.SYP) finalTotal * sampleRate else finalTotal
+        val prefix = if (currentCurrencyState == CurrencyManager.Currency.SYP) (if (isAr) "ل.س " else "SYP ") else "$"
+        "$prefix${String.format(if (currentCurrencyState == CurrencyManager.Currency.SYP) "%,.0f" else "%,.2f", converted)}"
+    }
 
     Scaffold(
         containerColor = BrandBackground,
@@ -406,8 +470,9 @@ fun CartScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                                             ) {
+                                                val rate = productStoreRates[item.id] ?: 13500.0
                                                 Text(
-                                                    text = "$${String.format("%.2f", item.price)}",
+                                                    text = CurrencyManager.formatPrice(item.price, rate, isAr),
                                                     fontSize = 14.sp,
                                                     fontWeight = FontWeight.ExtraBold,
                                                     color = BrandTextPrimary
@@ -415,7 +480,7 @@ fun CartScreen(
 
                                                 if (item.originalPrice != null) {
                                                     Text(
-                                                        text = "$${String.format("%.2f", item.originalPrice)}",
+                                                        text = CurrencyManager.formatPrice(item.originalPrice, rate, isAr),
                                                         fontSize = 11.sp,
                                                         color = BrandTextMuted,
                                                         textDecoration = TextDecoration.LineThrough
@@ -668,7 +733,7 @@ fun CartScreen(
                                     color = BrandTextMuted
                                 )
                                 Text(
-                                    text = "$${String.format("%.2f", subtotal)}",
+                                    text = formattedSubtotal,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandTextPrimary
@@ -689,7 +754,7 @@ fun CartScreen(
                                     )
                                 }
                                 Text(
-                                    text = if (isDeliveryFree) "FREE" else "$${String.format("%.2f", deliveryFee)}",
+                                    text = if (isDeliveryFree) "FREE" else formattedDeliveryFee,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isDeliveryFree) BrandPrimary else BrandTextPrimary
@@ -710,7 +775,7 @@ fun CartScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text = "-$${String.format("%.2f", promoDiscountAmount)}",
+                                        text = formattedDiscount,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = BrandSecondary
@@ -733,7 +798,7 @@ fun CartScreen(
                                     color = BrandTextPrimary
                                 )
                                 Text(
-                                    text = "$${String.format("%.2f", finalTotal)}",
+                                    text = formattedFinalTotal,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = BrandPrimary

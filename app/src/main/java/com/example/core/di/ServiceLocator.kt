@@ -41,6 +41,14 @@ object ServiceLocator {
         FirestoreWishlistRepositoryImpl()
     }
 
+    val recommendationRepository: com.example.domain.repository.RecommendationRepository by lazy {
+        com.example.data.repository.FirebaseRecommendationRepositoryImpl()
+    }
+
+    val comparisonRepository: com.example.domain.repository.ComparisonRepository by lazy {
+        com.example.data.repository.FirebaseComparisonRepositoryImpl()
+    }
+
     /**
      * Call this inside Application class or MainActivity's onCreate to set up base clients safely.
      */

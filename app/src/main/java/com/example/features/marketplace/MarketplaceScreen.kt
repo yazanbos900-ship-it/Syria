@@ -66,7 +66,9 @@ import com.example.features.marketplace.StoreListUiState
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Paid
 import com.example.core.utils.LanguageManager
+import com.example.core.utils.CurrencyManager
 import com.example.ui.theme.ThemeManager
 import com.example.R
 import android.app.Activity
@@ -96,7 +98,10 @@ fun MarketplaceScreen(
     val context = LocalContext.current
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showCurrencyDialog by remember { mutableStateOf(false) }
     var showAccountBottomSheet by remember { mutableStateOf(false) }
+
+    val currentCurrencyState by CurrencyManager.currentCurrency.collectAsStateWithLifecycle()
 
     val mainViewModel: MarketplaceViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -246,6 +251,51 @@ fun MarketplaceScreen(
         )
     }
 
+    if (showCurrencyDialog) {
+        val isAr = LanguageManager.isArabic(context)
+        AlertDialog(
+            onDismissRequest = { showCurrencyDialog = false },
+            title = { Text(if (isAr) "تحديد العملة المعتمدة" else "Select Currency") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                CurrencyManager.setCurrency(context, CurrencyManager.Currency.SYP)
+                                showCurrencyDialog = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = currentCurrencyState == CurrencyManager.Currency.SYP, onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isAr) "الليرة السورية (ل.س)" else "Syrian Pound (SYP)")
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                CurrencyManager.setCurrency(context, CurrencyManager.Currency.USD)
+                                showCurrencyDialog = false
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = currentCurrencyState == CurrencyManager.Currency.USD, onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isAr) "دولار أمريكي (USD)" else "US Dollar (USD)")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCurrencyDialog = false }) {
+                    Text(if (isAr) "إلغاء" else "Cancel")
+                }
+            }
+        )
+    }
+
     val pagerState = rememberPagerState(pageCount = { promoBanners.size })
 
     LaunchedEffect(pagerState.currentPage) {
@@ -295,6 +345,7 @@ fun MarketplaceScreen(
                 onCreateStore = onCreateStoreSelected,
                 onSelectLanguage = { showLanguageDialog = true },
                 onSelectTheme = { showThemeDialog = true },
+                onSelectCurrency = { showCurrencyDialog = true },
                 onSignOut = onSignOut,
                 onAdminClick = onAdminSelected,
                 onDismiss = { showAccountBottomSheet = false }
@@ -757,8 +808,15 @@ fun MarketplaceScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
+                                            val productStore = storeState.stores.find { it.id == product.storeId }
+                                            val productRate = productStore?.usdExchangeRate ?: 13500.0
+                                            val formattedPrice = CurrencyManager.formatPrice(
+                                                product.price,
+                                                productRate,
+                                                LanguageManager.isArabic(context)
+                                            )
                                             Text(
-                                                text = "$${String.format("%.2f", product.price)}",
+                                                text = formattedPrice,
                                                 fontSize = 15.sp,
                                                 fontWeight = FontWeight.ExtraBold,
                                                 color = BrandPrimary
@@ -853,7 +911,7 @@ fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onVie
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                androidx.compose.ui.res.stringResource(R.string.categories_title),
+                androidx.compose.ui.res.stringResource(R.string.top_stores),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = BrandTextPrimary
@@ -955,6 +1013,7 @@ fun AccountBottomSheetContent(
     onCreateStore: () -> Unit,
     onSelectLanguage: () -> Unit,
     onSelectTheme: () -> Unit,
+    onSelectCurrency: () -> Unit,
     onSignOut: () -> Unit,
     onAdminClick: () -> Unit,
     onDismiss: () -> Unit
@@ -1044,6 +1103,59 @@ fun AccountBottomSheetContent(
                         )
                         Text(
                             text = currentLang,
+                            fontSize = 11.sp,
+                            color = BrandTextMuted
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = BrandTextMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // 1.2 Currency Option
+        Surface(
+            onClick = {
+                onDismiss()
+                onSelectCurrency()
+            },
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Transparent,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Paid,
+                        contentDescription = null,
+                        tint = BrandPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column {
+                        val isAr = com.example.core.utils.LanguageManager.isArabic(context)
+                        Text(
+                            text = if (isAr) "العملة المفضلة" else "Preferred Currency",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandTextPrimary
+                        )
+                        val currFlow = CurrencyManager.currentCurrency.value
+                        val descStr = when (currFlow) {
+                            CurrencyManager.Currency.SYP -> if (isAr) "الليرة السورية (ل.س)" else "Syrian Pound (SYP)"
+                            CurrencyManager.Currency.USD -> if (isAr) "دولار أمريكي (USD)" else "US Dollar (USD)"
+                        }
+                        Text(
+                            text = descStr,
                             fontSize = 11.sp,
                             color = BrandTextMuted
                         )

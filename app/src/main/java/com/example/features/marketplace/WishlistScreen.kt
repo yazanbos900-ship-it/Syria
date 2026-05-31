@@ -34,6 +34,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.example.R
 import coil.compose.AsyncImage
+import com.example.core.utils.LanguageManager
+import com.example.core.utils.CurrencyManager
+import com.example.core.di.ServiceLocator
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -51,8 +56,31 @@ fun WishlistScreen(
     onProductSelected: (String) -> Unit,
     onGoToCart: () -> Unit
 ) {
+    val context = LocalContext.current
+    val isAr = LanguageManager.isArabic(context)
     val wishlist = SharedWishlistState.wishlistItems
     var activeSortOption by remember { mutableStateOf(WishlistSortOption.NewestSaved) }
+
+    var productStoreRates by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
+    LaunchedEffect(wishlist.size) {
+        val rates = productStoreRates.toMutableMap()
+        wishlist.forEach { item ->
+            if (!rates.containsKey(item.id)) {
+                try {
+                    val p = ServiceLocator.productRepository.getProductDetails(item.id)
+                    if (p != null) {
+                        val s = ServiceLocator.storeRepository.getStoreById(p.storeId)
+                        if (s != null) {
+                            rates[item.id] = s.usdExchangeRate
+                        }
+                    }
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
+        }
+        productStoreRates = rates
+    }
     
     // Coroutine scope for transient popups
     val coroutineScope = rememberCoroutineScope()
@@ -77,9 +105,28 @@ fun WishlistScreen(
         }
     }
 
+    val currentCurrencyState by CurrencyManager.currentCurrency.collectAsStateWithLifecycle()
+
     // Queue value calculation to simulate high-retention "shopping queue"
     val queueTotalValue = remember(wishlist.size) {
         wishlist.sumOf { it.price }
+    }
+
+    val formattedQueueTotal = remember(wishlist.size, productStoreRates, currentCurrencyState) {
+        val totalConverted = wishlist.sumOf { item ->
+            val rate = productStoreRates[item.id] ?: 13500.0
+            if (currentCurrencyState == CurrencyManager.Currency.SYP) {
+                item.price * rate
+            } else {
+                item.price
+            }
+        }
+        val prefix = if (currentCurrencyState == CurrencyManager.Currency.SYP) {
+            if (isAr) "ل.س " else "SYP "
+        } else {
+            "$"
+        }
+        "$prefix${String.format("%,.0f", totalConverted)}"
     }
 
     Scaffold(
@@ -195,7 +242,7 @@ fun WishlistScreen(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "$${String.format("%.2f", queueTotalValue)}",
+                                text = formattedQueueTotal,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = BrandPrimary
@@ -482,8 +529,9 @@ fun WishlistScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
+                                        val rate = productStoreRates[product.id] ?: 13500.0
                                         Text(
-                                            text = "$${String.format("%.2f", product.price)}",
+                                            text = CurrencyManager.formatPrice(product.price, rate, isAr),
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             color = BrandTextPrimary
@@ -491,7 +539,7 @@ fun WishlistScreen(
 
                                         if (product.originalPrice != null) {
                                             Text(
-                                                text = "$${String.format("%.2f", product.originalPrice)}",
+                                                text = CurrencyManager.formatPrice(product.originalPrice, rate, isAr),
                                                 fontSize = 10.sp,
                                                 color = BrandTextMuted,
                                                 textDecoration = TextDecoration.LineThrough

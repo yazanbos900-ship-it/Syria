@@ -13,5 +13,6 @@ data class Store(
     val status: String = "active",
     val rating: Float = 5.0f,
     val isVerified: Boolean = false,
+    val usdExchangeRate: Double = 13500.0,
     val createdAt: Long = System.currentTimeMillis()
 )
