@@ -320,6 +320,20 @@ fun MarketplaceScreen(
         }
     }
 
+    val filteredStores = remember(
+        storeState.stores,
+        SharedFilterState.selectedCategoryFilter
+    ) {
+        if (SharedFilterState.selectedCategoryFilter == "All" || 
+            SharedFilterState.selectedCategoryFilter.isBlank()) {
+            storeState.stores
+        } else {
+            storeState.stores.filter { store ->
+                store.categoryId == SharedFilterState.selectedCategoryFilter
+            }
+        }
+    }
+
     if (showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
@@ -557,7 +571,9 @@ fun MarketplaceScreen(
             verticalArrangement = Arrangement.Top
         ) {
             StoresSection(
-                state = storeState,
+                stores = filteredStores,
+                isLoading = storeState.isLoading,
+                error = storeState.error,
                 onStoreClick = onStoreSelected,
                 onViewAllClick = { /* TODO: navigation to all stores */ }
             )
@@ -903,7 +919,13 @@ fun MarketplaceScreen(
 }
 
 @Composable
-fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onViewAllClick: () -> Unit) {
+fun StoresSection(
+    stores: List<com.example.domain.model.Store>,
+    isLoading: Boolean,
+    error: String? = null,
+    onStoreClick: (String) -> Unit,
+    onViewAllClick: () -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
@@ -921,7 +943,7 @@ fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onVie
             }
         }
         
-        if (state.isLoading) {
+        if (isLoading) {
             LazyRow(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -929,11 +951,11 @@ fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onVie
             ) {
                 items(4) { StoreStorySkeletonItem() }
             }
-        } else if (state.error != null) {
-            Text(text = state.error, color = BrandError, modifier = Modifier.padding(24.dp))
-        } else if (state.stores.isEmpty()) {
+        } else if (error != null) {
+            Text(text = error, color = BrandError, modifier = Modifier.padding(24.dp))
+        } else if (stores.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-            Text(androidx.compose.ui.res.stringResource(R.string.top_stores), color = BrandTextMuted)
+                Text(androidx.compose.ui.res.stringResource(R.string.top_stores), color = BrandTextMuted)
             }
         } else {
             LazyRow(
@@ -941,7 +963,7 @@ fun StoresSection(state: StoreListUiState, onStoreClick: (String) -> Unit, onVie
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(horizontal = 24.dp)
             ) {
-                items(state.stores) { store ->
+                items(stores) { store ->
                     StoreStoryItem(store = store, onClick = { onStoreClick(store.id) })
                 }
             }
