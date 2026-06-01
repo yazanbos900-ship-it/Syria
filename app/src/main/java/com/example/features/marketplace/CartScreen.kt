@@ -208,7 +208,7 @@ fun CartScreen(
             // Highly optimized sticky checkout action bar with checkout summary
             if (initialCartItems.isNotEmpty()) {
                 Surface(
-                    color = Color.White,
+                    color = BrandSurface,
                     tonalElevation = 8.dp,
                     shadowElevation = 16.dp,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
@@ -249,7 +249,7 @@ fun CartScreen(
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(4.dp))
-                                                .background(Color(0xFFE8F5E9))
+                                                .background(BrandPrimary.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
                                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                                         ) {
                                             Text(
