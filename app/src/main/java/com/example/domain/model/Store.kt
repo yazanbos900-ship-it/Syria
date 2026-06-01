@@ -17,5 +17,6 @@ data class Store(
     val subscriptionTier: String = "Starter", // "Starter", "Growth", "Pro"
     val verificationStatus: String = "Pending", // "Pending", "Verified", "Rejected"
     val sellerBadge: String = "None", // "None", "Verified Seller", "Pro Seller"
+    val defaultCurrency: String = "USD", // "USD" or "SYP"
     val createdAt: Long = System.currentTimeMillis()
 )

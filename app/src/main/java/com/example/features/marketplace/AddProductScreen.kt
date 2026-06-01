@@ -64,8 +64,15 @@ fun AddProductScreen(
     var title by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
+    var selectedCurrency by remember { mutableStateOf("USD") }
     var imageUris by remember { mutableStateOf<List<String>>(emptyList()) }
     var isUploadingImage by remember { mutableStateOf(false) }
+
+    LaunchedEffect(store) {
+        store?.let {
+            selectedCurrency = it.defaultCurrency
+        }
+    }
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
     var isSuccess by remember { mutableStateOf(false) }
@@ -278,15 +285,85 @@ fun AddProductScreen(
                     testTag = "add_product_title_input"
                 )
 
-                // 2. Product Price Input
-                StoreInputField(
-                    label = if (isArabic) "السعر (بالدولار الأمريكي USD)" else "Price (in USD)",
-                    value = price,
-                    onValueChange = { price = it },
-                    placeholder = "0.00",
-                    testTag = "add_product_price_input",
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+                // 2. Product Currency Selection & Price Input
+                val exchangeRate = store?.usdExchangeRate ?: 13500.0
+
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = if (isArabic) "عملة تسعير المنتج" else "Product Pricing Currency",
+                        color = BrandTextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        for (currency in listOf("USD", "SYP")) {
+                            val isSelected = selectedCurrency == currency
+                            val displayName = if (currency == "USD") "USD ($)" else "SYP (ل.س)"
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (isSelected) BrandPrimary.copy(alpha = 0.15f) else BrandSurface)
+                                    .border(
+                                        1.5.dp,
+                                        if (isSelected) BrandPrimary else BrandSoftGray,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable { selectedCurrency = currency }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = displayName,
+                                    color = if (isSelected) BrandPrimary else BrandTextMuted,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    StoreInputField(
+                        label = if (selectedCurrency == "USD") {
+                            if (isArabic) "السعر (بالدولار الأمريكي USD)" else "Price (in USD)"
+                        } else {
+                            if (isArabic) "السعر (بالليرة السورية SYP)" else "Price (in SYP)"
+                        },
+                        value = price,
+                        onValueChange = { price = it },
+                        placeholder = "0.00",
+                        testTag = "add_product_price_input",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+
+                    val parsedDouble = price.toDoubleOrNull()
+                    if (parsedDouble != null && parsedDouble > 0.0) {
+                        val convertedAmount = if (selectedCurrency == "USD") {
+                            parsedDouble * exchangeRate
+                        } else {
+                            parsedDouble / exchangeRate
+                        }
+                        
+                        val formattedOutput = if (selectedCurrency == "USD") {
+                            String.format("%,d", convertedAmount.toLong()) + " " + (if (isArabic) "ل.س" else "SYP")
+                        } else {
+                            String.format("%.2f", convertedAmount) + " " + (if (isArabic) "دولار" else "USD")
+                        }
+
+                        Text(
+                            text = if (isArabic) "ما يعادل تقريباً: $formattedOutput" else "Approximately equivalent to: $formattedOutput",
+                            color = BrandPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
 
                 // 3. Category Selector
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -370,91 +447,96 @@ fun AddProductScreen(
                     )
                 }
 
-                // 5. Product Images Upload Grid
+                // 5. Product Images Upload Ribbon
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = if (isArabic) "صور المنتج المعروضة" else "Product Gallery Images",
-                        color = BrandTextPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(90.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(BrandSurface)
-                                .border(1.dp, BrandSoftGray, RoundedCornerShape(12.dp))
-                                .clickable(enabled = !isUploadingImage) {
-                                    photoLauncher.launch("image/*")
-                                }
-                                .testTag("add_product_upload_image_button"),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isUploadingImage) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = BrandPrimary,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = if (isArabic) "معرض الصور للمنتج" else "Product Gallery Images",
+                            color = BrandTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${imageUris.size}/10",
+                            fontSize = 11.sp,
+                            color = BrandPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Compact adaptive uploader
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(BrandPrimary.copy(alpha = 0.05f))
+                                    .border(
+                                        BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.4f)),
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable(enabled = !isUploadingImage && imageUris.size < 10) {
+                                        photoLauncher.launch("image/*")
+                                    }
+                                    .testTag("add_product_upload_image_button"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isUploadingImage) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = BrandPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
                                     Icon(
-                                        imageVector = Icons.Default.AddPhotoAlternate,
+                                        imageVector = Icons.Default.AddAPhoto,
                                         contentDescription = null,
                                         tint = BrandPrimary,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "${imageUris.size}/10",
-                                        fontSize = 11.sp,
-                                        color = BrandTextMuted,
-                                        fontWeight = FontWeight.Bold
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
                         }
 
-                        if (imageUris.isNotEmpty()) {
-                            LazyRow(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        // Scaled gallery items
+                        items(imageUris) { url ->
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(BorderStroke(1.dp, BrandSoftGray), RoundedCornerShape(12.dp))
                             ) {
-                                items(imageUris) { url ->
-                                    Box(
-                                        modifier = Modifier
-                                            .size(90.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                    ) {
-                                        AsyncImage(
-                                            model = url,
-                                            contentDescription = null,
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                        IconButton(
-                                            onClick = { imageUris = imageUris.filter { it != url } },
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(4.dp)
-                                                .size(24.dp)
-                                                .background(Color.Black.copy(alpha = 0.6f), CircleShape)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Close,
-                                                contentDescription = "حذف",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
-                                    }
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                        .size(18.dp)
+                                        .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                        .clickable { imageUris = imageUris.filter { it != url } },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(10.dp)
+                                    )
                                 }
                             }
                         }
@@ -504,6 +586,7 @@ fun AddProductScreen(
                                 reviewCount = 0,
                                 isAvailable = true,
                                 stockCount = 100,
+                                currency = selectedCurrency,
                                 createdAt = System.currentTimeMillis()
                             )
                             val res = ServiceLocator.productRepository.addProduct(newProduct)

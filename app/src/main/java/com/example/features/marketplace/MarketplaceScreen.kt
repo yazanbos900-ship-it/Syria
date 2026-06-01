@@ -1,5 +1,6 @@
 package com.example.features.marketplace
 
+import com.example.domain.model.getPriceInUSD
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -856,11 +857,14 @@ fun MarketplaceScreen(
                                             modifier = Modifier.fillMaxSize()
                                         )
                                         
+                                        val productStore = storeState.stores.find { it.id == product.storeId }
+                                        val productRate = productStore?.usdExchangeRate ?: 13500.0
+                                        val normalizedPrice = product.getPriceInUSD(productRate)
                                         val marketProduct = MarketProduct(
                                             id = product.id,
                                             name = product.title,
-                                            price = product.price,
-                                            originalPrice = product.price * 1.5,
+                                            price = normalizedPrice,
+                                            originalPrice = normalizedPrice * 1.5,
                                             rating = product.rating.toDouble(),
                                             reviewsCount = product.reviewCount,
                                             category = product.categoryId,
@@ -932,8 +936,8 @@ fun MarketplaceScreen(
                                         ) {
                                             val productStore = storeState.stores.find { it.id == product.storeId }
                                             val productRate = productStore?.usdExchangeRate ?: 13500.0
-                                            val formattedPrice = CurrencyManager.formatPrice(
-                                                product.price,
+                                            val formattedPrice = CurrencyManager.formatProductPrice(
+                                                product,
                                                 productRate,
                                                 LanguageManager.isArabic(context)
                                             )
@@ -1621,8 +1625,8 @@ fun ProductRowCard(
     val matchingStore = stores.find { it.id == product.storeId }
     val productStoreName = matchingStore?.name ?: (if (isAr) "متجر مرخّص" else "Licensed Store")
     val productRate = matchingStore?.usdExchangeRate ?: 13500.0
-    val formattedPrice = CurrencyManager.formatPrice(
-        product.price,
+    val formattedPrice = CurrencyManager.formatProductPrice(
+        product,
         productRate,
         isAr
     )
@@ -1643,11 +1647,12 @@ fun ProductRowCard(
                 modifier = Modifier.fillMaxSize()
             )
 
+            val normalizedPrice = product.getPriceInUSD(productRate)
             val marketProduct = MarketProduct(
                 id = product.id,
                 name = product.title,
-                price = product.price,
-                originalPrice = product.price * 1.5,
+                price = normalizedPrice,
+                originalPrice = normalizedPrice * 1.5,
                 rating = product.rating.toDouble(),
                 reviewsCount = product.reviewCount,
                 category = product.categoryId,

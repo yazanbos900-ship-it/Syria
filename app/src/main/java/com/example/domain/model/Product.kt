@@ -12,5 +12,11 @@ data class Product(
     val reviewCount: Int = 0,
     val isAvailable: Boolean = true,
     val stockCount: Int = 10,
+    val currency: String = "USD", // "USD" or "SYP"
     val createdAt: Long = System.currentTimeMillis()
 )
+
+fun Product.getPriceInUSD(exchangeRate: Double): Double {
+    val rate = if (exchangeRate <= 0) 13500.0 else exchangeRate
+    return if (currency == "SYP") price / rate else price
+}

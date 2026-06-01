@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.Product
 import com.example.domain.model.Store
+import com.example.domain.model.SubscriptionRequest
+import com.example.core.di.ServiceLocator
 import com.example.domain.repository.ProductRepository
 import com.example.domain.repository.StoreRepository
 import com.example.domain.repository.AuthRepository
@@ -56,7 +58,7 @@ class StoreManagementViewModel(
         }
     }
 
-    fun addProduct(title: String, price: Double, description: String, imageUrls: List<String>, categoryId: String) {
+    fun addProduct(title: String, price: Double, description: String, imageUrls: List<String>, categoryId: String, currency: String = "USD") {
         val storeId = state.value.store?.id ?: return
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -68,10 +70,11 @@ class StoreManagementViewModel(
                 imageUrls = imageUrls,
                 categoryId = categoryId,
                 storeId = storeId,
-                rating = 0f,
+                rating = 4.5f,
                 reviewCount = 0,
                 isAvailable = true,
                 stockCount = 100,
+                currency = currency,
                 createdAt = System.currentTimeMillis()
             )
             val result = productRepo.addProduct(product)
@@ -81,6 +84,10 @@ class StoreManagementViewModel(
                 _state.update { it.copy(isLoading = false, error = result.exceptionOrNull()?.message) }
             }
         }
+    }
+
+    fun resetSuccess() {
+        _state.update { it.copy(isSuccess = false) }
     }
 
     fun updateProduct(product: Product) {
@@ -107,7 +114,7 @@ class StoreManagementViewModel(
         }
     }
 
-    fun updateStore(name: String, description: String, usdExchangeRate: Double, categoryId: String, logoUrl: String?, bannerUrl: String?) {
+    fun updateStore(name: String, description: String, usdExchangeRate: Double, categoryId: String, logoUrl: String?, bannerUrl: String?, defaultCurrency: String) {
         val currentStore = state.value.store ?: return
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
@@ -117,11 +124,34 @@ class StoreManagementViewModel(
                 categoryId = categoryId,
                 logoUrl = logoUrl ?: currentStore.logoUrl,
                 bannerUrl = bannerUrl ?: currentStore.bannerUrl,
-                usdExchangeRate = usdExchangeRate
+                usdExchangeRate = usdExchangeRate,
+                defaultCurrency = defaultCurrency
             )
             val result = storeRepo.updateStore(updatedStore)
             if (result.isSuccess) {
                 _state.update { it.copy(isLoading = false, store = updatedStore) }
+            } else {
+                _state.update { it.copy(isLoading = false, error = result.exceptionOrNull()?.message) }
+            }
+        }
+    }
+
+    fun requestSubscription(tier: String) {
+        val currentStore = state.value.store ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            val request = SubscriptionRequest(
+                requestId = java.util.UUID.randomUUID().toString(),
+                userId = currentStore.ownerId,
+                storeId = currentStore.id,
+                requestedTier = tier,
+                requestDate = System.currentTimeMillis(),
+                status = "pending"
+            )
+            val result = ServiceLocator.subscriptionRepository.submitSubscriptionRequest(request)
+            if (result.isSuccess) {
+                val updatedStore = currentStore.copy(subscriptionTier = tier)
+                _state.update { it.copy(isLoading = false, store = updatedStore, isSuccess = true) }
             } else {
                 _state.update { it.copy(isLoading = false, error = result.exceptionOrNull()?.message) }
             }

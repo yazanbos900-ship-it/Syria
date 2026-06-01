@@ -109,6 +109,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 subscriptionTier = doc.getString("subscriptionTier") ?: "Starter",
                 verificationStatus = doc.getString("verificationStatus") ?: "Pending",
                 sellerBadge = doc.getString("sellerBadge") ?: "None",
+                defaultCurrency = doc.getString("defaultCurrency") ?: "USD",
                 createdAt = try {
                     doc.getTimestamp("createdAt")?.toDate()?.time 
                         ?: doc.getLong("createdAt") 
@@ -180,6 +181,7 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "subscriptionTier" to store.subscriptionTier,
                 "verificationStatus" to store.verificationStatus,
                 "sellerBadge" to store.sellerBadge,
+                "defaultCurrency" to store.defaultCurrency,
                 "createdAt" to store.createdAt
             )
             db.collection("stores").document(store.id).set(storeMap).await()
@@ -220,7 +222,8 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "usdExchangeRate" to store.usdExchangeRate,
                 "subscriptionTier" to store.subscriptionTier,
                 "verificationStatus" to store.verificationStatus,
-                "sellerBadge" to store.sellerBadge
+                "sellerBadge" to store.sellerBadge,
+                "defaultCurrency" to store.defaultCurrency
             )
             db.collection("stores").document(store.id).update(storeMap as Map<String, Any>).await()
             Result.success(Unit)
@@ -289,6 +292,8 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "subscriptionTier" to "Starter",
                 "verificationStatus" to "Pending",
                 "sellerBadge" to "None",
+                "usdExchangeRate" to 13500.0,
+                "defaultCurrency" to "USD",
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
 

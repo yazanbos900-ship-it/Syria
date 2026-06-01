@@ -1,6 +1,7 @@
 package com.example.core.utils
 
 import android.content.Context
+import com.example.domain.model.Product
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,5 +50,15 @@ object CurrencyManager {
                 String.format("%,d %s", sypPrice.toLong(), symbol)
             }
         }
+    }
+
+    fun formatProductPrice(product: Product, exchangeRate: Double, isArabic: Boolean): String {
+        val rate = if (exchangeRate <= 0) 13500.0 else exchangeRate
+        val priceInUSD = if (product.currency == "SYP") {
+            product.price / rate
+        } else {
+            product.price
+        }
+        return formatPrice(priceInUSD, rate, isArabic)
     }
 }

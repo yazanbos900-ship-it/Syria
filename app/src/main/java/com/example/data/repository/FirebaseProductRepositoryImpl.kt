@@ -49,6 +49,7 @@ class FirebaseProductRepositoryImpl : ProductRepository {
             val reviewCount = (get("reviewCount") as? Number)?.toInt() ?: 0
             val isAvailable = getBoolean("isAvailable") ?: true
             val stockCount = (get("stockCount") as? Number)?.toInt() ?: 10
+            val currency = getString("currency") ?: "USD"
             
             Product(
                 id = id,
@@ -62,6 +63,7 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 reviewCount = reviewCount,
                 isAvailable = isAvailable,
                 stockCount = stockCount,
+                currency = currency,
                 createdAt = getCreatedAt(this)
             )
         } catch (e: Exception) {
@@ -281,6 +283,7 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 "reviewCount" to product.reviewCount,
                 "isAvailable" to product.isAvailable,
                 "stockCount" to product.stockCount,
+                "currency" to product.currency,
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
             db.collection("products").add(productMap).await()
@@ -308,7 +311,8 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 "rating" to product.rating,
                 "reviewCount" to product.reviewCount,
                 "isAvailable" to product.isAvailable,
-                "stockCount" to product.stockCount
+                "stockCount" to product.stockCount,
+                "currency" to product.currency
             )
             db.collection("products").document(product.id).update(productMap as Map<String, Any>).await()
             Result.success(Unit)

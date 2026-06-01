@@ -1,5 +1,6 @@
 package com.example.features.marketplace
 
+import com.example.domain.model.getPriceInUSD
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -223,8 +224,8 @@ fun ProductDetailScreen(
     val product = DetailProduct(
         id = domainProduct.id,
         name = domainProduct.title,
-        price = domainProduct.price,
-        originalPrice = domainProduct.price * 1.5, // Mocking original price
+        price = domainProduct.getPriceInUSD(state.store?.usdExchangeRate ?: 13500.0),
+        originalPrice = domainProduct.getPriceInUSD(state.store?.usdExchangeRate ?: 13500.0) * 1.5, // Mocking original price
         discountPercent = 33,
         rating = domainProduct.rating.toDouble(),
         reviewsCount = domainProduct.reviewCount,
@@ -1102,7 +1103,7 @@ fun ProductDetailScreen(
                                 }
                                 
                                 Text(
-                                    text = CurrencyManager.formatPrice(item.product.price, state.store?.usdExchangeRate ?: 13500.0, isAr),
+                                    text = CurrencyManager.formatProductPrice(item.product, state.store?.usdExchangeRate ?: 13500.0, isAr),
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = BrandTextPrimary
@@ -1420,7 +1421,7 @@ fun RecommendationCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = CurrencyManager.formatPrice(product.price, exchangeRate, isAr),
+                        text = CurrencyManager.formatProductPrice(product, exchangeRate, isAr),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = BrandPrimary
