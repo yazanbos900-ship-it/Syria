@@ -12,7 +12,11 @@ import com.example.domain.repository.ProductRepository
 import com.example.domain.repository.StoreRepository
 import com.example.domain.repository.SubscriptionRepository
 import com.example.domain.repository.WishlistRepository
+import com.example.domain.repository.OrderRepository
 import com.example.data.repository.FirebaseSubscriptionRepositoryImpl
+import com.example.data.repository.FirebaseOrderRepositoryImpl
+import com.example.data.repository.FirebasePaymentRepositoryImpl
+import com.example.domain.repository.PaymentRepository
 import com.example.firebase.FirebaseInitializer
 
 object ServiceLocator {
@@ -47,12 +51,20 @@ object ServiceLocator {
         FirestoreWishlistRepositoryImpl()
     }
 
+    val orderRepository: OrderRepository by lazy {
+        FirebaseOrderRepositoryImpl()
+    }
+
     val recommendationRepository: com.example.domain.repository.RecommendationRepository by lazy {
         com.example.data.repository.FirebaseRecommendationRepositoryImpl()
     }
 
     val comparisonRepository: com.example.domain.repository.ComparisonRepository by lazy {
         com.example.data.repository.FirebaseComparisonRepositoryImpl()
+    }
+
+    val paymentRepository: PaymentRepository by lazy {
+        FirebasePaymentRepositoryImpl()
     }
 
     /**

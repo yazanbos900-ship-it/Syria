@@ -45,6 +45,7 @@ fun ProfileScreen(
     onNavigateToCreateStore: () -> Unit = {},
     onNavigateToStoreManagement: () -> Unit = {},
     onNavigateToAdmin: () -> Unit = {},
+    onNavigateToOrders: () -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -168,7 +169,7 @@ fun ProfileScreen(
                             title = if (isArabic) "طلبباتي" else "My Orders",
                             subtitle = if (isArabic) "عرض المعاملات والطلبات السابقة" else "Manage transactions & purchasing history",
                             isArabic = isArabic,
-                            onClick = { showOrdersDialog = true },
+                            onClick = onNavigateToOrders,
                             testTag = "profile_orders_row"
                         )
                     }

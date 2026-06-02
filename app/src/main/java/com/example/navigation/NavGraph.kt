@@ -18,6 +18,8 @@ import com.example.features.marketplace.AddProductScreen
 import com.example.features.onboarding.OnboardingScreen
 
 import com.example.features.marketplace.StoreManagementScreen
+import com.example.features.marketplace.OrdersScreen
+import com.example.features.marketplace.CheckoutScreen
 import com.example.features.admin.AdminDashboardScreen
 
 @Composable
@@ -101,8 +103,18 @@ fun NavigationGraph(
             CartScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onCheckoutSuccess = {
-                    // Navigate back or show success sequence
-                    navController.popBackStack()
+                    navController.navigate(Screen.Checkout.route)
+                }
+            )
+        }
+
+        composable(route = Screen.Checkout.route) {
+            CheckoutScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToOrders = {
+                    navController.navigate(Screen.Orders.route) {
+                        popUpTo(Screen.Home.route)
+                    }
                 }
             )
         }
@@ -168,8 +180,20 @@ fun NavigationGraph(
                 onNavigateToCreateStore = { navController.navigate(Screen.CreateStore.route) },
                 onNavigateToStoreManagement = { navController.navigate(Screen.StoreManagement.route) },
                 onNavigateToAdmin = { navController.navigate(Screen.AdminDashboard.route) },
+                onNavigateToOrders = { navController.navigate(Screen.Orders.route) },
                 onSignOut = {
                     navController.navigate(Screen.Authentication.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(route = Screen.Orders.route) {
+            OrdersScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 }

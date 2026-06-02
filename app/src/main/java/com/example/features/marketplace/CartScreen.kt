@@ -286,7 +286,7 @@ fun CartScreen(
 
                         // CTA Button
                         Button(
-                            onClick = { isCheckoutDialogOpen = true },
+                            onClick = { onCheckoutSuccess() },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = BrandPrimary,
                                 contentColor = Color.White
@@ -880,6 +880,67 @@ fun CartScreen(
                                 }
                             }
                         }
+
+                        // Create real Order entries in Firestore and clear cart
+                        coroutineScope.launch {
+                            try {
+                                val session = ServiceLocator.authRepository.getCurrentUserSession()
+                                if (session != null) {
+                                    val uid = session.id
+                                    val itemsByStore = initialCartItems.groupBy { it.storeName }
+                                    itemsByStore.forEach { (storeName, cartItems) ->
+                                        var targetStoreId = "sample_store_id"
+                                        try {
+                                            val firstProduct = ServiceLocator.productRepository.getProductDetails(cartItems.first().id)
+                                            if (firstProduct != null) {
+                                                targetStoreId = firstProduct.storeId
+                                            }
+                                        } catch (e: Exception) {
+                                            // ignore
+                                        }
+
+                                        val orderId = "WS-" + java.util.UUID.randomUUID().toString().take(8).uppercase()
+                                        
+                                        val orderItems = cartItems.map { cartItem ->
+                                            com.example.domain.model.OrderItem(
+                                                productId = cartItem.id,
+                                                productName = cartItem.name,
+                                                productImage = cartItem.image,
+                                                quantity = cartItem.quantity,
+                                                unitPrice = cartItem.price
+                                            )
+                                        }
+
+                                        val totalAmount = cartItems.sumOf { it.price * it.quantity }
+
+                                        val order = com.example.domain.model.Order(
+                                            orderId = orderId,
+                                            userId = uid,
+                                            storeId = targetStoreId,
+                                            storeName = storeName,
+                                            status = "Pending",
+                                            createdAt = System.currentTimeMillis(),
+                                            totalAmount = totalAmount,
+                                            currency = "USD",
+                                            items = orderItems,
+                                            customerName = session.name.ifBlank { "User ${uid.take(4)}" },
+                                            customerPhone = session.phoneNumber?.ifBlank { "N/A" } ?: "N/A",
+                                            shippingAddress = "Bab Touma, Block 4, Damascus, Syria"
+                                        )
+
+                                        ServiceLocator.orderRepository.createOrder(order)
+                                        
+                                        // Clear cart items in Firestore
+                                        cartItems.forEach { cartItem ->
+                                            ServiceLocator.cartRepository.removeFromCart(uid, cartItem.id)
+                                        }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("CartScreen", "Failed to place order in Firestore", e)
+                            }
+                        }
+
                         onCheckoutSuccess()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)

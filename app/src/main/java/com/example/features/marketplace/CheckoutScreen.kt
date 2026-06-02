@@ -1,0 +1,836 @@
+package com.example.features.marketplace
+
+import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.example.R
+import com.example.core.utils.CurrencyManager
+import com.example.core.utils.LanguageManager
+import com.example.ui.theme.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CheckoutScreen(
+    onNavigateBack: () -> Unit,
+    onNavigateToOrders: () -> Unit,
+    viewModel: CheckoutViewModel = viewModel()
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val isArabic = LanguageManager.isArabic(context)
+
+    // Handle Toast Errors
+    LaunchedEffect(state.error) {
+        state.error?.let { err ->
+            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+            viewModel.resetError()
+        }
+    }
+
+    LaunchedEffect(state.verificationError) {
+        state.verificationError?.let { err ->
+            Toast.makeText(context, err, Toast.LENGTH_SHORT).show()
+            viewModel.resetVerificationError()
+        }
+    }
+
+    Scaffold(
+        containerColor = BrandBackground,
+        contentWindowInsets = WindowInsets.safeDrawing,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = if (state.showVerification) {
+                            if (isArabic) "توثيق عملية الدفع" else "Verify Transaction"
+                        } else if (state.orderPlacedSuccess) {
+                            if (isArabic) "اكتمل الطلب 🎉" else "Order Ready 🎉"
+                        } else {
+                            if (isArabic) "مراجعة الطلب والدفع" else "Review & Payment"
+                        },
+                        fontWeight = FontWeight.ExtraBold,
+                        color = BrandTextPrimary,
+                        fontSize = 18.sp
+                    )
+                },
+                navigationIcon = {
+                    if (!state.orderPlacedSuccess) {
+                        IconButton(
+                            onClick = {
+                                if (state.showVerification) {
+                                    // Go back to form
+                                    viewModel.startCountdown() // reset timer on back optional
+                                    // but we just reset showVerification
+                                    // to allow updating payment methods
+                                } else {
+                                    onNavigateBack()
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                                contentDescription = if (isArabic) "رجوع" else "Back",
+                                tint = BrandTextPrimary
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = BrandBackground
+                )
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when {
+                state.orderPlacedSuccess -> {
+                    CheckoutSuccessView(
+                        isArabic = isArabic,
+                        state = state,
+                        onGoToOrders = onNavigateToOrders,
+                        onGoToHome = onNavigateBack
+                    )
+                }
+                state.showVerification -> {
+                    CheckoutVerificationView(
+                        isArabic = isArabic,
+                        state = state,
+                        onOtpChange = { viewModel.onOtpChange(it) },
+                        onVerify = { viewModel.verifyOtp() },
+                        onResend = { viewModel.resendOtp() },
+                        onDismissSms = { viewModel.dismissSms() }
+                    )
+                }
+                else -> {
+                    CheckoutDetailsView(
+                        isArabic = isArabic,
+                        state = state,
+                        onNameChange = { viewModel.onNameChange(it) },
+                        onPhoneChange = { viewModel.onPhoneChange(it) },
+                        onAddressChange = { viewModel.onAddressChange(it) },
+                        onPaymentMethodChange = { viewModel.onPaymentMethodChange(it) },
+                        onSubmit = { viewModel.processCheckout() }
+                    )
+                }
+            }
+
+            if (state.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .clickable(enabled = false) {},
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator(color = BrandPrimary)
+                            Text(
+                                text = state.progressMessage.ifBlank {
+                                    if (isArabic) "جاري المعالجة..." else "Loading..."
+                                },
+                                color = BrandTextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CheckoutDetailsView(
+    isArabic: Boolean,
+    state: CheckoutUiState,
+    onNameChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit,
+    onAddressChange: (String) -> Unit,
+    onPaymentMethodChange: (String) -> Unit,
+    onSubmit: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        // Step header
+        Text(
+            text = if (isArabic) "معلومات مستلم الشحنة 📦" else "Delivery Coordinates 📦",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = BrandTextPrimary
+        )
+
+        // Info input fields
+        OutlinedTextField(
+            value = state.customerName,
+            onValueChange = onNameChange,
+            label = { Text(if (isArabic) "الاسم الكامل" else "Full Name") },
+            textStyle = LocalTextStyle.current.copy(color = BrandTextPrimary),
+            leadingIcon = { Icon(Icons.Default.Person, null, tint = BrandPrimary) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("checkout_name_input"),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = BrandPrimary,
+                unfocusedBorderColor = BrandSoftGray,
+                focusedLabelColor = BrandPrimary
+            )
+        )
+
+        OutlinedTextField(
+            value = state.customerPhone,
+            onValueChange = onPhoneChange,
+            label = { Text(if (isArabic) "رقم الموبايل" else "Mobile Number") },
+            textStyle = LocalTextStyle.current.copy(color = BrandTextPrimary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            leadingIcon = { Icon(Icons.Default.Phone, null, tint = BrandPrimary) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("checkout_phone_input"),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = BrandPrimary,
+                unfocusedBorderColor = BrandSoftGray,
+                focusedLabelColor = BrandPrimary
+            )
+        )
+
+        OutlinedTextField(
+            value = state.shippingAddress,
+            onValueChange = onAddressChange,
+            label = { Text(if (isArabic) "عنوان الشحن والتوصيل" else "Shipping Address") },
+            textStyle = LocalTextStyle.current.copy(color = BrandTextPrimary),
+            leadingIcon = { Icon(Icons.Default.Map, null, tint = BrandPrimary) },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("checkout_address_input"),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = BrandPrimary,
+                unfocusedBorderColor = BrandSoftGray,
+                focusedLabelColor = BrandPrimary
+            )
+        )
+
+        HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+
+        // Payment Method 선택
+        Text(
+            text = if (isArabic) "اختر طريقة الدفع 💳" else "Select Payment Method 💳",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = BrandTextPrimary
+        )
+
+        PaymentMethodCard(
+            title = "Syriatel Cash",
+            description = if (isArabic) "دفع عبر بوابة سيرياتيل كاش السريعة" else "Pay instantly via Syriatel Cash Mobile Wallet",
+            color = Color(0xFFD32F2F), // Syriatel red
+            icon = Icons.Default.AccountBalanceWallet,
+            isSelected = state.paymentMethod == "Syriatel Cash",
+            isArabic = isArabic,
+            onClick = { onPaymentMethodChange("Syriatel Cash") }
+        )
+
+        PaymentMethodCard(
+            title = "MTN Cash",
+            description = if (isArabic) "دفع محفظة ام تي ان كاش الإلكترونية" else "Pay easily using MTN Cash e-Wallet",
+            color = Color(0xFFFFB300), // MTN Yellow
+            icon = Icons.Default.Wallet,
+            isSelected = state.paymentMethod == "MTN Cash",
+            isSelectedYellow = true,
+            isArabic = isArabic,
+            onClick = { onPaymentMethodChange("MTN Cash") }
+        )
+
+        PaymentMethodCard(
+            title = "Cash On Delivery",
+            description = if (isArabic) "ادفع نقداً عند استلام الطرد وفحصه" else "Pay in cash at your doorstep upon verification",
+            color = BrandPrimary,
+            icon = Icons.Default.LocalShipping,
+            isSelected = state.paymentMethod == "Cash On Delivery",
+            isArabic = isArabic,
+            onClick = { onPaymentMethodChange("Cash On Delivery") }
+        )
+
+        HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+
+        // Summary breakdowns
+        val subtotal = state.cartItems.sumOf { it.price * it.quantity }
+        val shipping = if (state.cartItems.isNotEmpty()) 2.0 else 0.0
+        val total = subtotal + shipping
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = BrandSurface),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, BrandSoftGray),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = if (isArabic) "تفاصيل الفاتورة" else "Summary Invoice",
+                    fontWeight = FontWeight.Bold,
+                    color = BrandTextPrimary,
+                    fontSize = 13.sp
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = if (isArabic) "المجموع الفرعي:" else "Subtotal:", color = BrandTextMuted, fontSize = 12.sp)
+                    Text(text = CurrencyManager.formatPrice(subtotal, 13500.0, isArabic), color = BrandTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = if (isArabic) "رسوم الشحن والتأمين:" else "Shipping & Insurance:", color = BrandTextMuted, fontSize = 12.sp)
+                    Text(text = CurrencyManager.formatPrice(shipping, 13500.0, isArabic), color = BrandTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+
+                HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = if (isArabic) "المبلغ المستحق الدفع:" else "Total Balance Payable:", color = BrandTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(text = CurrencyManager.formatPrice(total, 13500.0, isArabic), color = BrandPrimary, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = onSubmit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .testTag("checkout_submit_button"),
+            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(
+                text = if (isArabic) "تأكيد الطلب والدفع • ${CurrencyManager.formatPrice(total, 13500.0, isArabic)}" else "Verify & Pay • ${CurrencyManager.formatPrice(total, 13500.0, isArabic)}",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun PaymentMethodCard(
+    title: String,
+    description: String,
+    color: Color,
+    icon: Any,
+    isSelected: Boolean,
+    isSelectedYellow: Boolean = false,
+    isArabic: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                if (isSelectedYellow) color.copy(alpha = 0.12f) else color.copy(alpha = 0.08f)
+            } else BrandSurface
+        ),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) color else BrandSoftGray
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (icon is androidx.compose.ui.graphics.vector.ImageVector) {
+                    Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (title == "Syriatel Cash") {
+                        if (isArabic) "سيرياتيل كاش (محفظة)" else "Syriatel Cash Wallet"
+                    } else if (title == "MTN Cash") {
+                        if (isArabic) "ام تي ان كاش (محفظة)" else "MTN Cash Wallet"
+                    } else {
+                        if (isArabic) "الدفع عند الاستلام" else "Cash On Delivery (COD)"
+                    },
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 14.sp,
+                    color = BrandTextPrimary
+                )
+                Text(
+                    text = description,
+                    fontSize = 11.sp,
+                    color = BrandTextMuted
+                )
+            }
+
+            RadioButton(
+                selected = isSelected,
+                onClick = onClick,
+                colors = RadioButtonDefaults.colors(selectedColor = color, unselectedColor = BrandTextMuted)
+            )
+        }
+    }
+}
+
+@Composable
+fun CheckoutVerificationView(
+    isArabic: Boolean,
+    state: CheckoutUiState,
+    onOtpChange: (String) -> Unit,
+    onVerify: () -> Unit,
+    onResend: () -> Unit,
+    onDismissSms: () -> Unit
+) {
+    val txn = state.currentTransaction ?: return
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        val themeColor = if (txn.paymentMethod.contains("Syriatel", ignoreCase = true)) {
+            Color(0xFFD32F2F)
+        } else {
+            Color(0xFFFFB300)
+        }
+
+        // Provider Header Card
+        Card(
+            colors = CardDefaults.cardColors(containerColor = BrandSurface),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, BrandSoftGray),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(themeColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = null,
+                        tint = themeColor,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                Text(
+                    text = if (txn.paymentMethod.contains("Syriatel", ignoreCase = true)) "Syriatel Cash SecurePay" else "MTN Cash Wallet Gateway",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 16.sp,
+                    color = BrandTextPrimary
+                )
+
+                Text(
+                    text = if (isArabic) "رقم الهاتف المحفظ: ${state.customerPhone}" else "Wallet Mobile: ${state.customerPhone}",
+                    color = BrandTextMuted,
+                    fontSize = 12.sp
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceAround
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = if (isArabic) "الرقم المرجعي المعرف" else "Ref. Ticket ID", color = BrandTextMuted, fontSize = 10.sp)
+                        Text(text = txn.transactionId, fontWeight = FontWeight.Bold, color = BrandTextPrimary, fontSize = 13.sp)
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = if (isArabic) "المبلغ الإجمالي" else "Total Premium", color = BrandTextMuted, fontSize = 10.sp)
+                        Text(text = CurrencyManager.formatPrice(txn.amount, 13500.0, isArabic), fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+
+        // Verification Sent Toast Simulation
+        Card(
+            colors = CardDefaults.cardColors(containerColor = BrandPrimary.copy(alpha = 0.08f)),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Default.CellTower, null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
+                Text(
+                    text = if (isArabic) "تم إرسال رمز التحقق إلى رقم موبايلك المسجل!" else "Verification code sent to your mobile number",
+                    color = BrandSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // Simulated SMS Preview Card
+        AnimatedVisibility(
+            visible = state.showSimulatedSms,
+            enter = slideInVertically() + fadeIn(),
+            exit = slideOutVertically() + fadeOut()
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E2E)),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDismissSms() }
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandPrimary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("W", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Text(
+                                text = "WasetPlus Payment",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        IconButton(onClick = onDismissSms, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = if (isArabic) {
+                            "رمز التحقق الخاص بك لخدمة واصل بلس للدفع هو:\n\n${state.simulatedSmsBody}\n\nلا تشارك هذا الرمز مع أي شخص.\nهذا مجرد رمز محاكاة لأغراض العرض التوضيحي."
+                        } else {
+                            "Your verification code is:\n\n${state.simulatedSmsBody}\n\nDo not share this code with anyone.\nThis is only a simulation for demo purposes."
+                        },
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        }
+
+        // OTP inputs
+        OutlinedTextField(
+            value = state.verificationOtp,
+            onValueChange = { if (it.length <= 6) onOtpChange(it) },
+            label = { Text(if (isArabic) "أدخل الرمز المكون من 6 أرقام" else "Input 6-digit OTP Code") },
+            textStyle = LocalTextStyle.current.copy(
+                color = BrandTextPrimary,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 18.sp,
+                textAlign = TextAlign.Center
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("verification_otp_input"),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = themeColor,
+                unfocusedBorderColor = BrandSoftGray,
+                focusedLabelColor = themeColor
+            )
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Timer counter
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.HourglassBottom,
+                    contentDescription = null,
+                    tint = if (state.securityTimerSeconds > 0) BrandPrimary else Color.Red,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = if (state.securityTimerSeconds > 0) {
+                        "${state.securityTimerSeconds}s"
+                    } else {
+                        if (isArabic) "منتهي الصلاحية" else "Expired"
+                    },
+                    color = if (state.securityTimerSeconds > 0) BrandTextPrimary else Color.Red,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                )
+            }
+
+            // Resend Button
+            TextButton(
+                onClick = onResend,
+                enabled = state.securityTimerSeconds == 0
+            ) {
+                Text(
+                    text = if (isArabic) "إعادة إرسال الرمز" else "Resend Code",
+                    color = if (state.securityTimerSeconds == 0) BrandPrimary else BrandTextMuted,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = onVerify,
+            enabled = state.verificationOtp.length == 6,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .testTag("checkout_verify_confirm_button"),
+            colors = ButtonDefaults.buttonColors(containerColor = themeColor),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text(
+                text = if (isArabic) "تأكيد والتحقق من الدفع" else "Confirm & Authorize Payment",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun CheckoutSuccessView(
+    isArabic: Boolean,
+    state: CheckoutUiState,
+    onGoToOrders: () -> Unit,
+    onGoToHome: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Success Seal icon
+        Box(
+            modifier = Modifier
+                .size(90.dp)
+                .clip(CircleShape)
+                .background(BrandPrimary.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = BrandPrimary,
+                modifier = Modifier.size(60.dp)
+            )
+        }
+
+        Text(
+            text = if (isArabic) "تم الدفع وتأكيد الطلب بنجاح! 🎉" else "Payment Authorized Successfully! 🎉",
+            fontWeight = FontWeight.ExtraBold,
+            color = BrandTextPrimary,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center
+        )
+
+        Text(
+            text = if (isArabic) {
+                "تم حفظ وتوثيق معلومات الفاتورة في قاعدة بيانات بلس السحابية بأمان. أموالك مؤرشفة بأمان تحت خدمة الأسكرو لحمايتك حتى استلام الطرد وفحصه."
+            } else {
+                "Your payment transactions are securely synced and logged in our Cloud Firestore base under secured escrow protection until packaging arrives."
+            },
+            color = BrandTextMuted,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = BrandSurface),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, BrandSoftGray),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = if (isArabic) "الحالة المالية للمطالبة" else "Financial Claim Tag", color = BrandTextMuted, fontSize = 12.sp)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(BrandPrimary.copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(text = if (isArabic) "مدفوع بالكامل" else "PAID (Simulated)", color = BrandPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = if (isArabic) "طريقة السداد" else "Payout Channel", color = BrandTextMuted, fontSize = 12.sp)
+                    val methodText = when {
+                        state.paymentMethod.contains("Syriatel", ignoreCase = true) -> if (isArabic) "سيرياتيل كاش" else "Syriatel Cash"
+                        state.paymentMethod.contains("MTN", ignoreCase = true) -> if (isArabic) "ام تي ان كاش" else "MTN Cash"
+                        else -> if (isArabic) "الدفع عند الاستلام" else "Cash On Delivery"
+                    }
+                    Text(text = methodText, color = BrandTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = onGoToOrders,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .testTag("checkout_success_orders_button"),
+            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = if (isArabic) "الذهاب إلى قائمة طلباتي" else "Go to My Orders Screen",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+
+        OutlinedButton(
+            onClick = onGoToHome,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .testTag("checkout_success_home_button"),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandPrimary),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, BrandSoftGray)
+        ) {
+            Text(
+                text = if (isArabic) "العودة للتسوق" else "Back to Shopping",
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+    }
+}

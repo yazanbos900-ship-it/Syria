@@ -67,6 +67,7 @@ enum class SellerTab(
     val icon: ImageVector
 ) {
     DASHBOARD("لوحة التحكم", "Dashboard", Icons.Default.Dashboard),
+    ORDERS("الطلبات", "Orders", Icons.Default.ReceiptLong),
     PRODUCTS("منتجاتي", "My Products", Icons.Default.Inventory2),
     SUBSCRIPTIONS("الاشتراكات", "Subscriptions", Icons.Default.CardMembership),
     SETTINGS("الإعدادات", "Settings", Icons.Default.Settings)
@@ -208,7 +209,14 @@ fun StoreManagementScreen(
                                 productsCount = state.products.size,
                                 isArabic = isArabic,
                                 onNavigateToProducts = { selectedTab = SellerTab.PRODUCTS },
-                                onNavigateToPlans = { selectedTab = SellerTab.SUBSCRIPTIONS }
+                                onNavigateToPlans = { selectedTab = SellerTab.SUBSCRIPTIONS },
+                                onNavigateToOrders = { selectedTab = SellerTab.ORDERS }
+                            )
+                        }
+                        SellerTab.ORDERS -> {
+                            SellerOrdersSection(
+                                isArabic = isArabic,
+                                storeId = store.id
                             )
                         }
                         SellerTab.PRODUCTS -> {
@@ -294,7 +302,8 @@ fun DashboardSection(
     productsCount: Int,
     isArabic: Boolean,
     onNavigateToProducts: () -> Unit,
-    onNavigateToPlans: () -> Unit
+    onNavigateToPlans: () -> Unit,
+    onNavigateToOrders: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -360,6 +369,18 @@ fun DashboardSection(
                         icon = Icons.Default.SwapHoriz,
                         iconTint = Color(0xFFFF69B4),
                         modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    MetricWidgetCard(
+                        title = if (isArabic) "إدارة وفاء الطلبات" else "Fulfillment Orders",
+                        value = "→",
+                        subtitle = if (isArabic) "إدارة الطلبات والشحن والمبيعات" else "manage invoices & shipments",
+                        icon = Icons.Default.ReceiptLong,
+                        iconTint = Color(0xFFFFB300),
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = onNavigateToOrders
                     )
                 }
             }
