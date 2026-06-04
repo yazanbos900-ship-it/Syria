@@ -17,6 +17,14 @@ data class StoreUiState(
     val bannerUriString: String? = null,
     val isLogoUploading: Boolean = false,
     val isBannerUploading: Boolean = false,
+
+    // Step 1.5 - Geographic location
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val city: String = "",
+    val district: String = "",
+    val fullAddress: String = "",
+    val mapVisible: Boolean = false,
     
     // Step 3 - First Product
     val productName: String = "",
@@ -40,7 +48,11 @@ data class StoreUiState(
                 storeName.length <= 50 && 
                 categoryId.isNotBlank() && 
                 storeDescription.isNotBlank() && 
-                storeDescription.length >= 50
+                storeDescription.length >= 50 &&
+                latitude != null && 
+                longitude != null &&
+                city.isNotBlank() &&
+                district.isNotBlank()
 
     val isStep2Valid: Boolean
         get() = logoUriString != null

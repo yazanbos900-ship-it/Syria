@@ -23,9 +23,26 @@ data class CheckoutUiState(
     val cartItems: List<CartItem> = emptyList(),
     val customerName: String = "",
     val customerPhone: String = "",
-    val shippingAddress: String = "Bab Touma, Block 4, Damascus, Syria",
+    val shippingAddress: String = "",
+    val latitude: Double? = 33.5138, // Default to Damascus
+    val longitude: Double? = 36.2947,
+    val locationCountry: String = "Syria",
+    val locationCity: String = "Damascus",
+    val locationDistrict: String = "Bab Touma",
+    val locationStreet: String = "",
+    val buildingNumber: String = "",
+    val apartment: String = "",
+    val floor: String = "",
+    val landmark: String = "",
+    val additionalNotes: String = "",
+    val mapVisible: Boolean = false,
     val paymentMethod: String = "Syriatel Cash", // "Syriatel Cash", "MTN Cash", "Cash On Delivery"
     val error: String? = null,
+    
+    // Delivery area and dynamic shipping fee
+    val selectedDeliveryArea: String = "Damascus",
+    val shippingFeeSyp: Double = 20000.0,
+    val deliveryAreas: List<String> = listOf("Damascus", "Aleppo", "Homs", "Hama", "Latakia", "Tartous"),
     
     // Verification Screen State
     val showVerification: Boolean = false,
@@ -39,7 +56,19 @@ data class CheckoutUiState(
     // Final success state
     val orderPlacedSuccess: Boolean = false,
     val progressMessage: String = ""
-)
+) {
+    val subtotal: Double
+        get() = cartItems.sumOf { it.price * it.quantity }
+
+    val vatAmount: Double
+        get() = subtotal * 0.03
+
+    val shippingFee: Double
+        get() = if (cartItems.isEmpty()) 0.0 else shippingFeeSyp / 13500.0
+
+    val grandTotal: Double
+        get() = if (cartItems.isEmpty()) 0.0 else subtotal + vatAmount + shippingFee
+}
 
 class CheckoutViewModel(
     private val createPaymentTransactionUseCase: CreatePaymentTransactionUseCase = CreatePaymentTransactionUseCase(ServiceLocator.paymentRepository),
@@ -84,6 +113,145 @@ class CheckoutViewModel(
     fun onNameChange(name: String) = _state.update { it.copy(customerName = name) }
     fun onPhoneChange(phone: String) = _state.update { it.copy(customerPhone = phone) }
     fun onAddressChange(address: String) = _state.update { it.copy(shippingAddress = address) }
+    
+    fun setMapVisible(visible: Boolean) = _state.update { it.copy(mapVisible = visible) }
+
+    fun selectLocationCoordinates(lat: Double, lng: Double, country: String, city: String, district: String, street: String, fullAddress: String) {
+        _state.update {
+            val updatedState = it.copy(
+                latitude = lat,
+                longitude = lng,
+                locationCountry = country,
+                locationCity = city,
+                locationDistrict = district,
+                locationStreet = street
+            )
+            updatedState.copy(
+                shippingAddress = compileAddress(updatedState),
+                selectedDeliveryArea = city
+            )
+        }
+        
+        onDeliveryAreaChange(city)
+    }
+
+    fun updateDetailsFields(
+        building: String,
+        apt: String,
+        floor: String,
+        landmark: String,
+        notes: String
+    ) {
+        _state.update {
+            val updatedState = it.copy(
+                buildingNumber = building,
+                apartment = apt,
+                floor = floor,
+                landmark = landmark,
+                additionalNotes = notes
+            )
+            updatedState.copy(
+                shippingAddress = compileAddress(updatedState)
+            )
+        }
+    }
+
+    private fun compileAddress(s: CheckoutUiState): String {
+        val parts = mutableListOf<String>()
+        if (s.buildingNumber.isNotBlank()) parts.add(s.buildingNumber)
+        if (s.floor.isNotBlank()) parts.add("Flr ${s.floor}")
+        if (s.apartment.isNotBlank()) parts.add("Apt ${s.apartment}")
+        if (s.landmark.isNotBlank()) parts.add("Near ${s.landmark}")
+        if (s.locationStreet.isNotBlank()) parts.add(s.locationStreet)
+        if (s.locationDistrict.isNotBlank()) parts.add(s.locationDistrict)
+        if (s.locationCity.isNotBlank()) parts.add(s.locationCity)
+        if (s.locationCountry.isNotBlank()) parts.add(s.locationCountry)
+        
+        var base = parts.joinToString(", ")
+        if (s.additionalNotes.isNotBlank()) {
+            base += " (Notes: ${s.additionalNotes})"
+        }
+        return base
+    }
+
+    fun reverseGeocodeSimulated(lat: Double, lng: Double): Triple<String, String, String> {
+        val cities = listOf(
+            Triple(33.5138, 36.2947, "Damascus"),
+            Triple(36.2021, 37.1343, "Aleppo"),
+            Triple(34.7324, 36.7137, "Homs"),
+            Triple(35.1318, 36.7578, "Hama"),
+            Triple(35.5312, 35.7921, "Latakia"),
+            Triple(34.8890, 35.8864, "Tartous")
+        )
+        
+        var closestCity = "Damascus"
+        var minDist = Double.MAX_VALUE
+        for (c in cities) {
+            val dist = Math.hypot(lat - c.first, lng - c.second)
+            if (dist < minDist) {
+                minDist = dist
+                closestCity = c.third
+            }
+        }
+        
+        val district = when (closestCity) {
+            "Damascus" -> {
+                val offset = Math.abs(lat % 0.05)
+                if (offset < 0.01) "Bab Touma"
+                else if (offset < 0.02) "Mezzeh"
+                else if (offset < 0.03) "Malki"
+                else if (offset < 0.04) "Shaalan"
+                else "Kafar Souseh"
+            }
+            "Aleppo" -> {
+                val offset = Math.abs(lat % 0.05)
+                if (offset < 0.015) "Al-Jamilia"
+                else if (offset < 0.03) "Mogambo"
+                else "Shahba"
+            }
+            "Homs" -> {
+                val offset = Math.abs(lat % 0.05)
+                if (offset < 0.025) "Al-Inshaat"
+                else "Ghouta"
+            }
+            "Hama" -> {
+                val offset = Math.abs(lat % 0.05)
+                if (offset < 0.02) "Al-Sharia"
+                else "Al-Hader"
+            }
+            "Latakia" -> {
+                val offset = Math.abs(lat % 0.05)
+                if (offset < 0.02) "Al-Ziraa"
+                else "Sheikh Dher"
+            }
+            "Tartous" -> {
+                val offset = Math.abs(lat % 0.05)
+                if (offset < 0.02) "Al-Karameh"
+                else "Corniche"
+            }
+            else -> "Center"
+        }
+        
+        return Triple("Syria", closestCity, district)
+    }
+
+    fun onDeliveryAreaChange(area: String) {
+        val sypFee = when (area) {
+            "Damascus" -> 20000.0
+            "Aleppo" -> 20000.0
+            "Homs" -> 20000.0
+            "Hama" -> 20000.0
+            "Latakia" -> 20000.0
+            "Tartous" -> 20000.0
+            else -> 20000.0
+        }
+        _state.update {
+            it.copy(
+                selectedDeliveryArea = area,
+                shippingFeeSyp = sypFee
+            )
+        }
+    }
     fun onPaymentMethodChange(method: String) = _state.update { it.copy(paymentMethod = method) }
     fun onOtpChange(otp: String) = _state.update { it.copy(verificationOtp = otp, verificationError = null) }
 
@@ -138,7 +306,10 @@ class CheckoutViewModel(
                             unitPrice = cartItem.price
                         )
                     }
-                    val totalAmount = items.sumOf { it.price * it.quantity }
+                    val storeSubtotal = items.sumOf { it.price * it.quantity }
+                    val storeVatAmount = storeSubtotal * 0.03
+                    val storeShippingFee = if (items.isEmpty()) 0.0 else _state.value.shippingFeeSyp / 13500.0
+                    val storeGrandTotal = storeSubtotal + storeVatAmount + storeShippingFee
 
                     val order = Order(
                         orderId = orderId,
@@ -147,14 +318,19 @@ class CheckoutViewModel(
                         storeName = storeName,
                         status = "Pending",
                         createdAt = System.currentTimeMillis(),
-                        totalAmount = totalAmount,
+                        totalAmount = storeGrandTotal,
                         currency = "USD",
                         items = orderItems,
                         customerName = _state.value.customerName,
                         customerPhone = _state.value.customerPhone,
                         shippingAddress = _state.value.shippingAddress,
                         paymentMethod = "Cash On Delivery",
-                        paymentStatus = "Pending"
+                        paymentStatus = "Pending",
+                        subtotal = storeSubtotal,
+                        vatAmount = storeVatAmount,
+                        shippingFee = storeShippingFee,
+                        grandTotal = storeGrandTotal,
+                        selectedDeliveryArea = _state.value.selectedDeliveryArea
                     )
 
                     ServiceLocator.orderRepository.createOrder(order)
@@ -181,7 +357,7 @@ class CheckoutViewModel(
             try {
                 // Progressive step 1: Port-handshake
                 delay(1000)
-                val totalAmount = _state.value.cartItems.sumOf { it.price * it.quantity }
+                val totalAmount = _state.value.grandTotal
                 _state.update { it.copy(progressMessage = "Authenticating Wallet Session +${_state.value.customerPhone}... / جاري التحقق من حساب المحفظة +${_state.value.customerPhone}...") }
                 
                 // Progressive step 2: Generate token
@@ -356,7 +532,10 @@ class CheckoutViewModel(
                             unitPrice = cartItem.price
                         )
                     }
-                    val totalAmount = items.sumOf { it.price * it.quantity }
+                    val storeSubtotal = items.sumOf { it.price * it.quantity }
+                    val storeVatAmount = storeSubtotal * 0.03
+                    val storeShippingFee = if (items.isEmpty()) 0.0 else _state.value.shippingFeeSyp / 13500.0
+                    val storeGrandTotal = storeSubtotal + storeVatAmount + storeShippingFee
 
                     val order = Order(
                         orderId = orderId,
@@ -365,14 +544,23 @@ class CheckoutViewModel(
                         storeName = storeName,
                         status = "Pending",
                         createdAt = System.currentTimeMillis(),
-                        totalAmount = totalAmount,
+                        totalAmount = storeGrandTotal,
                         currency = "USD",
                         items = orderItems,
                         customerName = _state.value.customerName,
                         customerPhone = _state.value.customerPhone,
                         shippingAddress = _state.value.shippingAddress,
                         paymentMethod = txn.paymentMethod,
-                        paymentStatus = "Paid"
+                        paymentStatus = "Paid",
+                        subtotal = storeSubtotal,
+                        vatAmount = storeVatAmount,
+                        shippingFee = storeShippingFee,
+                        grandTotal = storeGrandTotal,
+                        selectedDeliveryArea = _state.value.selectedDeliveryArea,
+                        latitude = _state.value.latitude,
+                        longitude = _state.value.longitude,
+                        city = _state.value.locationCity,
+                        district = _state.value.locationDistrict
                     )
 
                     ServiceLocator.orderRepository.createOrder(order)

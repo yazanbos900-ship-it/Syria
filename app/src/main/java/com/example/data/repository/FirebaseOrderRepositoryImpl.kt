@@ -69,7 +69,12 @@ class FirebaseOrderRepositoryImpl : OrderRepository {
                                 customerPhone = doc.getString("customerPhone") ?: "",
                                 shippingAddress = doc.getString("shippingAddress") ?: "",
                                 paymentMethod = doc.getString("paymentMethod") ?: "Cash On Delivery",
-                                paymentStatus = doc.getString("paymentStatus") ?: "Pending"
+                                paymentStatus = doc.getString("paymentStatus") ?: "Pending",
+                                subtotal = doc.getDouble("subtotal") ?: 0.0,
+                                vatAmount = doc.getDouble("vatAmount") ?: 0.0,
+                                shippingFee = doc.getDouble("shippingFee") ?: 0.0,
+                                grandTotal = doc.getDouble("grandTotal") ?: 0.0,
+                                selectedDeliveryArea = doc.getString("selectedDeliveryArea") ?: ""
                             )
                         } catch (e: Exception) {
                             Log.e(tag, "Error parsing Order document", e)
@@ -130,7 +135,71 @@ class FirebaseOrderRepositoryImpl : OrderRepository {
                                 customerPhone = doc.getString("customerPhone") ?: "",
                                 shippingAddress = doc.getString("shippingAddress") ?: "",
                                 paymentMethod = doc.getString("paymentMethod") ?: "Cash On Delivery",
-                                paymentStatus = doc.getString("paymentStatus") ?: "Pending"
+                                paymentStatus = doc.getString("paymentStatus") ?: "Pending",
+                                subtotal = doc.getDouble("subtotal") ?: 0.0,
+                                vatAmount = doc.getDouble("vatAmount") ?: 0.0,
+                                shippingFee = doc.getDouble("shippingFee") ?: 0.0,
+                                grandTotal = doc.getDouble("grandTotal") ?: 0.0,
+                                selectedDeliveryArea = doc.getString("selectedDeliveryArea") ?: ""
+                            )
+                        } catch (e: Exception) {
+                            Log.e(tag, "Error parsing Order document", e)
+                            null
+                        }
+                    }.sortedByDescending { it.createdAt }
+                    trySend(Result.success(orders))
+                }
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    override fun getAllOrders(): Flow<Result<List<Order>>> = callbackFlow {
+        val db = firestore ?: run {
+            trySend(Result.failure(Exception("Firestore service is unavailable")))
+            close()
+            return@callbackFlow
+        }
+
+        val listener = db.collection("orders")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val orders = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            val itemsList = doc.get("items") as? List<Map<String, Any>> ?: emptyList()
+                            val orderItems = itemsList.map { itemMap ->
+                                OrderItem(
+                                    productId = itemMap["productId"] as? String ?: "",
+                                    productName = itemMap["productName"] as? String ?: "",
+                                    productImage = itemMap["productImage"] as? String ?: "",
+                                    quantity = (itemMap["quantity"] as? Number)?.toInt() ?: 1,
+                                    unitPrice = (itemMap["unitPrice"] as? Number)?.toDouble() ?: 0.0
+                                )
+                            }
+                            Order(
+                                orderId = doc.getString("orderId") ?: doc.id,
+                                userId = doc.getString("userId") ?: "",
+                                storeId = doc.getString("storeId") ?: "",
+                                storeName = doc.getString("storeName") ?: "WasetPlus Store",
+                                status = doc.getString("status") ?: "Pending",
+                                createdAt = doc.getLong("createdAt") ?: 0L,
+                                totalAmount = doc.getDouble("totalAmount") ?: 0.0,
+                                currency = doc.getString("currency") ?: "USD",
+                                items = orderItems,
+                                customerName = doc.getString("customerName") ?: "",
+                                customerPhone = doc.getString("customerPhone") ?: "",
+                                shippingAddress = doc.getString("shippingAddress") ?: "",
+                                paymentMethod = doc.getString("paymentMethod") ?: "Cash On Delivery",
+                                paymentStatus = doc.getString("paymentStatus") ?: "Pending",
+                                subtotal = doc.getDouble("subtotal") ?: 0.0,
+                                vatAmount = doc.getDouble("vatAmount") ?: 0.0,
+                                shippingFee = doc.getDouble("shippingFee") ?: 0.0,
+                                grandTotal = doc.getDouble("grandTotal") ?: 0.0,
+                                selectedDeliveryArea = doc.getString("selectedDeliveryArea") ?: ""
                             )
                         } catch (e: Exception) {
                             Log.e(tag, "Error parsing Order document", e)
@@ -179,7 +248,16 @@ class FirebaseOrderRepositoryImpl : OrderRepository {
                 "customerPhone" to finalOrder.customerPhone,
                 "shippingAddress" to finalOrder.shippingAddress,
                 "paymentMethod" to finalOrder.paymentMethod,
-                "paymentStatus" to finalOrder.paymentStatus
+                "paymentStatus" to finalOrder.paymentStatus,
+                "subtotal" to finalOrder.subtotal,
+                "vatAmount" to finalOrder.vatAmount,
+                "shippingFee" to finalOrder.shippingFee,
+                "grandTotal" to finalOrder.grandTotal,
+                "selectedDeliveryArea" to finalOrder.selectedDeliveryArea,
+                "latitude" to finalOrder.latitude,
+                "longitude" to finalOrder.longitude,
+                "city" to finalOrder.city,
+                "district" to finalOrder.district
             )
 
             docRef.set(orderData).await()

@@ -34,6 +34,7 @@ import com.example.R
 import com.example.core.utils.CurrencyManager
 import com.example.core.utils.LanguageManager
 import com.example.ui.theme.*
+import com.example.components.MapLocationPicker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,7 +113,6 @@ fun CheckoutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .imePadding()
         ) {
             when {
                 state.orderPlacedSuccess -> {
@@ -140,8 +140,16 @@ fun CheckoutScreen(
                         onNameChange = { viewModel.onNameChange(it) },
                         onPhoneChange = { viewModel.onPhoneChange(it) },
                         onAddressChange = { viewModel.onAddressChange(it) },
+                        onDeliveryAreaChange = { viewModel.onDeliveryAreaChange(it) },
                         onPaymentMethodChange = { viewModel.onPaymentMethodChange(it) },
-                        onSubmit = { viewModel.processCheckout() }
+                        onSubmit = { viewModel.processCheckout() },
+                        onMapVisibleChange = { viewModel.setMapVisible(it) },
+                        onLocationSelect = { lat, lng, country, city, district, street, address -> 
+                            viewModel.selectLocationCoordinates(lat, lng, country, city, district, street, address) 
+                        },
+                        onAddressDetailsChange = { bldg, apt, flr, land, notes ->
+                            viewModel.updateDetailsFields(bldg, apt, flr, land, notes)
+                        }
                     )
                 }
             }
@@ -377,8 +385,12 @@ fun CheckoutDetailsView(
     onNameChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
     onAddressChange: (String) -> Unit,
+    onDeliveryAreaChange: (String) -> Unit,
     onPaymentMethodChange: (String) -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: () -> Unit,
+    onMapVisibleChange: (Boolean) -> Unit,
+    onLocationSelect: (Double, Double, String, String, String, String, String) -> Unit,
+    onAddressDetailsChange: (building: String, apartment: String, floor: String, landmark: String, notes: String) -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -433,26 +445,328 @@ fun CheckoutDetailsView(
             )
         )
 
-        OutlinedTextField(
-            value = state.shippingAddress,
-            onValueChange = onAddressChange,
-            label = { Text(if (isArabic) "عنوان الشحن والتوصيل" else "Shipping Address") },
-            textStyle = LocalTextStyle.current.copy(color = BrandTextPrimary),
-            leadingIcon = { Icon(Icons.Default.Map, null, tint = BrandPrimary) },
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("checkout_address_input"),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BrandPrimary,
-                unfocusedBorderColor = BrandSoftGray,
-                focusedLabelColor = BrandPrimary
+        // Delivery Area Selector (Dialog-based, extremely stable, zero sizing jumps)
+        var showAreaDialog by remember { mutableStateOf(false) }
+
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = if (isArabic) "منطقة التوصيل والمدينة الجغرافية" else "Delivery Area & City",
+                fontSize = 12.sp,
+                color = BrandPrimary,
+                fontWeight = FontWeight.SemiBold
             )
-        )
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(BrandSurface)
+                    .border(1.dp, BrandSoftGray, RoundedCornerShape(12.dp))
+                    .clickable { showAreaDialog = true }
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = BrandPrimary
+                        )
+                        Text(
+                            text = if (isArabic) {
+                                when(state.selectedDeliveryArea) {
+                                    "Damascus" -> "دمشق (Damascus)"
+                                    "Aleppo" -> "حلب (Aleppo)"
+                                    "Homs" -> "حمص (Homs)"
+                                    "Hama" -> "حماة (Hama)"
+                                    "Latakia" -> "اللاذقية (Latakia)"
+                                    "Tartous" -> "طرطوس (Tartous)"
+                                    else -> state.selectedDeliveryArea
+                                }
+                            } else {
+                                state.selectedDeliveryArea
+                            },
+                            color = BrandTextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = BrandTextMuted
+                    )
+                }
+            }
+        }
+
+        if (showAreaDialog) {
+            AlertDialog(
+                onDismissRequest = { showAreaDialog = false },
+                containerColor = BrandSurface,
+                title = {
+                    Text(
+                        text = if (isArabic) "اختر منطقة التوصيل" else "Select Delivery Area",
+                        color = BrandTextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        state.deliveryAreas.forEach { area ->
+                            val areaNameAr = when(area) {
+                                "Damascus" -> "دمشق"
+                                "Aleppo" -> "حلب"
+                                "Homs" -> "حمص"
+                                "Hama" -> "حماة"
+                                "Latakia" -> "اللاذقية"
+                                "Tartous" -> "طرطوس"
+                                else -> area
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        onDeliveryAreaChange(area)
+                                        showAreaDialog = false
+                                    }
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (isArabic) "$areaNameAr ($area)" else "$area ($areaNameAr)",
+                                    color = BrandTextPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (state.selectedDeliveryArea == area) FontWeight.Bold else FontWeight.Normal
+                                )
+                                if (state.selectedDeliveryArea == area) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = BrandPrimary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAreaDialog = false }) {
+                        Text(
+                            text = if (isArabic) "إلغاء" else "Cancel",
+                            color = BrandPrimary
+                        )
+                    }
+                }
+            )
+        }
+
+        if (state.mapVisible) {
+            MapLocationPicker(
+                initialLatitude = state.latitude,
+                initialLongitude = state.longitude,
+                onLocationConfirmed = { lat, lng, country, city, district, street, fullAddress ->
+                    onLocationSelect(lat, lng, country, city, district, street, fullAddress)
+                    onMapVisibleChange(false)
+                },
+                onDismissRequest = { onMapVisibleChange(false) },
+                isArabic = isArabic
+            )
+        }
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = BrandSurface),
+            border = BorderStroke(1.dp, if (state.latitude == null) BrandPrimary.copy(alpha = 0.5f) else BrandSoftGray),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.PinDrop,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isArabic) "موقع التوصيل والشحن 📍" else "Delivery Coordinates 📍",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = BrandTextPrimary
+                        )
+                    }
+                    Button(
+                        onClick = { onMapVisibleChange(true) },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text(
+                            text = if (isArabic) "اختر من الخريطة" else "Map Picker",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                if (state.latitude == null) {
+                    Text(
+                        text = if (isArabic) "🔴 يرجى تحديد موقع التوصيل على الخريطة للمتابعة" else "🔴 Please select your delivery point on the map to proceed.",
+                        fontSize = 12.sp,
+                        color = Color.Red,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(BrandSoftGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Map, null, tint = BrandTextPrimary, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${state.locationDistrict}, ${state.locationCity}, ${state.locationCountry}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = BrandTextPrimary
+                        )
+                    }
+                    
+                    Text(
+                        text = "Lat: " + String.format("%.5f", state.latitude) + ", Lng: " + String.format("%.5f", state.longitude),
+                        fontSize = 10.sp,
+                        color = BrandTextMuted
+                    )
+                }
+
+                HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+
+                Text(
+                    text = if (isArabic) "تفاصيل العنوان الإضافية" else "Additional Address Details",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = BrandTextPrimary
+                )
+
+                var building by remember(state.buildingNumber) { mutableStateOf(state.buildingNumber) }
+                var apartment by remember(state.apartment) { mutableStateOf(state.apartment) }
+                var floor by remember(state.floor) { mutableStateOf(state.floor) }
+                var landmark by remember(state.landmark) { mutableStateOf(state.landmark) }
+                var additionalNotes by remember(state.additionalNotes) { mutableStateOf(state.additionalNotes) }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = building,
+                        onValueChange = {
+                            building = it
+                            onAddressDetailsChange(building, apartment, floor, landmark, additionalNotes)
+                        },
+                        label = { Text(if (isArabic) "رقم البناء" else "Bldg No.") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary, unfocusedBorderColor = BrandSoftGray)
+                    )
+                    OutlinedTextField(
+                        value = floor,
+                        onValueChange = {
+                            floor = it
+                            onAddressDetailsChange(building, apartment, floor, landmark, additionalNotes)
+                        },
+                        label = { Text(if (isArabic) "الطابق" else "Floor") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary, unfocusedBorderColor = BrandSoftGray)
+                    )
+                    OutlinedTextField(
+                        value = apartment,
+                        onValueChange = {
+                            apartment = it
+                            onAddressDetailsChange(building, apartment, floor, landmark, additionalNotes)
+                        },
+                        label = { Text(if (isArabic) "شقة" else "Apt") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary, unfocusedBorderColor = BrandSoftGray)
+                    )
+                }
+
+                OutlinedTextField(
+                    value = landmark,
+                    onValueChange = {
+                        landmark = it
+                        onAddressDetailsChange(building, apartment, floor, landmark, additionalNotes)
+                    },
+                    label = { Text(if (isArabic) "علامة مميزة (مثال: بجانب مسجد...)" else "Landmark (e.g. Near Mosque)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary, unfocusedBorderColor = BrandSoftGray)
+                )
+
+                OutlinedTextField(
+                    value = additionalNotes,
+                    onValueChange = {
+                        additionalNotes = it
+                        onAddressDetailsChange(building, apartment, floor, landmark, additionalNotes)
+                    },
+                    label = { Text(if (isArabic) "ملاحظات إضافية للمندوب..." else "Additional delivery instructions...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary, unfocusedBorderColor = BrandSoftGray)
+                )
+
+                // Render compiled final shipping address read-only preview
+                if (state.shippingAddress.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(BrandPrimary.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = if (isArabic) "العنوان المعتمد للتوصيل:\n${state.shippingAddress}" else "Compiled Shipping Address:\n${state.shippingAddress}",
+                            fontSize = 11.sp,
+                            color = BrandPrimary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
 
         HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
 
-        // Payment Method 선택
+        // Payment Method เลือก
         Text(
             text = if (isArabic) "اختر طريقة الدفع 💳" else "Select Payment Method 💳",
             fontSize = 15.sp,
@@ -493,10 +807,11 @@ fun CheckoutDetailsView(
 
         HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
 
-        // Summary breakdowns
-        val subtotal = state.cartItems.sumOf { it.price * it.quantity }
-        val shipping = if (state.cartItems.isNotEmpty()) 2.0 else 0.0
-        val total = subtotal + shipping
+        // Summary breakdowns (dynamic values from ViewModel)
+        val subtotal = state.subtotal
+        val vatAmount = state.vatAmount
+        val shipping = state.shippingFee
+        val total = state.grandTotal
 
         Card(
             colors = CardDefaults.cardColors(containerColor = BrandSurface),
@@ -519,7 +834,7 @@ fun CheckoutDetailsView(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = if (isArabic) "المجموع الفرعي:" else "Subtotal:", color = BrandTextMuted, fontSize = 12.sp)
+                    Text(text = if (isArabic) "المجموع الفرعي لمواد السلة:" else "Products Subtotal:", color = BrandTextMuted, fontSize = 12.sp)
                     Text(text = CurrencyManager.formatPrice(subtotal, 13500.0, isArabic), color = BrandTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
@@ -527,7 +842,15 @@ fun CheckoutDetailsView(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = if (isArabic) "رسوم الشحن والتأمين:" else "Shipping & Insurance:", color = BrandTextMuted, fontSize = 12.sp)
+                    Text(text = if (isArabic) "أجور وضريبة القيمة المضافة (3%):" else "VAT (3%):", color = BrandTextMuted, fontSize = 12.sp)
+                    Text(text = CurrencyManager.formatPrice(vatAmount, 13500.0, isArabic), color = BrandTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = if (isArabic) "أجور الشحن وتوصيل الطرود:" else "Shipping Fee:", color = BrandTextMuted, fontSize = 12.sp)
                     Text(text = CurrencyManager.formatPrice(shipping, 13500.0, isArabic), color = BrandTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
@@ -538,7 +861,7 @@ fun CheckoutDetailsView(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = if (isArabic) "المبلغ المستحق الدفع:" else "Total Balance Payable:", color = BrandTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(text = if (isArabic) "المبلغ الإجمالي المستحق:" else "Grand Total:", color = BrandTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Text(text = CurrencyManager.formatPrice(total, 13500.0, isArabic), color = BrandPrimary, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                 }
             }

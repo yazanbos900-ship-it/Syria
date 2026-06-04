@@ -70,6 +70,22 @@ class CreateStoreViewModel(
         _state.update { it.copy(storeDescription = description) }
     }
 
+    fun setMapVisible(visible: Boolean) {
+        _state.update { it.copy(mapVisible = visible) }
+    }
+
+    fun selectLocationCoordinates(lat: Double, lng: Double, country: String, city: String, district: String) {
+        _state.update { 
+            it.copy(
+                latitude = lat,
+                longitude = lng,
+                city = city,
+                district = district,
+                fullAddress = "$district, $city, $country"
+            )
+        }
+    }
+
     fun onLogoSelected(uriString: String?) {
         if (uriString == null) {
             _state.update { it.copy(logoUriString = null) }
@@ -216,7 +232,12 @@ class CreateStoreViewModel(
                     productName = currentState.productName,
                     productPrice = currentState.productPrice.toDoubleOrNull() ?: 0.0,
                     productDescription = currentState.productDescription,
-                    productImages = uploadedProductImages
+                    productImages = uploadedProductImages,
+                    latitude = currentState.latitude,
+                    longitude = currentState.longitude,
+                    city = currentState.city,
+                    district = currentState.district,
+                    fullAddress = currentState.fullAddress
                 )
 
                 if (dbResult.isSuccess) {

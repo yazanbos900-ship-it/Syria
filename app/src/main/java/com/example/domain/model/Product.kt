@@ -13,6 +13,9 @@ data class Product(
     val isAvailable: Boolean = true,
     val stockCount: Int = 10,
     val currency: String = "USD", // "USD" or "SYP"
+    val isApproved: Boolean = true,
+    val isFlagged: Boolean = false,
+    val flagReason: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 

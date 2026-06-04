@@ -1,5 +1,6 @@
 package com.example.features.admin
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -8,6 +9,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,6 +40,9 @@ import com.example.core.utils.CurrencyManager
 import com.example.domain.model.Product
 import com.example.domain.model.Store
 import com.example.domain.model.User
+import com.example.domain.model.Order
+import com.example.domain.model.OrderItem
+import com.example.domain.model.SubscriptionRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,8 +76,8 @@ sealed class AdminModule(
         titleAr = "إدارة المنتجات",
         titleEn = "Manage Products",
         icon = Icons.Default.ShoppingBag,
-        descriptionAr = "تعديل وحذف كافة المنتجات المدرجة ومتابعة العروض",
-        descriptionEn = "Edit or remove listed products globally and track offers"
+        descriptionAr = "تعديل وحذف المنتجات وتفتيش السلع المشكوك بأمرها",
+        descriptionEn = "Edit or remove listed products globally and track flagged items"
     )
 
     object Users : AdminModule(
@@ -83,24 +89,40 @@ sealed class AdminModule(
         descriptionEn = "Add manual users, trigger password resets, and delete accounts"
     )
 
+    object Orders : AdminModule(
+        id = "orders",
+        titleAr = "إدارة الطلبات",
+        titleEn = "Manage Orders",
+        icon = Icons.Default.ReceiptLong,
+        descriptionAr = "متابعة وتحديث حالات كافة الطلبات والعمليات في السوق الكلي",
+        descriptionEn = "Track and update statuses of all marketplace transactions"
+    )
+
+    object Subscriptions : AdminModule(
+        id = "subscriptions",
+        titleAr = "اشتراكات البائعين",
+        titleEn = "Subscriptions Center",
+        icon = Icons.Default.CardMembership,
+        descriptionAr = "مراجعة باقات وترقيات المتاجر (Starter, Growth, Pro)",
+        descriptionEn = "Approve, reject, upgrade, and downgrade seller subscription tiers"
+    )
+
+    object Settings : AdminModule(
+        id = "settings",
+        titleAr = "إعدادات السوق الكلية",
+        titleEn = "Marketplace Settings",
+        icon = Icons.Default.Settings,
+        descriptionAr = "الرسوم، ضريبة VAT، أجور الشحن الافتراضية، والمدن المدعومة",
+        descriptionEn = "Configure dynamic platform fees, VAT, default shipping, and cities"
+    )
+
     object Analytics : AdminModule(
         id = "analytics",
         titleAr = "التحليلات والإحصائيات",
         titleEn = "Analytics & Reports",
         icon = Icons.Default.Analytics,
-        descriptionAr = "مخططات متقدمة لنمو المبيعات وفئات المنتجات الأكثر طلباً",
-        descriptionEn = "Advanced charts tracking store growth and active search categories",
-        isAvailable = false
-    )
-
-    object Logs : AdminModule(
-        id = "logs",
-        titleAr = "سجلات الأمان والرقابة",
-        titleEn = "Audit Logs",
-        icon = Icons.Default.History,
-        descriptionAr = "مراقبة نشاط المسؤولين وتغييرات قاعدة البيانات بشكل أمني",
-        descriptionEn = "Track admin dashboard actions, database modifications, and login alerts",
-        isAvailable = false
+        descriptionAr = "مخططات والمنتجات الأكثر تفاعلاً وزيارات المتاجر والإيرادات",
+        descriptionEn = "Interactive products views, favorites, visits, and revenue analysis"
     )
 }
 
@@ -108,6 +130,10 @@ data class AdminUiState(
     val stores: List<Store> = emptyList(),
     val products: List<Product> = emptyList(),
     val users: List<User> = emptyList(),
+    val orders: List<Order> = emptyList(),
+    val subscriptionRequests: List<SubscriptionRequest> = emptyList(),
+    val interactions: List<Map<String, Any>> = emptyList(),
+    val settings: com.example.core.utils.MarketplaceSettingsManager.MarketplaceSettings = com.example.core.utils.MarketplaceSettingsManager.settings.value,
     val isLoading: Boolean = false,
     val selectedModule: AdminModule? = null,
     val errorMessage: String? = null
@@ -150,6 +176,68 @@ class AdminViewModel : ViewModel() {
         viewModelScope.launch {
             productRepo.getProducts().collect { prodList ->
                 _state.update { it.copy(products = prodList) }
+            }
+        }
+
+        // Collect Orders dynamically in VM
+        viewModelScope.launch {
+            ServiceLocator.orderRepository.getAllOrders().collect { result ->
+                result.fold(
+                    onSuccess = { orderList ->
+                        _state.update { it.copy(orders = orderList) }
+                    },
+                    onFailure = { err ->
+                        Log.e("AdminViewModel", "Error fetching orders", err)
+                    }
+                )
+            }
+        }
+
+        // Collect Subscription Requests dynamically
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            db.collection("subscription_requests")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    if (snapshot != null) {
+                        val reqs = snapshot.documents.mapNotNull { doc ->
+                            try {
+                                SubscriptionRequest(
+                                    requestId = doc.getString("requestId") ?: doc.id,
+                                    userId = doc.getString("userId") ?: "",
+                                    storeId = doc.getString("storeId") ?: "",
+                                    requestedTier = doc.getString("requestedTier") ?: "Starter",
+                                    requestDate = doc.getLong("requestDate") ?: System.currentTimeMillis(),
+                                    status = doc.getString("status") ?: "pending"
+                                )
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        _state.update { it.copy(subscriptionRequests = reqs) }
+                    }
+                }
+        }
+
+        // Load Interactions dynamically
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            db.collection("interactions")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    if (snapshot != null) {
+                        val actions = snapshot.documents.map { doc ->
+                            doc.data ?: emptyMap()
+                        }
+                        _state.update { it.copy(interactions = actions) }
+                    }
+                }
+        }
+
+        // Load Settings flow
+        viewModelScope.launch {
+            com.example.core.utils.MarketplaceSettingsManager.settings.collect { currentSettings ->
+                _state.update { it.copy(settings = currentSettings) }
             }
         }
     }
@@ -263,6 +351,70 @@ class AdminViewModel : ViewModel() {
             onComplete(result.isSuccess)
         }
     }
+
+    // --- SUBSCRIPTION MANAGEMENT ---
+    fun handleSubscriptionRequest(requestId: String, storeId: String, tier: String, approve: Boolean, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            try {
+                val nextStatus = if (approve) "approved" else "rejected"
+                db.collection("subscription_requests").document(requestId).update("status", nextStatus).await()
+                if (approve) {
+                    db.collection("stores").document(storeId).update("subscriptionTier", tier).await()
+                }
+                onComplete(true)
+            } catch (e: Exception) {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun setStoreTier(storeId: String, tier: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            try {
+                db.collection("stores").document(storeId).update("subscriptionTier", tier).await()
+                onComplete(true)
+            } catch (e: Exception) {
+                onComplete(false)
+            }
+        }
+    }
+
+    // --- SELLER VERIFICATION MANAGEMENT ---
+    fun handleVerificationRequest(storeId: String, approve: Boolean, badge: String = "None", onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            try {
+                val status = if (approve) "Verified" else "Rejected"
+                val updates = mapOf(
+                    "verificationStatus" to status,
+                    "isVerified" to approve,
+                    "sellerBadge" to if (approve) badge else "None"
+                )
+                db.collection("stores").document(storeId).update(updates).await()
+                onComplete(true)
+            } catch (e: Exception) {
+                onComplete(false)
+            }
+        }
+    }
+
+    // --- MARKETPLACE SETTINGS MANAGEMENT ---
+    fun saveMarketplaceSettings(newSettings: com.example.core.utils.MarketplaceSettingsManager.MarketplaceSettings, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val result = com.example.core.utils.MarketplaceSettingsManager.saveSettings(newSettings)
+            onComplete(result.isSuccess)
+        }
+    }
+
+    // --- ORDERS MANAGEMENT ---
+    fun updateOrderStatusAdmin(orderId: String, status: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val res = ServiceLocator.orderRepository.updateOrderStatus(orderId, status)
+            onComplete(res.isSuccess)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -352,9 +504,12 @@ fun AdminDashboardScreen(
                             AdminModule.Stores,
                             AdminModule.Products,
                             AdminModule.Users,
-                            AdminModule.Analytics,
-                            AdminModule.Logs
+                            AdminModule.Orders,
+                            AdminModule.Subscriptions,
+                            AdminModule.Settings,
+                            AdminModule.Analytics
                         ),
+                        state = state,
                         isArabic = isArabic,
                         onModuleSelect = { mod ->
                             if (mod.isAvailable) {
@@ -392,6 +547,29 @@ fun AdminDashboardScreen(
                             isArabic = isArabic,
                             viewModel = viewModel
                         )
+                        is AdminModule.Orders -> AdminOrdersManager(
+                            orders = state.orders,
+                            isArabic = isArabic,
+                            viewModel = viewModel
+                        )
+                        is AdminModule.Subscriptions -> AdminSubscriptionsManager(
+                            requests = state.subscriptionRequests,
+                            stores = state.stores,
+                            isArabic = isArabic,
+                            viewModel = viewModel
+                        )
+                        is AdminModule.Settings -> AdminSettingsManager(
+                            settings = state.settings,
+                            isArabic = isArabic,
+                            viewModel = viewModel
+                        )
+                        is AdminModule.Analytics -> AdminAnalyticsManager(
+                            orders = state.orders,
+                            products = state.products,
+                            stores = state.stores,
+                            interactions = state.interactions,
+                            isArabic = isArabic
+                        )
                         else -> Unit
                     }
                 }
@@ -403,6 +581,7 @@ fun AdminDashboardScreen(
 @Composable
 fun AdminDashboardModulesListing(
     modules: List<AdminModule>,
+    state: AdminUiState = AdminUiState(),
     isArabic: Boolean,
     onModuleSelect: (AdminModule) -> Unit
 ) {
@@ -412,6 +591,64 @@ fun AdminDashboardModulesListing(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                border = BorderStroke(1.dp, BrandSoftGray),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text(
+                        text = if (isArabic) "نظرة عامة على السوق الكلي" else "Marketplace Live Overview",
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    
+                    // Grid of metrics
+                    val stats = listOf(
+                        Triple(if (isArabic) "المستخدمين" else "Total Users", state.users.size.toString(), Icons.Default.People),
+                        Triple(if (isArabic) "المتاجر" else "Total Stores", state.stores.size.toString(), Icons.Default.Storefront),
+                        Triple(if (isArabic) "المنتجات" else "Total Products", state.products.size.toString(), Icons.Default.ShoppingBag),
+                        Triple(if (isArabic) "الطلبات" else "Total Orders", state.orders.size.toString(), Icons.Default.ReceiptLong),
+                        Triple(if (isArabic) "المبيعات (دولار)" else "Sales (USD)", "$" + state.orders.filter { it.currency == "USD" && it.status != "cancelled" }.sumOf { it.grandTotal }.toInt().toString(), Icons.Default.MonetizationOn),
+                        Triple(if (isArabic) "المبيعات (ل.س)" else "Sales (SYP)", state.orders.filter { it.currency == "SYP" && it.status != "cancelled" }.sumOf { it.grandTotal }.toInt().toString() + " ل.س", Icons.Default.Payments),
+                        Triple(if (isArabic) "بانتظار ترقية باقة" else "Pending Plans", state.subscriptionRequests.filter { it.status == "pending" }.size.toString(), Icons.Default.CardMembership),
+                        Triple(if (isArabic) "بانتظار التحقق" else "Pending Verify", state.stores.filter { it.verificationStatus == "Pending" || it.verificationStatus == "Submitted" }.size.toString(), Icons.Default.Verified)
+                    )
+                    
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (i in stats.indices step 2) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                for (j in i..minOf(i + 1, stats.lastIndex)) {
+                                    val stat = stats[j]
+                                    Card(
+                                        modifier = Modifier.weight(1f),
+                                        colors = CardDefaults.cardColors(containerColor = BrandBackground.copy(alpha = 0.5f)),
+                                        border = BorderStroke(1.dp, BrandSoftGray)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(stat.third, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Column {
+                                                Text(stat.first, fontSize = 10.sp, color = BrandTextMuted)
+                                                Text(stat.second, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = BrandTextPrimary)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         items(modules) { module ->
             Card(
                 modifier = Modifier
@@ -1259,5 +1496,833 @@ fun AdminUsersManager(
                 }
             }
         )
+    }
+}
+
+fun formatAdminPrice(amount: Double, currency: String, isArabic: Boolean): String {
+    return if (currency == "USD") {
+        val symbol = if (isArabic) "$" else "USD"
+        String.format("%.2f %s", amount, symbol)
+    } else {
+        val symbol = if (isArabic) "ل.س" else "SYP"
+        String.format("%,d %s", amount.toLong(), symbol)
+    }
+}
+
+@Composable
+fun AdminOrdersManager(
+    orders: List<Order>,
+    isArabic: Boolean,
+    viewModel: AdminViewModel
+) {
+    val context = LocalContext.current
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedStatusTab by remember { mutableStateOf("All") }
+    
+    val statusFilters = listOf("All", "pending", "processing", "shipped", "delivered", "cancelled")
+    
+    val filteredOrders = orders.filter { order ->
+        val matchesSearch = order.orderId.contains(searchQuery, ignoreCase = true) || 
+                order.customerName.contains(searchQuery, ignoreCase = true)
+        val matchesTab = selectedStatusTab == "All" || order.status.lowercase() == selectedStatusTab.lowercase()
+        matchesSearch && matchesTab
+    }
+    
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text(if (isArabic) "البحث برقم الطلب أو اسم المشتري" else "Search by Order ID or Buyer Name") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        )
+        
+        ScrollableTabRow(
+            selectedTabIndex = statusFilters.indexOf(selectedStatusTab).coerceAtLeast(0),
+            edgePadding = 0.dp,
+            containerColor = Color.Transparent,
+            divider = {},
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        ) {
+            statusFilters.forEach { status ->
+                val isSelected = selectedStatusTab == status
+                Tab(
+                    selected = isSelected,
+                    onClick = { selectedStatusTab = status },
+                    text = {
+                        Text(
+                            text = when(status) {
+                                "All" -> if (isArabic) "الكل" else "All"
+                                "pending" -> if (isArabic) "معلق" else "Pending"
+                                "processing" -> if (isArabic) "قيد المعالجة" else "Processing"
+                                "shipped" -> if (isArabic) "تم الشحن" else "Shipped"
+                                "delivered" -> if (isArabic) "تم التسليم" else "Delivered"
+                                "cancelled" -> if (isArabic) "ملغي" else "Cancelled"
+                                else -> status
+                            },
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                )
+            }
+        }
+        
+        if (filteredOrders.isEmpty()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = if (isArabic) "لا توجد طلبات تطابق الفلتر الحالي" else "No orders matching current filter",
+                    color = BrandTextMuted
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(filteredOrders) { order ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        border = BorderStroke(1.dp, BrandSoftGray),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (isArabic) "طلب #${order.orderId.take(8)}" else "Order #${order.orderId.take(8)}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = BrandTextPrimary
+                                )
+                                val statusColor = when (order.status.lowercase()) {
+                                    "pending" -> Color(0xFFE65100)
+                                    "processing" -> Color(0xFF0288D1)
+                                    "shipped" -> Color(0xFF512DA8)
+                                    "delivered" -> Color(0xFF2E7D32)
+                                    else -> Color.Red
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .background(statusColor.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = order.status.uppercase(),
+                                        color = statusColor,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (isArabic) "المشتري: ${order.customerName.ifEmpty { "غير معروف" }}" else "Buyer: ${order.customerName.ifEmpty { "Unknown" }}",
+                                fontSize = 13.sp,
+                                color = BrandTextPrimary
+                            )
+                            Text(
+                                text = if (isArabic) "الهاتف: ${order.customerPhone.ifEmpty { "غير متوفر" }}" else "Phone: ${order.customerPhone.ifEmpty { "N/A" }}",
+                                fontSize = 12.sp,
+                                color = BrandTextMuted
+                            )
+                            Text(
+                                text = if (isArabic) "العنوان: ${order.shippingAddress.ifEmpty { "غير متوفر" }}" else "Address: ${order.shippingAddress.ifEmpty { "N/A" }}",
+                                fontSize = 12.sp,
+                                color = BrandTextMuted
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = BrandSoftGray)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            order.items.forEach { item ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(text = "${item.productName} x${item.quantity}", fontSize = 12.sp, color = BrandTextPrimary)
+                                    Text(text = formatAdminPrice(item.unitPrice * item.quantity, order.currency, isArabic), fontSize = 12.sp, color = BrandTextPrimary)
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(text = if (isArabic) "المجموع الفرعي:" else "Subtotal:", fontSize = 11.sp, color = BrandTextMuted)
+                                Text(text = formatAdminPrice(order.subtotal, order.currency, isArabic), fontSize = 11.sp, color = BrandTextMuted)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(text = if (isArabic) "ضريبة VAT (3%):" else "VAT (3%):", fontSize = 11.sp, color = BrandTextMuted)
+                                Text(text = formatAdminPrice(order.vatAmount, order.currency, isArabic), fontSize = 11.sp, color = BrandTextMuted)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(text = if (isArabic) "أجور التوصيل:" else "Shipping Cost:", fontSize = 11.sp, color = BrandTextMuted)
+                                Text(text = formatAdminPrice(order.shippingFee, order.currency, isArabic), fontSize = 11.sp, color = BrandTextMuted)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = if (isArabic) "المجموع الكلي:" else "Grand Total:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BrandPrimary)
+                                Text(text = formatAdminPrice(order.grandTotal, order.currency, isArabic), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BrandPrimary)
+                            }
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (order.status.lowercase() == "pending") {
+                                    Button(
+                                        onClick = {
+                                            viewModel.updateOrderStatusAdmin(order.orderId, "processing") { ok ->
+                                                if (ok) Toast.makeText(context, "Moved to Processing", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (isArabic) "تأكيد واستلام" else "Accept", fontSize = 11.sp)
+                                    }
+                                }
+                                if (order.status.lowercase() == "processing") {
+                                    Button(
+                                        onClick = {
+                                            viewModel.updateOrderStatusAdmin(order.orderId, "shipped") { ok ->
+                                                if (ok) Toast.makeText(context, "Moved to Shipped", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF512DA8)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (isArabic) "شحن الطلب" else "Ship", fontSize = 11.sp)
+                                    }
+                                }
+                                if (order.status.lowercase() == "shipped") {
+                                    Button(
+                                        onClick = {
+                                            viewModel.updateOrderStatusAdmin(order.orderId, "delivered") { ok ->
+                                                if (ok) Toast.makeText(context, "Order Delivered", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (isArabic) "تسليم الطلب" else "Deliver", fontSize = 11.sp)
+                                    }
+                                }
+                                if (order.status.lowercase() != "delivered" && order.status.lowercase() != "cancelled") {
+                                    OutlinedButton(
+                                        onClick = {
+                                            viewModel.updateOrderStatusAdmin(order.orderId, "cancelled") { ok ->
+                                                if (ok) Toast.makeText(context, "Order Cancelled", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (isArabic) "إلغاء الطلب" else "Cancel", fontSize = 11.sp, color = Color.Red)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminSubscriptionsManager(
+    requests: List<SubscriptionRequest>,
+    stores: List<Store>,
+    isArabic: Boolean,
+    viewModel: AdminViewModel
+) {
+    val context = LocalContext.current
+    var selectedStoreForManualUpgrade by remember { mutableStateOf<Store?>(null) }
+    var showUpgradeDialog by remember { mutableStateOf(false) }
+    var selectedTierOverride by remember { mutableStateOf("Starter") }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text(
+                text = if (isArabic) "طلبات ترقية الباقات المعلقة" else "Pending Subscription Requests",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = BrandPrimary
+            )
+        }
+        
+        val pendingRequests = requests.filter { it.status == "pending" }
+        if (pendingRequests.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                    border = BorderStroke(1.dp, BrandSoftGray)
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text(text = if (isArabic) "لا توجد طلبات معلقة حالياً" else "No pending requests currently", color = BrandTextMuted)
+                    }
+                }
+            }
+        } else {
+            items(pendingRequests) { req ->
+                val associatedStore = stores.firstOrNull { it.id == req.storeId }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                    border = BorderStroke(1.dp, BrandSoftGray),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = associatedStore?.name ?: (if (isArabic) "متجر مجهول" else "Unknown Store"),
+                                fontWeight = FontWeight.Bold,
+                                color = BrandTextPrimary,
+                                fontSize = 15.sp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .background(BrandPrimary.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = req.requestedTier.uppercase(),
+                                    color = BrandPrimary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = "Requested: ${req.requestedTier} Tier", fontSize = 12.sp, color = BrandTextMuted)
+                        Text(
+                            text = "Date: " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(req.requestDate)),
+                            fontSize = 11.sp,
+                            color = BrandTextMuted
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    viewModel.handleSubscriptionRequest(req.requestId, req.storeId, req.requestedTier, true) { ok ->
+                                        if (ok) Toast.makeText(context, "Subscription request Approved!", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (isArabic) "قبول الترقية" else "Approve")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.handleSubscriptionRequest(req.requestId, req.storeId, req.requestedTier, false) { ok ->
+                                        if (ok) Toast.makeText(context, "Subscription request Declined!", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (isArabic) "رفض" else "Decline", color = Color.Red)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        item {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = if (isArabic) "تخصيص الباقات والترقية اليدوية" else "Manual Plan Upgrades & Overrides",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = BrandPrimary
+            )
+        }
+        
+        if (stores.isEmpty()) {
+            item {
+                Text(if (isArabic) "لا توجد متاجر للتعديل يدوياً" else "No stores listed yet", color = BrandTextMuted)
+            }
+        } else {
+            items(stores) { store ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                    border = BorderStroke(1.dp, BrandSoftGray),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = store.name, fontWeight = FontWeight.Bold, color = BrandTextPrimary, fontSize = 15.sp)
+                            Text(
+                                text = (if (isArabic) "الباقة الحالية: " else "Current Plan: ") + store.subscriptionTier,
+                                color = BrandTextMuted,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                selectedStoreForManualUpgrade = store
+                                selectedTierOverride = store.subscriptionTier
+                                showUpgradeDialog = true
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                        ) {
+                            Text(if (isArabic) "تغيير" else "Change")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (showUpgradeDialog && selectedStoreForManualUpgrade != null) {
+        AlertDialog(
+            onDismissRequest = { showUpgradeDialog = false },
+            title = { Text(if (isArabic) "تغيير باقة المتجر يدوياً" else "Manual Plan Override") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(text = "Store: ${selectedStoreForManualUpgrade?.name}")
+                    Text(text = if (isArabic) "اختر الباقة المناسبة:" else "Select Tier Plan:")
+                    
+                    val plans = listOf("Starter", "Growth", "Pro")
+                    plans.forEach { plan ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { selectedTierOverride = plan }) {
+                            RadioButton(
+                                selected = selectedTierOverride == plan,
+                                onClick = { selectedTierOverride = plan }
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(plan, fontSize = 14.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val storeId = selectedStoreForManualUpgrade?.id ?: return@Button
+                        viewModel.setStoreTier(storeId, selectedTierOverride) { ok ->
+                            if (ok) {
+                                Toast.makeText(context, "Store tier override successful!", Toast.LENGTH_SHORT).show()
+                                showUpgradeDialog = false
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                ) {
+                    Text(if (isArabic) "تأكيد" else "Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUpgradeDialog = false }) {
+                    Text(if (isArabic) "تراجع" else "Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun AdminSettingsManager(
+    settings: com.example.core.utils.MarketplaceSettingsManager.MarketplaceSettings,
+    isArabic: Boolean,
+    viewModel: AdminViewModel
+) {
+    val context = LocalContext.current
+    var platformFeeInput by remember { mutableStateOf(settings.platformFeePercent.toString()) }
+    var vatInput by remember { mutableStateOf(settings.vatPercent.toString()) }
+    var shippingInput by remember { mutableStateOf(settings.defaultShippingFeeSyp.toString()) }
+    var exchangeRateInput by remember { mutableStateOf(settings.defaultExchangeRate.toString()) }
+    
+    var newCityInput by remember { mutableStateOf("") }
+    var citiesList by remember { mutableStateOf(settings.supportedCities) }
+    
+    var selectedMethods by remember { mutableStateOf(settings.supportedPaymentMethods) }
+    
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text(
+                text = if (isArabic) "إعدادات الرسوم والضرائب الكلية" else "Global Fees & Tax Rates Configuration",
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = BrandPrimary
+            )
+        }
+        
+        item {
+            OutlinedTextField(
+                value = platformFeeInput,
+                onValueChange = { platformFeeInput = it },
+                label = { Text(if (isArabic) "عمولة المنصة الكلية (%)" else "Platform Service Fee (%)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        item {
+            OutlinedTextField(
+                value = vatInput,
+                onValueChange = { vatInput = it },
+                label = { Text(if (isArabic) "ضريبة القيمة المضافة لواصل بلس VAT (%)" else "VAT / Service Tax (%)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        item {
+            OutlinedTextField(
+                value = shippingInput,
+                onValueChange = { shippingInput = it },
+                label = { Text(if (isArabic) "أجور التوصيل الأساسية (ل.س)" else "Default Base Shipping Fee (SYP)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        item {
+            OutlinedTextField(
+                value = exchangeRateInput,
+                onValueChange = { exchangeRateInput = it },
+                label = { Text(if (isArabic) "سعر الصرف الافتراضي (دولار مقابل ليرة)" else "Base Conversion Exchange Rate (1 USD to SYP)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        item {
+            Text(
+                text = if (isArabic) "المناطق والمدن المدعومة للشحن" else "Supported Cities & Shipping Areas",
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = BrandPrimary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = newCityInput,
+                    onValueChange = { newCityInput = it },
+                    label = { Text(if (isArabic) "إضافة مدينة جديدة" else "Add New Delivery City") },
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        if (newCityInput.isNotBlank() && !citiesList.contains(newCityInput.trim())) {
+                            citiesList = citiesList + newCityInput.trim()
+                            newCityInput = ""
+                        }
+                    },
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add")
+                }
+            }
+        }
+        
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                citiesList.forEach { city ->
+                    AssistChip(
+                        onClick = { /* No-op */ },
+                        label = { Text(city) },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    citiesList = citiesList - city
+                                },
+                                modifier = Modifier.size(16.dp)
+                            ) {
+                                Icon(Icons.Default.Cancel, contentDescription = "Remove", tint = Color.Red, modifier = Modifier.size(12.dp))
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        
+        item {
+            Text(
+                text = if (isArabic) "طرق الدفع والتحصيل المعتمدة" else "Allowed Payment Transfer Channels",
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = BrandPrimary
+            )
+        }
+        
+        val paymentChannels = listOf("Cash On Delivery", "Syriatel Cash", "MTN Cash", "Bank Transfer")
+        items(paymentChannels) { method ->
+            val isChecked = selectedMethods.contains(method)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        selectedMethods = if (isChecked) selectedMethods - method else selectedMethods + method
+                    }
+                    .padding(vertical = 4.dp)
+            ) {
+                Checkbox(
+                    checked = isChecked,
+                    onCheckedChange = {
+                        selectedMethods = if (isChecked) selectedMethods - method else selectedMethods + method
+                    }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = method)
+            }
+        }
+        
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    val finalFee = platformFeeInput.toDoubleOrNull() ?: settings.platformFeePercent
+                    val finalVat = vatInput.toDoubleOrNull() ?: settings.vatPercent
+                    val finalShipping = shippingInput.toDoubleOrNull() ?: settings.defaultShippingFeeSyp
+                    val finalRate = exchangeRateInput.toDoubleOrNull() ?: settings.defaultExchangeRate
+                    
+                    val updated = settings.copy(
+                        platformFeePercent = finalFee,
+                        vatPercent = finalVat,
+                        defaultShippingFeeSyp = finalShipping,
+                        supportedCities = citiesList,
+                        supportedPaymentMethods = selectedMethods,
+                        defaultExchangeRate = finalRate
+                    )
+                    
+                    viewModel.saveMarketplaceSettings(updated) { success ->
+                        if (success) {
+                            Toast.makeText(context, "Marketplace settings updated dynamically on Firestore!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Failed to persist marketplace settings", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Text(if (isArabic) "حفظ وحفظ الإعدادات" else "Publish Changes Live")
+            }
+        }
+    }
+}
+
+@Composable
+fun AdminAnalyticsManager(
+    orders: List<Order>,
+    products: List<Product>,
+    stores: List<Store>,
+    interactions: List<Map<String, Any>>,
+    isArabic: Boolean
+) {
+    var selectedTab by remember { mutableStateOf("interact") }
+    
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        TabRow(
+            selectedTabIndex = if (selectedTab == "interact") 0 else if (selectedTab == "stores") 1 else 2,
+            containerColor = Color.Transparent,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+        ) {
+            Tab(
+                selected = selectedTab == "interact",
+                onClick = { selectedTab = "interact" },
+                text = { Text(if (isArabic) "تفاعلات السلع" else "Item Views") }
+            )
+            Tab(
+                selected = selectedTab == "stores",
+                onClick = { selectedTab = "stores" },
+                text = { Text(if (isArabic) "ترتيب المتاجر" else "Top Stores") }
+            )
+            Tab(
+                selected = selectedTab == "finance",
+                onClick = { selectedTab = "finance" },
+                text = { Text(if (isArabic) "الأداء المالي" else "Finance") }
+            )
+        }
+        
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
+            if (selectedTab == "interact") {
+                val viewCounts = interactions.filter { it["interactionType"] == "view" }
+                    .groupBy { it["productId"] as? String ?: "" }
+                    .mapValues { it.value.size }
+                
+                val favoriteCounts = interactions.filter { it["interactionType"] == "favorite" }
+                    .groupBy { it["productId"] as? String ?: "" }
+                    .mapValues { it.value.size }
+                
+                val trendingMap = products.map { prod ->
+                    val views = viewCounts[prod.id] ?: 0
+                    val favs = favoriteCounts[prod.id] ?: 0
+                    prod to (views + favs * 3)
+                }.sortedByDescending { it.second }.take(5)
+                
+                item {
+                    Text(if (isArabic) "المنتجات الأكثر مشاهدة" else "Most Viewed Products", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 15.sp)
+                }
+                
+                val topViewed = products.map { it to (viewCounts[it.id] ?: 0) }
+                    .filter { it.second > 0 }
+                    .sortedByDescending { it.second }
+                    .take(3)
+                
+                if (topViewed.isEmpty()) {
+                    item { Text(if (isArabic) "لا توجد تفاعلات مسجلة بعد" else "No view interactions recorded yet", color = BrandTextMuted, fontSize = 13.sp) }
+                } else {
+                    items(topViewed) { (prod, count) ->
+                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = BrandSurface), border = BorderStroke(1.dp, BrandSoftGray)) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(prod.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text("$count " + (if (isArabic) "مشاهدة" else "Views"), color = BrandPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(if (isArabic) "السلع الأكثر تمييزاً بالمفضلة" else "Most Favorited Products", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 15.sp)
+                }
+                
+                val topFavs = products.map { it to (favoriteCounts[it.id] ?: 0) }
+                    .filter { it.second > 0 }
+                    .sortedByDescending { it.second }
+                    .take(3)
+                    
+                if (topFavs.isEmpty()) {
+                    item { Text(if (isArabic) "لا توجد تفضيلات مضافة بعد" else "No favorite interactions recorded yet", color = BrandTextMuted, fontSize = 13.sp) }
+                } else {
+                    items(topFavs) { (prod, count) ->
+                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = BrandSurface), border = BorderStroke(1.dp, BrandSoftGray)) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(prod.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text("$count " + (if (isArabic) "إضافة مفضلة" else "Favs"), color = Color(0xFFD81B60), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+                
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(if (isArabic) "السلع الأكثر رواجاً (تريند)" else "Trending Products (Weighted Score)", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 15.sp)
+                }
+                
+                val activeTrends = trendingMap.filter { it.second > 0 }
+                if (activeTrends.isEmpty()) {
+                    item { Text(if (isArabic) "لا توجد نقاط كافية لتصنيف الرواج" else "Not enough interaction weight for trending", color = BrandTextMuted, fontSize = 13.sp) }
+                } else {
+                    items(activeTrends) { (prod, score) ->
+                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = BrandSurface), border = BorderStroke(1.dp, BrandSoftGray)) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(prod.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text(if (isArabic) "نقاط الرواج: $score" else "Trend Weight: $score", color = Color(0xFF00ACC1), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            } else if (selectedTab == "stores") {
+                val completedOrders = orders.filter { it.status != "cancelled" }
+                val storeEarnings = completedOrders
+                    .groupBy { it.storeId }
+                    .mapValues { entry -> 
+                        val name = entry.value.firstOrNull()?.storeName ?: "Store"
+                        val count = entry.value.size
+                        val total = entry.value.sumOf { it.grandTotal }
+                        Triple(name, count, total)
+                    }.values.sortedByDescending { it.third }.take(5)
+                
+                item {
+                    Text(if (isArabic) "ترتيب أفضل المتاجر حسب المبيعات" else "Top Performing Stores by Revenue", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 15.sp)
+                }
+                
+                if (storeEarnings.isEmpty()) {
+                    item { Text(if (isArabic) "لا توجد مبيعات كافية في المتاجر حالياً" else "No store sales recorded yet", color = BrandTextMuted, fontSize = 13.sp) }
+                } else {
+                    items(storeEarnings.toList()) { (name, count, total) ->
+                        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = BrandSurface), border = BorderStroke(1.dp, BrandSoftGray)) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                                Text(name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(if (isArabic) "${count} طلبات منفذة" else "${count} orders completed", fontSize = 12.sp, color = BrandTextMuted)
+                                    Text(formatAdminPrice(total, "SYP", isArabic) + " / " + formatAdminPrice(total / 14000.0, "USD", isArabic), fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 13.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (selectedTab == "finance") {
+                val activeOrders = orders.filter { it.status != "cancelled" }
+                val usdTotal = activeOrders.filter { it.currency == "USD" }.sumOf { it.grandTotal }
+                val sypTotal = activeOrders.filter { it.currency == "SYP" }.sumOf { it.grandTotal }
+                
+                val vatUsd = activeOrders.filter { it.currency == "USD" }.sumOf { it.vatAmount }
+                val vatSyp = activeOrders.filter { it.currency == "SYP" }.sumOf { it.vatAmount }
+                
+                item {
+                    Text(if (isArabic) "الإيرادات الإجمالية والعمولات الكلية" else "Finance, Revenue & System Commissions", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 15.sp)
+                }
+                
+                item {
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = BrandSurface), border = BorderStroke(1.dp, BrandSoftGray)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(if (isArabic) "إجمالي المبيعات بالدولار:" else "Total USD Volume:", fontSize = 13.sp)
+                                Text(formatAdminPrice(usdTotal, "USD", isArabic), fontWeight = FontWeight.Bold, color = BrandPrimary)
+                            }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(if (isArabic) "إجمالي المبيعات بالليرة:" else "Total SYP Volume:", fontSize = 13.sp)
+                                Text(formatAdminPrice(sypTotal, "SYP", isArabic), fontWeight = FontWeight.Bold, color = BrandPrimary)
+                            }
+                            HorizontalDivider(color = BrandSoftGray)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(if (isArabic) "إجمالي ضريبة VAT المستقطعة (USD):" else "System Collected VAT (USD):", fontSize = 12.sp, color = BrandTextMuted)
+                                Text(formatAdminPrice(vatUsd, "USD", isArabic), fontWeight = FontWeight.Bold)
+                            }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(if (isArabic) "إجمالي ضريبة VAT المستقطعة (SYP):" else "System Collected VAT (SYP):", fontSize = 12.sp, color = BrandTextMuted)
+                                Text(formatAdminPrice(vatSyp, "SYP", isArabic), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -18,5 +18,13 @@ data class Store(
     val verificationStatus: String = "Pending", // "Pending", "Verified", "Rejected"
     val sellerBadge: String = "None", // "None", "Verified Seller", "Pro Seller"
     val defaultCurrency: String = "USD", // "USD" or "SYP"
+    val deliveryAreas: List<String> = emptyList(),
+    val shippingCosts: Map<String, Double> = emptyMap(), // Map of city/area name -> fee in SYP
+    val workingHours: String = "9:00 AM - 9:00 PM",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val city: String = "",
+    val district: String = "",
+    val fullAddress: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -110,6 +110,14 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 verificationStatus = doc.getString("verificationStatus") ?: "Pending",
                 sellerBadge = doc.getString("sellerBadge") ?: "None",
                 defaultCurrency = doc.getString("defaultCurrency") ?: "USD",
+                deliveryAreas = doc.get("deliveryAreas") as? List<String> ?: emptyList(),
+                shippingCosts = (doc.get("shippingCosts") as? Map<String, Any>)?.mapValues { (it.value as? Number)?.toDouble() ?: 0.0 } ?: emptyMap(),
+                workingHours = doc.getString("workingHours") ?: "9:00 AM - 9:00 PM",
+                latitude = doc.getDouble("latitude"),
+                longitude = doc.getDouble("longitude"),
+                city = doc.getString("city") ?: "",
+                district = doc.getString("district") ?: "",
+                fullAddress = doc.getString("fullAddress") ?: "",
                 createdAt = try {
                     doc.getTimestamp("createdAt")?.toDate()?.time 
                         ?: doc.getLong("createdAt") 
@@ -182,6 +190,14 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "verificationStatus" to store.verificationStatus,
                 "sellerBadge" to store.sellerBadge,
                 "defaultCurrency" to store.defaultCurrency,
+                "deliveryAreas" to store.deliveryAreas,
+                "shippingCosts" to store.shippingCosts,
+                "workingHours" to store.workingHours,
+                "latitude" to store.latitude,
+                "longitude" to store.longitude,
+                "city" to store.city,
+                "district" to store.district,
+                "fullAddress" to store.fullAddress,
                 "createdAt" to store.createdAt
             )
             db.collection("stores").document(store.id).set(storeMap).await()
@@ -223,7 +239,15 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "subscriptionTier" to store.subscriptionTier,
                 "verificationStatus" to store.verificationStatus,
                 "sellerBadge" to store.sellerBadge,
-                "defaultCurrency" to store.defaultCurrency
+                "defaultCurrency" to store.defaultCurrency,
+                "deliveryAreas" to store.deliveryAreas,
+                "shippingCosts" to store.shippingCosts,
+                "workingHours" to store.workingHours,
+                "latitude" to store.latitude,
+                "longitude" to store.longitude,
+                "city" to store.city,
+                "district" to store.district,
+                "fullAddress" to store.fullAddress
             )
             db.collection("stores").document(store.id).update(storeMap as Map<String, Any>).await()
             Result.success(Unit)
@@ -271,7 +295,12 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
         productName: String,
         productPrice: Double,
         productDescription: String,
-        productImages: List<String>
+        productImages: List<String>,
+        latitude: Double?,
+        longitude: Double?,
+        city: String,
+        district: String,
+        fullAddress: String
     ): Result<Unit> {
         val db = firestore ?: return Result.failure(Exception("Firestore service not available"))
 
@@ -294,6 +323,11 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "sellerBadge" to "None",
                 "usdExchangeRate" to 13500.0,
                 "defaultCurrency" to "USD",
+                "latitude" to latitude,
+                "longitude" to longitude,
+                "city" to city,
+                "district" to district,
+                "fullAddress" to fullAddress,
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
 

@@ -1281,22 +1281,26 @@ fun SettingsSection(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .height(50.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(DarkBg)
                                 .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
                                 .clickable { showCategoryDialog = true }
-                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                                .padding(horizontal = 16.dp)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth().align(Alignment.CenterStart),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = selectedCategory?.getName(isArabic) ?: (if (isArabic) "اختر التصنيف المناسب" else "Select Business Type"),
                                     color = TextWhite,
-                                    fontSize = 14.sp
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Icon(Icons.Default.ArrowDropDown, null, tint = PrimaryGreen)
                             }
                         }
@@ -1686,22 +1690,26 @@ fun AddEditProductDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(50.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(DarkBg)
                             .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
                             .clickable { showCategorySelectorDialog = true }
-                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                            .padding(horizontal = 16.dp)
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth().align(Alignment.CenterStart),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = selectedCategory?.getName(isArabic) ?: (if (isArabic) "تحميل الفئات..." else "Loading Categories..."),
                                 color = TextWhite,
-                                fontSize = 14.sp
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Icon(Icons.Default.ArrowDropDown, null, tint = PrimaryGreen)
                         }
                     }

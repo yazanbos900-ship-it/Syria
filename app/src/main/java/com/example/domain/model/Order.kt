@@ -22,5 +22,14 @@ data class Order(
     val customerPhone: String = "",
     val shippingAddress: String = "",
     val paymentMethod: String = "Cash On Delivery",
-    val paymentStatus: String = "Pending" // "Pending", "Paid", "Failed", "Cancelled"
+    val paymentStatus: String = "Pending", // "Pending", "Paid", "Failed", "Cancelled"
+    val subtotal: Double = 0.0,
+    val vatAmount: Double = 0.0,
+    val shippingFee: Double = 0.0,
+    val grandTotal: Double = 0.0,
+    val selectedDeliveryArea: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val city: String = "",
+    val district: String = ""
 )

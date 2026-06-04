@@ -377,6 +377,7 @@ fun AddProductScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(50.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(BrandSurface)
                             .border(
@@ -385,13 +386,12 @@ fun AddProductScreen(
                                 RoundedCornerShape(12.dp)
                             )
                             .clickable { showCategoryDialog = true }
-                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                            .padding(horizontal = 16.dp)
                             .testTag("add_product_category_trigger")
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().align(Alignment.CenterStart),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = if (selectedCategory != null) {
@@ -400,8 +400,12 @@ fun AddProductScreen(
                                     if (isArabic) "اختر فئة المنتج" else "Select category"
                                 },
                                 color = if (selectedCategory != null) BrandTextPrimary else BrandTextMuted,
-                                fontSize = 14.sp
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
                                 contentDescription = null,

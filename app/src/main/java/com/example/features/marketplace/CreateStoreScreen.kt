@@ -38,6 +38,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.R
+import com.example.components.MapLocationPicker
 import com.example.core.utils.LanguageManager
 import com.example.core.di.ServiceLocator
 import com.example.domain.model.Category
@@ -445,13 +446,17 @@ fun Step1StoreInfo(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(50.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(DarkCard)
                     .border(1.dp, if (state.categoryId.isNotBlank()) PrimaryGreen else BorderColor, RoundedCornerShape(12.dp))
                     .clickable { showCategoryDialog = true }
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .padding(horizontal = 16.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.CenterStart),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = null,
@@ -463,9 +468,12 @@ fun Step1StoreInfo(
                         text = if (state.categoryId.isNotBlank()) state.categoryName else stringResource(id = R.string.category_placeholder),
                         color = if (state.categoryId.isNotBlank()) TextWhite else TextGray,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = Icons.Default.ArrowDropDown,
                         contentDescription = "خيارات الفئات",
@@ -521,6 +529,99 @@ fun Step1StoreInfo(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("store_description_input")
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Geographic map-based location selection (Requirement 4)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "موقع المتجر الجغرافي على الخريطة 📍",
+                color = TextWhite,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                border = BorderStroke(1.dp, if (state.latitude == null) Color.Red.copy(alpha = 0.5f) else BorderColor),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (state.latitude == null) "يرجى تحديد موقع المتجر على الخريطة" else "تم تحديد الموقع بنجاح ✅",
+                            color = if (state.latitude == null) TextGray else PrimaryGreen,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Button(
+                            onClick = { viewModel.setMapVisible(true) },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Text(
+                                text = "تحديد على الخريطة",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DarkBg
+                            )
+                        }
+                    }
+
+                    if (state.latitude != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(BorderColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                .padding(8.dp)
+                        ) {
+                            Icon(Icons.Default.LocationOn, null, tint = PrimaryGreen, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = state.fullAddress,
+                                color = TextWhite,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text(
+                            text = "Lat: ${state.latitude}, Lng: ${state.longitude}",
+                            color = TextGray,
+                            fontSize = 10.sp
+                        )
+                    } else {
+                        Text(
+                            text = "🔴 مطلوب لتسجيل المتجر وتفعيل حساب التاجر بنجاح.",
+                            color = Color.Red,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
+
+        if (state.mapVisible) {
+            MapLocationPicker(
+                initialLatitude = state.latitude ?: 33.5138,
+                initialLongitude = state.longitude ?: 36.2947,
+                onLocationConfirmed = { lat, lng, country, city, district, street, fullAddress ->
+                    viewModel.selectLocationCoordinates(lat, lng, country, city, district)
+                    viewModel.setMapVisible(false)
+                },
+                onDismissRequest = { viewModel.setMapVisible(false) },
+                isArabic = true
             )
         }
     }

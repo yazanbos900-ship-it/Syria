@@ -50,6 +50,9 @@ class FirebaseProductRepositoryImpl : ProductRepository {
             val isAvailable = getBoolean("isAvailable") ?: true
             val stockCount = (get("stockCount") as? Number)?.toInt() ?: 10
             val currency = getString("currency") ?: "USD"
+            val isApproved = getBoolean("isApproved") ?: true
+            val isFlagged = getBoolean("isFlagged") ?: false
+            val flagReason = getString("flagReason") ?: ""
             
             Product(
                 id = id,
@@ -64,6 +67,9 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 isAvailable = isAvailable,
                 stockCount = stockCount,
                 currency = currency,
+                isApproved = isApproved,
+                isFlagged = isFlagged,
+                flagReason = flagReason,
                 createdAt = getCreatedAt(this)
             )
         } catch (e: Exception) {
@@ -284,6 +290,9 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 "isAvailable" to product.isAvailable,
                 "stockCount" to product.stockCount,
                 "currency" to product.currency,
+                "isApproved" to product.isApproved,
+                "isFlagged" to product.isFlagged,
+                "flagReason" to product.flagReason,
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
             db.collection("products").add(productMap).await()
@@ -312,7 +321,10 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 "reviewCount" to product.reviewCount,
                 "isAvailable" to product.isAvailable,
                 "stockCount" to product.stockCount,
-                "currency" to product.currency
+                "currency" to product.currency,
+                "isApproved" to product.isApproved,
+                "isFlagged" to product.isFlagged,
+                "flagReason" to product.flagReason
             )
             db.collection("products").document(product.id).update(productMap as Map<String, Any>).await()
             Result.success(Unit)

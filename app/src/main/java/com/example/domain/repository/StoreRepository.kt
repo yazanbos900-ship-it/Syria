@@ -27,6 +27,11 @@ interface StoreRepository {
         productName: String,
         productPrice: Double,
         productDescription: String,
-        productImages: List<String>
+        productImages: List<String>,
+        latitude: Double? = null,
+        longitude: Double? = null,
+        city: String = "",
+        district: String = "",
+        fullAddress: String = ""
     ): Result<Unit>
 }
