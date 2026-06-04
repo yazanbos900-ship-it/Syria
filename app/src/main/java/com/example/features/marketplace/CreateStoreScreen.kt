@@ -537,7 +537,7 @@ fun Step1StoreInfo(
         // Geographic map-based location selection (Requirement 4)
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "موقع المتجر الجغرافي على الخريطة 📍",
+                text = "موقع المتجر الجغرافي على الخريطة",
                 color = TextWhite,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
@@ -557,7 +557,7 @@ fun Step1StoreInfo(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = if (state.latitude == null) "يرجى تحديد موقع المتجر على الخريطة" else "تم تحديد الموقع بنجاح ✅",
+                            text = if (state.latitude == null) "يرجى تحديد موقع المتجر على الخريطة" else "تم تحديد الموقع بنجاح",
                             color = if (state.latitude == null) TextGray else PrimaryGreen,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium

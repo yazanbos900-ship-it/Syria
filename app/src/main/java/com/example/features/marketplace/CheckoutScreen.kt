@@ -610,7 +610,7 @@ fun CheckoutDetailsView(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isArabic) "موقع التوصيل والشحن 📍" else "Delivery Coordinates 📍",
+                            text = if (isArabic) "موقع التوصيل والشحن" else "Delivery Coordinates",
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             color = BrandTextPrimary
@@ -768,31 +768,10 @@ fun CheckoutDetailsView(
 
         // Payment Method เลือก
         Text(
-            text = if (isArabic) "اختر طريقة الدفع 💳" else "Select Payment Method 💳",
+            text = if (isArabic) "اختر طريقة الدفع" else "Select Payment Method",
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             color = BrandTextPrimary
-        )
-
-        PaymentMethodCard(
-            title = "Syriatel Cash",
-            description = if (isArabic) "دفع عبر بوابة سيرياتيل كاش السريعة" else "Pay instantly via Syriatel Cash Mobile Wallet",
-            color = Color(0xFFD32F2F), // Syriatel red
-            icon = Icons.Default.AccountBalanceWallet,
-            isSelected = state.paymentMethod == "Syriatel Cash",
-            isArabic = isArabic,
-            onClick = { onPaymentMethodChange("Syriatel Cash") }
-        )
-
-        PaymentMethodCard(
-            title = "MTN Cash",
-            description = if (isArabic) "دفع محفظة ام تي ان كاش الإلكترونية" else "Pay easily using MTN Cash e-Wallet",
-            color = Color(0xFFFFB300), // MTN Yellow
-            icon = Icons.Default.Wallet,
-            isSelected = state.paymentMethod == "MTN Cash",
-            isSelectedYellow = true,
-            isArabic = isArabic,
-            onClick = { onPaymentMethodChange("MTN Cash") }
         )
 
         PaymentMethodCard(

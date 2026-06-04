@@ -592,7 +592,7 @@ fun MapLocationPicker(
                             Icon(Icons.Default.Check, contentDescription = null)
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isArabic) "تأكيد واستيراد العنوان تلقائياً ✅" else "Confirm & Auto-Populate Address ✅",
+                                text = if (isArabic) "تأكيد واستيراد العنوان تلقائياً" else "Confirm & Auto-Populate Address",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp
                             )

@@ -303,7 +303,7 @@ fun SellerAnalyticsSummaryGrid(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (isArabic) "إجمالي الإيرادات المحققة 💰" else "Accrued Total Revenue 💰",
+                        text = if (isArabic) "إجمالي الإيرادات المحققة" else "Accrued Total Revenue",
                         color = TextGray,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
@@ -1191,7 +1191,7 @@ fun FinancialpricingSummarySheet(order: Order, isArabic: Boolean, storeRate: Dou
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
-                text = if (isArabic) "تفاصيل الدفعات والعمولات 💳" else "Financial Statement 💳",
+                text = if (isArabic) "تفاصيل الدفعات والعمولات" else "Financial Statement",
                 fontWeight = FontWeight.Bold,
                 color = TextWhite,
                 fontSize = 13.sp

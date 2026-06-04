@@ -61,7 +61,7 @@ object NotificationManager {
                 }
             }
             "Delivered" -> {
-                title = if (isAr) "تم تسليم الطلب! ✅" else "Order Delivered! ✅"
+                title = if (isAr) "تم تسليم الطلب!" else "Order Delivered!"
                 body = if (isAr) {
                     "تم تسليم $itemName بنجاح. شكراً لتسوقك معنا!"
                 } else {
