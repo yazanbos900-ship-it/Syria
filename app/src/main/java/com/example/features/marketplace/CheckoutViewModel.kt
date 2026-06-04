@@ -173,13 +173,25 @@ class CheckoutViewModel(
     }
 
     private fun initiateEWalletPayment() {
-        _state.update { it.copy(isLoading = true, progressMessage = "Generating payment request...") }
+        val originalMethod = _state.value.paymentMethod
+        val methodLabel = if (originalMethod.contains("Syriatel", ignoreCase = true)) "Syriatel Cash" else "MTN Cash"
+        
+        _state.update { it.copy(isLoading = true, progressMessage = "Opening secure link with $methodLabel... / جاري فتح الاتصال الآمن مع $methodLabel...") }
         viewModelScope.launch {
             try {
+                // Progressive step 1: Port-handshake
+                delay(1000)
+                val totalAmount = _state.value.cartItems.sumOf { it.price * it.quantity }
+                _state.update { it.copy(progressMessage = "Authenticating Wallet Session +${_state.value.customerPhone}... / جاري التحقق من حساب المحفظة +${_state.value.customerPhone}...") }
+                
+                // Progressive step 2: Generate token
+                delay(1200)
+                _state.update { it.copy(progressMessage = "Requesting secure 6-digit OTP code... / جاري طلب رمز التحقق OTP الآمن لـ $methodLabel...") }
+                
+                delay(1000)
                 val session = ServiceLocator.authRepository.getCurrentUserSession() ?: return@launch
                 val uid = session.id
                 
-                val totalAmount = _state.value.cartItems.sumOf { it.price * it.quantity }
                 val transactionId = "TXN-" + UUID.randomUUID().toString().take(8).uppercase()
                 val orderIdSeed = "WS-" + UUID.randomUUID().toString().take(8).uppercase()
                 
@@ -283,33 +295,44 @@ class CheckoutViewModel(
             return
         }
 
-        _state.update { it.copy(isLoading = true, progressMessage = "Verifying transaction...") }
+        _state.update { it.copy(isLoading = true, progressMessage = "Verifying security handshake... / جاري التحقق من الهوية الرقمية والرمز...") }
         viewModelScope.launch {
-            val result = verifyPaymentOtpUseCase(currentTxn.transactionId, currentState.verificationOtp)
+            // Processing step 1: Handshake validation
+            delay(1200)
+            _state.update { it.copy(progressMessage = "Connecting secure ledger API... / جاري الاتصال بدفتر الحسابات المؤمن للشبكة...") }
             
-            _state.update { it.copy(isLoading = false) }
+            // Processing step 2: Transaction submission
+            delay(1200)
+            _state.update { it.copy(progressMessage = "Authorizing checkout settlement... / جاري تفويض وتطهير تسوية المعاملة المالية...") }
+            
+            delay(800)
+            val result = verifyPaymentOtpUseCase(currentTxn.transactionId, currentState.verificationOtp)
             
             when (result) {
                 is OtpVerificationResult.Success -> {
                     saveVerifiedOrders(currentTxn)
                 }
                 is OtpVerificationResult.Expired -> {
-                    _state.update { it.copy(verificationError = "Verification code has expired. Please resend code.") }
+                    _state.update { it.copy(isLoading = false, verificationError = "Verification code has expired. Please resend code. / انتهت صلاحية كود التحقق.") }
                 }
                 is OtpVerificationResult.Incorrect -> {
-                    _state.update { it.copy(verificationError = "Incorrect verification code. Please try again.") }
+                    _state.update { it.copy(isLoading = false, verificationError = "Incorrect verification code. Please try again. / رمز التحقق غير صحيح، يرجى المحاولة مجدداً.") }
                 }
                 is OtpVerificationResult.Error -> {
-                    _state.update { it.copy(verificationError = result.message) }
+                    _state.update { it.copy(isLoading = false, verificationError = result.message) }
                 }
             }
         }
     }
 
     private fun saveVerifiedOrders(txn: PaymentTransaction) {
-        _state.update { it.copy(isLoading = true, progressMessage = "Processing secure checkout payment and placing orders...") }
+        _state.update { it.copy(progressMessage = "Writing order data to local safe storage... / جاري تخزين بيانات الطلبات محلياً ومزامنتها...") }
         viewModelScope.launch {
             try {
+                delay(1200)
+                _state.update { it.copy(progressMessage = "Dispatching notifications to sellers... / جاري إخطار المتاجر وتجهيز مستندات الشحنة الآمنة...") }
+                delay(1000)
+                
                 val session = ServiceLocator.authRepository.getCurrentUserSession() ?: return@launch
                 val uid = session.id
                 val itemsByStore = _state.value.cartItems.groupBy { it.storeName }

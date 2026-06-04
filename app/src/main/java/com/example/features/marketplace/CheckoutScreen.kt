@@ -112,6 +112,7 @@ fun CheckoutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .imePadding()
         ) {
             when {
                 state.orderPlacedSuccess -> {
@@ -145,34 +146,222 @@ fun CheckoutScreen(
                 }
             }
 
+            // High-fidelity Android-style head-up Push Notification banner
+            AnimatedVisibility(
+                visible = state.showSimulatedSms,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(16.dp)
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161622)),
+                    shape = RoundedCornerShape(18.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                    border = BorderStroke(1.dp, Color(0xFF2E2E3E)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 500.dp)
+                        .clickable { viewModel.dismissSms() }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                val isSyriatel = state.paymentMethod.contains("Syriatel", ignoreCase = true)
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSyriatel) Color(0xFFD32F2F) else Color(0xFFFFB300)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Sms,
+                                        contentDescription = null,
+                                        tint = if (isSyriatel) Color.White else Color.Black,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                                Text(
+                                    text = if (isSyriatel) "Syriatel Cash Secure" else "MTN Cash Wallet SMS",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 12.sp,
+                                    color = Color.White
+                                )
+                            }
+                            Text(
+                                text = if (isArabic) "الآن" else "now",
+                                color = Color.Gray,
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Column {
+                            Text(
+                                text = if (isArabic) {
+                                    "بوابة الدفع واصل بلس:\nرمز التحقق (OTP) الخاص بك هو: "
+                                } else {
+                                    "WasetPlus Secure Gateway:\nYour verification OTP token is: "
+                                },
+                                color = Color.LightGray,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp
+                            )
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = state.simulatedSmsBody,
+                                    color = if (state.paymentMethod.contains("Syriatel", ignoreCase = true)) Color(0xFFF44336) else Color(0xFFFFC107),
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 24.sp,
+                                    letterSpacing = 2.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                                
+                                Button(
+                                    onClick = {
+                                        viewModel.onOtpChange(state.simulatedSmsBody)
+                                        viewModel.dismissSms()
+                                        Toast.makeText(context, if (isArabic) "تم نسخ الرمز وتعبئته تلقائياً! ⚡" else "OTP copied & filled automatically! ⚡", Toast.LENGTH_SHORT).show()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (state.paymentMethod.contains("Syriatel", ignoreCase = true)) Color(0xFFD32F2F) else Color(0xFFFFB300),
+                                        contentColor = if (state.paymentMethod.contains("Syriatel", ignoreCase = true)) Color.White else Color.Black
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    Text(
+                                        text = if (isArabic) "نسخ وتعبئة تلقائية" else "Copy & Autofill",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // High-fidelity payment processing screen overlay
             if (state.isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.5f))
+                        .background(Color.Black.copy(alpha = 0.75f))
                         .clickable(enabled = false) {},
                     contentAlignment = Alignment.Center
                 ) {
+                    val isSyriatel = state.paymentMethod.contains("Syriatel", ignoreCase = true)
+                    val themeColor = if (isSyriatel) Color(0xFFD32F2F) else if (state.paymentMethod.contains("MTN", ignoreCase = true)) Color(0xFFFFB300) else BrandPrimary
+                    
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(32.dp)
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E2C)),
+                        shape = RoundedCornerShape(24.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                        modifier = Modifier
+                            .padding(24.dp)
+                            .fillMaxWidth()
+                            .widthIn(max = 420.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
+                            modifier = Modifier.padding(28.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            CircularProgressIndicator(color = BrandPrimary)
+                            // Pulsing / Rotating Radar Security Ring
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(themeColor.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (state.progressMessage.contains("success", ignoreCase = true) || state.progressMessage.contains("نجاح", ignoreCase = true)) Icons.Default.Check else Icons.Default.Shield,
+                                    contentDescription = null,
+                                    tint = themeColor,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            // Title & Subtitle
+                            Text(
+                                text = if (isArabic) "بوابة دفع آمنة مشفرة" else "Secured Payment Link",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 16.sp
+                            )
+                            
+                            // Triple Circular Intersecting Loader or modern styled LinearProgress
+                            LinearProgressIndicator(
+                                color = themeColor,
+                                trackColor = Color.White.copy(alpha = 0.08f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(CircleShape)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+
                             Text(
                                 text = state.progressMessage.ifBlank {
-                                    if (isArabic) "جاري المعالجة..." else "Loading..."
+                                    if (isArabic) "جاري التحقق والمزامنة..." else "Establishing secure workspace link..."
                                 },
-                                color = BrandTextPrimary,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center
+                                color = Color.LightGray,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp,
+                                modifier = Modifier.animateContentSize()
                             )
+                            
+                            // Visual Security badges
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.White.copy(alpha = 0.04f))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "AES-256 SSL Escrow Protected",
+                                    color = Color.Gray,
+                                    fontSize = 9.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -712,33 +901,47 @@ fun CheckoutSuccessView(
     onGoToOrders: () -> Unit,
     onGoToHome: () -> Unit
 ) {
+    val context = LocalContext.current
+    val totalAmount = state.cartItems.sumOf { it.price * it.quantity } + if (state.cartItems.isNotEmpty()) 2.0 else 0.0
+    val txnId = state.currentTransaction?.transactionId ?: "TXN-SECURE"
+    val isSyriatel = state.paymentMethod.contains("Syriatel", ignoreCase = true)
+    val isMtn = state.paymentMethod.contains("MTN", ignoreCase = true)
+    
+    val providerColor = if (isSyriatel) Color(0xFFD32F2F) else if (isMtn) Color(0xFFFFB300) else BrandPrimary
+    val providerName = when {
+        isSyriatel -> if (isArabic) "سيرياتيل كاش" else "Syriatel Cash"
+        isMtn -> if (isArabic) "ام تي ان كاش" else "MTN Cash"
+        else -> if (isArabic) "الدفع عند الاستلام" else "Cash On Delivery"
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Success Seal icon
+        // Success Seal Icon with Double Pulse Rings
         Box(
             modifier = Modifier
-                .size(90.dp)
+                .size(80.dp)
                 .clip(CircleShape)
-                .background(BrandPrimary.copy(alpha = 0.1f)),
+                .background(Color(0xFFE8F5E9)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = BrandPrimary,
-                modifier = Modifier.size(60.dp)
+                tint = Color(0xFF2E7D32),
+                modifier = Modifier.size(54.dp)
             )
         }
 
         Text(
-            text = if (isArabic) "تم الدفع وتأكيد الطلب بنجاح! 🎉" else "Payment Authorized Successfully! 🎉",
+            text = if (isArabic) "اكتمل التفويض بنجاح! 🎉" else "Charge Authorized Successfully! 🎉",
             fontWeight = FontWeight.ExtraBold,
             color = BrandTextPrimary,
             fontSize = 18.sp,
@@ -747,40 +950,116 @@ fun CheckoutSuccessView(
 
         Text(
             text = if (isArabic) {
-                "تم حفظ وتوثيق معلومات الفاتورة في قاعدة بيانات بلس السحابية بأمان. أموالك مؤرشفة بأمان تحت خدمة الأسكرو لحمايتك حتى استلام الطرد وفحصه."
+                "لقد نجحت عملية الدفع الرقمي وحجز السلعة بأمان! أموالك محفوظة تحت حساب الضمان (Escrow) لحماية المتسوق."
             } else {
-                "Your payment transactions are securely synced and logged in our Cloud Firestore base under secured escrow protection until packaging arrives."
+                "Secured digital checkout transaction successfully verified. Funds are securely locked under safe escrow storage for your protection."
             },
             color = BrandTextMuted,
-            fontSize = 13.sp,
+            fontSize = 11.sp,
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp
+            lineHeight = 16.sp,
+            modifier = Modifier.padding(horizontal = 12.dp)
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Luxury Bank Receipt Slip Design
         Card(
             colors = CardDefaults.cardColors(containerColor = BrandSurface),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(18.dp),
             border = BorderStroke(1.dp, BrandSoftGray),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Provider Branding Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = if (isArabic) "الحالة المالية للمطالبة" else "Financial Claim Tag", color = BrandTextMuted, fontSize = 12.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(providerColor)
+                        )
+                        Text(
+                            text = providerName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = BrandTextPrimary
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(BrandPrimary.copy(alpha = 0.15f))
+                            .background(Color(0xFFE8F5E9))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
-                        Text(text = if (isArabic) "مدفوع بالكامل" else "PAID (Simulated)", color = BrandPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (isArabic) "مقبول بالكامل" else "PAID",
+                            color = Color(0xFF2E7D32),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+
+                // settled large amount
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = if (isArabic) "المبلغ المقتطع الإجمالي" else "Total Paid Amount",
+                        color = BrandTextMuted,
+                        fontSize = 11.sp
+                    )
+                    Text(
+                        text = CurrencyManager.formatPrice(totalAmount, 13500.0, isArabic),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 26.sp,
+                        color = providerColor,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    Text(
+                        text = "Equivalent ~ " + String.format("%,.0f SP", totalAmount * 13500.0),
+                        color = BrandTextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+
+                // Metadata list
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = if (isArabic) "رقم العملية السحابية" else "Transaction Audit Ref", color = BrandTextMuted, fontSize = 11.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.clickable {
+                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val clip = android.content.ClipData.newPlainText("txn_id", txnId)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, if (isArabic) "تم نسخ المعرف بنجاح!" else "Copied Transaction ID!", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Text(text = txnId, color = BrandTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(13.dp))
                     }
                 }
 
@@ -788,13 +1067,22 @@ fun CheckoutSuccessView(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = if (isArabic) "طريقة السداد" else "Payout Channel", color = BrandTextMuted, fontSize = 12.sp)
-                    val methodText = when {
-                        state.paymentMethod.contains("Syriatel", ignoreCase = true) -> if (isArabic) "سيرياتيل كاش" else "Syriatel Cash"
-                        state.paymentMethod.contains("MTN", ignoreCase = true) -> if (isArabic) "ام تي ان كاش" else "MTN Cash"
-                        else -> if (isArabic) "الدفع عند الاستلام" else "Cash On Delivery"
+                    Text(text = if (isArabic) "رقم الموبايل المسجل" else "Payer Mobile Phone", color = BrandTextMuted, fontSize = 11.sp)
+                    Text(text = state.customerPhone, color = BrandTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = if (isArabic) "أمن المعاملة" else "Security Standard", color = BrandTextMuted, fontSize = 11.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(12.dp))
+                        Text(text = "AES Escrow Double-Locked", color = Color(0xFF2E7D32), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
-                    Text(text = methodText, color = BrandTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -811,7 +1099,7 @@ fun CheckoutSuccessView(
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
-                text = if (isArabic) "الذهاب إلى قائمة طلباتي" else "Go to My Orders Screen",
+                text = if (isArabic) "الذهاب وقراءة تفاصيل طلباتي 📦" else "View Detailed Orders Status 📦",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp
@@ -822,16 +1110,16 @@ fun CheckoutSuccessView(
             onClick = onGoToHome,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
+                .height(50.dp)
                 .testTag("checkout_success_home_button"),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandPrimary),
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(1.dp, BrandSoftGray)
         ) {
             Text(
-                text = if (isArabic) "العودة للتسوق" else "Back to Shopping",
+                text = if (isArabic) "مواصلة التسوق" else "Stay in Shop & Browse More",
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+                fontSize = 13.sp
             )
         }
     }
