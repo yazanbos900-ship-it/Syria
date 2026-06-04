@@ -4,6 +4,8 @@ import android.widget.Toast
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,13 +57,14 @@ fun AuthScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             // Editorial Top Branding
             Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -83,9 +86,8 @@ fun AuthScreen(
             // Centralized Content Card
             Box(
                 modifier = Modifier
-                    .weight(1f)
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp),
+                    .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(

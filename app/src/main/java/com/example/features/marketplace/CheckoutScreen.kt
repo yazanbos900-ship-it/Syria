@@ -459,10 +459,12 @@ fun CheckoutVerificationView(
     onDismissSms: () -> Unit
 ) {
     val txn = state.currentTransaction ?: return
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -681,7 +683,7 @@ fun CheckoutVerificationView(
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             onClick = onVerify,
