@@ -422,11 +422,71 @@ fun MapLocationPicker(
                 ) {
                     FloatingActionButton(
                         onClick = {
+                            if (!locationPermissionsGranted) {
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION, 
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                                return@FloatingActionButton
+                            }
+                            
                             coroutineScope.launch {
                                 isLocating = true
-                                // Tell WebView to request location and center
+                                
+                                val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                                val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                val hasCoarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                
+                                if (hasFine || hasCoarse) {
+                                    try {
+                                        val providers = locationManager.getProviders(true)
+                                        var bestLocation: android.location.Location? = null
+                                        for (provider in providers) {
+                                            @Suppress("MissingPermission")
+                                            val l = locationManager.getLastKnownLocation(provider)
+                                            if (l != null && (bestLocation == null || l.accuracy < bestLocation.accuracy)) {
+                                                bestLocation = l
+                                            }
+                                        }
+                                        
+                                        if (bestLocation != null) {
+                                            latState = bestLocation.latitude
+                                            lngState = bestLocation.longitude
+                                            android.util.Log.d("MapDiagnostic", "Native Location found: \${latState}, \${lngState}")
+                                        } else {
+                                            // Try Android 11+ one-shot request
+                                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                                if (hasFine) {
+                                                    @Suppress("MissingPermission")
+                                                    locationManager.getCurrentLocation(android.location.LocationManager.GPS_PROVIDER, null, ContextCompat.getMainExecutor(context)) { loc ->
+                                                        if (loc != null) {
+                                                            latState = loc.latitude
+                                                            lngState = loc.longitude
+                                                        }
+                                                    }
+                                                }
+                                                if (hasCoarse) {
+                                                    @Suppress("MissingPermission")
+                                                    locationManager.getCurrentLocation(android.location.LocationManager.NETWORK_PROVIDER, null, ContextCompat.getMainExecutor(context)) { loc ->
+                                                        if (loc != null) {
+                                                            latState = loc.latitude
+                                                            lngState = loc.longitude
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("MapDiagnostic", "Native location fetch error", e)
+                                    }
+                                }
+
+                                // Also try WebView location as a dual-layer strategy
                                 webViewInstance?.evaluateJavascript("if(typeof locateUser === 'function') { locateUser(); }", null)
-                                delay(1500)
+                                
+                                delay(2000)
                                 isLocating = false
                             }
                         },
