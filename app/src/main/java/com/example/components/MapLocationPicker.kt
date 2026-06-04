@@ -183,7 +183,7 @@ fun MapLocationPicker(
                                 }
                             }, "AndroidBridge")
                             
-                            loadDataWithBaseURL("https://openstreetmap.org", leafletHtml, "text/html", "UTF-8", null)
+                            loadDataWithBaseURL(null, leafletHtml, "text/html", "UTF-8", null)
                             webViewInstance = this
                         }
                     },
