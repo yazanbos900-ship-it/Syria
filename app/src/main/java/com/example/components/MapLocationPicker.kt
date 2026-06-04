@@ -1,8 +1,17 @@
 package com.example.components
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -24,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -32,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -49,6 +60,36 @@ fun MapLocationPicker(
     onDismissRequest: () -> Unit,
     isArabic: Boolean = false
 ) {
+    val context = LocalContext.current
+    var locationPermissionsGranted by remember { 
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+            val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+            locationPermissionsGranted = fineGranted || coarseGranted
+            android.util.Log.d("MapDiagnostic", "Permissions result: Fine=$fineGranted, Coarse=$coarseGranted")
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        android.util.Log.d("MapDiagnostic", "Diagnostic Init. Permissions Granted? $locationPermissionsGranted")
+        if (!locationPermissionsGranted) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION, 
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
     var latState by remember { mutableStateOf(initialLatitude ?: 33.5138) }
     var lngState by remember { mutableStateOf(initialLongitude ?: 36.2947) }
     
@@ -97,30 +138,53 @@ fun MapLocationPicker(
         <head>
             <meta charset="utf-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
             <style>
-                body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background-color: #f4f6f9; }
+                body, html { margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden; background-color: #f4f6f9; }
                 #map { height: 100%; width: 100%; }
-                .leaflet-control-attribution { display: none !important; }
             </style>
         </head>
         <body>
             <div id="map"></div>
             <script>
-                var map = L.map('map', {
-                    zoomControl: false,
-                    attributionControl: false
-                }).setView([33.5138, 36.2947], 14);
+                try {
+                    var map = L.map('map', {
+                        zoomControl: false,
+                        attributionControl: false
+                    }).setView([33.5138, 36.2947], 14);
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19
-                }).addTo(map);
+                    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        userAgent: "AndroidApp"
+                    }).addTo(map);
 
-                // Add nice red drop marker
-                var marker = L.marker([33.5138, 36.2947], {
-                    draggable: true
-                }).addTo(map);
+                    var marker = L.marker([33.5138, 36.2947], {
+                        draggable: true
+                    }).addTo(map);
+
+                    // Fix for WebView layout timing issues (white map bug)
+                    setTimeout(function() {
+                        map.invalidateSize(true);
+                    }, 500);
+
+                    // Add HTML5 Geolocation support inside the map
+                    function locateUser() {
+                        map.locate({setView: true, maxZoom: 16});
+                    }
+                    
+                    map.on('locationfound', function(e) {
+                        marker.setLatLng(e.latlng);
+                        passCoordinates(e.latlng.lat, e.latlng.lng);
+                    });
+                    
+                    map.on('locationerror', function(e) {
+                        console.error('Geolocation failed: ' + e.message);
+                    });
+
+                } catch(e) {
+                    console.error("Leaflet Error: " + e.message);
+                }
 
                 function passCoordinates(lat, lng) {
                     if (window.AndroidBridge) {
@@ -171,8 +235,35 @@ fun MapLocationPicker(
                                 domStorageEnabled = true
                                 useWideViewPort = true
                                 loadWithOverviewMode = true
+                                mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                                setGeolocationEnabled(true)
+                                javaScriptCanOpenWindowsAutomatically = true
+                                allowFileAccess = true
                             }
-                            webViewClient = WebViewClient()
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    super.onPageFinished(view, url)
+                                    android.util.Log.d("WebView", "Page finished loading: $url")
+                                }
+                                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                                    android.util.Log.e("WebView", "Error: ${error?.description}")
+                                }
+                                override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
+                                    android.util.Log.e("WebView", "HTTP Error: ${errorResponse?.statusCode}")
+                                }
+                            }
+                            webChromeClient = object : WebChromeClient() {
+                                override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: android.webkit.GeolocationPermissions.Callback?) {
+                                    android.util.Log.d("MapDiagnostic", "onGeolocationPermissionsShowPrompt triggered for origin: \$origin")
+                                    val isGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                    android.util.Log.d("MapDiagnostic", "Granting location permission to WebView? \$isGranted")
+                                    callback?.invoke(origin, isGranted, false)
+                                }
+                                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                                    android.util.Log.d("WebViewContent", "${consoleMessage?.message()} -- From line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}")
+                                    return true
+                                }
+                            }
                             addJavascriptInterface(object {
                                 @JavascriptInterface
                                 fun onLocationSelected(lat: Double, lng: Double) {
@@ -183,7 +274,7 @@ fun MapLocationPicker(
                                 }
                             }, "AndroidBridge")
                             
-                            loadDataWithBaseURL(null, leafletHtml, "text/html", "UTF-8", null)
+                            loadDataWithBaseURL("https://localhost/", leafletHtml, "text/html", "UTF-8", null)
                             webViewInstance = this
                         }
                     },
@@ -333,10 +424,10 @@ fun MapLocationPicker(
                         onClick = {
                             coroutineScope.launch {
                                 isLocating = true
-                                delay(800)
+                                // Tell WebView to request location and center
+                                webViewInstance?.evaluateJavascript("if(typeof locateUser === 'function') { locateUser(); }", null)
+                                delay(1500)
                                 isLocating = false
-                                latState = 33.5138
-                                lngState = 36.2947
                             }
                         },
                         containerColor = MaterialTheme.colorScheme.surface,
