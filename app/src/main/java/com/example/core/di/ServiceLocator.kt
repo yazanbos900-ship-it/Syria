@@ -3,12 +3,14 @@ package com.example.core.di
 import android.content.Context
 import com.example.data.repository.FirebaseAuthRepositoryImpl
 import com.example.data.repository.FirebaseProductRepositoryImpl
+import com.example.data.repository.FirebaseReviewRepositoryImpl
 import com.example.data.repository.FirebaseStoreRepositoryImpl
 import com.example.data.repository.FirestoreCartRepositoryImpl
 import com.example.data.repository.FirestoreWishlistRepositoryImpl
 import com.example.domain.repository.AuthRepository
 import com.example.domain.repository.CartRepository
 import com.example.domain.repository.ProductRepository
+import com.example.domain.repository.ReviewRepository
 import com.example.domain.repository.StoreRepository
 import com.example.domain.repository.SubscriptionRepository
 import com.example.domain.repository.WishlistRepository
@@ -18,6 +20,7 @@ import com.example.data.repository.FirebaseOrderRepositoryImpl
 import com.example.data.repository.FirebasePaymentRepositoryImpl
 import com.example.domain.repository.PaymentRepository
 import com.example.firebase.FirebaseInitializer
+import com.google.firebase.firestore.FirebaseFirestore
 
 object ServiceLocator {
     
@@ -33,6 +36,10 @@ object ServiceLocator {
 
     val productRepository: ProductRepository by lazy {
         FirebaseProductRepositoryImpl()
+    }
+
+    val reviewRepository: ReviewRepository by lazy {
+        FirebaseReviewRepositoryImpl(FirebaseFirestore.getInstance())
     }
 
     val storeRepository: StoreRepository by lazy {

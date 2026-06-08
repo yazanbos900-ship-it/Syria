@@ -829,507 +829,104 @@ fun SellerOrderDetailDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            colors = CardDefaults.cardColors(containerColor = DarkCard),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, BorderColor),
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.85f)
-                .padding(vertical = 12.dp)
+                .fillMaxHeight(0.85f),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(8.dp)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Header Title
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(BorderColor.copy(alpha = 0.3f))
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.ReceiptLong, null, tint = PrimaryGreen)
-                        Text(
-                            text = if (isArabic) "تفاصيل الفاتورة والطلب" else "Invoice & Order Receipt",
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TextWhite,
-                            fontSize = 16.sp
-                        )
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, null, tint = TextWhite)
-                    }
-                }
-
-                // Scrollable details content container
-                Box(modifier = Modifier.weight(1f)) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // 1. ORDER SUMMARY CARD
-                        item {
-                            OrderStatusOverviewCard(order = order, isArabic = isArabic)
-                        }
-
-                        // 2. TIMELINE Fulfillment Progress Tracker
-                        item {
-                            FulfillmentTimelineProgressTracker(order = order, isArabic = isArabic)
-                        }
-
-                        // 3. PRODUCTS LIST DETAIL
-                        item {
-                            Text(
-                                text = if (isArabic) "المنتجات المطلوبة" else "Ordered Merchandises",
-                                fontWeight = FontWeight.Bold,
-                                color = TextWhite,
-                                fontSize = 14.sp
-                            )
-                        }
-
-                        items(order.items) { item ->
-                            InvoiceLineItemRow(item = item, isArabic = isArabic, storeRate = storeRate)
-                        }
-
-                        // 4. FINANCIAL BREAKDOWN DETAILS
-                        item {
-                            FinancialpricingSummarySheet(order = order, isArabic = isArabic, storeRate = storeRate)
-                        }
-
-                        // 5. CUSTOMER DISPATCH INFORMATION
-                        item {
-                            CustomerDispatchSheet(order = order, isArabic = isArabic, onCopyClick = onCopyDetails)
-                        }
-                    }
-                }
-
-                // BOTTOM ACTION AREA
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (order.status.equals("Pending", ignoreCase = true) || order.status.equals("Processing", ignoreCase = true)) {
-                        OutlinedButton(
-                            onClick = { onUpdateStatus("Cancelled") },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                            border = BorderStroke(1.dp, Color.Red),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(if (isArabic) "إلغاء تماماً" else "Cancel Order", fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    when (order.status) {
-                        "Pending" -> {
-                            Button(
-                                onClick = { onUpdateStatus("Processing") },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(if (isArabic) "تأكيد وقبول" else "Accept Order", fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-                        }
-                        "Processing" -> {
-                            Button(
-                                onClick = { onUpdateStatus("Shipped") },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF29B6F6)),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(if (isArabic) "شحن الطرد" else "Dispatch Items", fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-                        }
-                        "Shipped" -> {
-                            Button(
-                                onClick = { onUpdateStatus("Delivered") },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF26A69A)),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(if (isArabic) "تسليم الطلب" else "Confirm Delivered", fontWeight = FontWeight.Bold, color = Color.White)
-                            }
-                        }
-                        else -> {
-                            Button(
-                                onClick = onDismiss,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = BorderColor),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(if (isArabic) "إغلاق النافذة" else "Dismiss Receipt", fontWeight = FontWeight.Bold, color = TextWhite)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun OrderStatusOverviewCard(order: Order, isArabic: Boolean) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = BorderColor.copy(alpha = 0.2f)),
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(0.5.dp, BorderColor),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = if (isArabic) "ملف الفاتورة ID:" else "Invoice ID:",
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite,
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = order.orderId,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = PrimaryGreen,
-                    fontSize = 12.sp
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = if (isArabic) "الحالة الحالية للشحن:" else "Fulfillment Status:",
-                    color = TextGray,
-                    fontSize = 12.sp
-                )
-                StatusBadgeTag(status = order.status, isArabic = isArabic)
-            }
-        }
-    }
-}
-
-@Composable
-fun FulfillmentTimelineProgressTracker(order: Order, isArabic: Boolean) {
-    val stages = remember {
-        listOf("Pending", "Processing", "Shipped", "Delivered")
-    }
-    val currentStageIndex = stages.indexOf(order.status)
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, BorderColor),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = if (isArabic) "خارطة طريق التوصيل 🧭" else "Fulfillment Pipeline 🧭",
-                fontWeight = FontWeight.Bold,
-                color = TextWhite,
-                fontSize = 13.sp
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Sequence row pipeline drawing
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                stages.forEachIndexed { index, stage ->
-                    val isCompleted = index <= currentStageIndex && order.status != "Cancelled"
-                    val isActive = index == currentStageIndex && order.status != "Cancelled"
-                    val bubbleColor = if (isCompleted) PrimaryGreen else BorderColor
-                    val textColor = if (index <= currentStageIndex) TextWhite else TextGray
-
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(bubbleColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isCompleted) {
-                                Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
-                            } else {
-                                Text((index + 1).toString(), color = TextGray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = getStatusLabel(stage, isArabic),
-                            fontSize = 9.sp,
-                            fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium,
-                            color = textColor,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    if (index < stages.size - 1) {
-                        val lineColor = if (index < currentStageIndex && order.status != "Cancelled") PrimaryGreen else BorderColor
-                        Box(
-                            modifier = Modifier
-                                .weight(0.5f)
-                                .height(2.dp)
-                                .background(lineColor)
-                                .offset(y = (-10).dp)
-                        )
-                    }
-                }
-            }
-
-            if (order.status == "Cancelled") {
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color.Red.copy(alpha = 0.1f))
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.Cancel, null, tint = Color.Red, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isArabic) "تم إلغاء شحن المعاملة تماماً" else "Transaction Shipped Package Cancelled",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Red,
-                        fontSize = 11.sp
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun InvoiceLineItemRow(item: OrderItem, isArabic: Boolean, storeRate: Double) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(BorderColor.copy(alpha = 0.15f))
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (item.productImage.isNotEmpty()) {
-            AsyncImage(
-                model = item.productImage,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(6.dp))
-            )
-        } else {
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(BorderColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.ShoppingBag, null, tint = TextGray)
-            }
-        }
-
-        Spacer(modifier = Modifier.width(10.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.productName,
-                fontWeight = FontWeight.Bold,
-                color = TextWhite,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = if (isArabic) {
-                        "السعر: ${CurrencyManager.formatPrice(item.unitPrice, storeRate, true)}"
-                    } else {
-                        "Price: ${CurrencyManager.formatPrice(item.unitPrice, storeRate, false)}"
-                    },
-                    fontSize = 11.sp,
-                    color = TextGray
-                )
-                Text(
-                    text = "x ${item.quantity}",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = PrimaryGreen
-                )
-            }
-        }
-
-        Text(
-            text = CurrencyManager.formatPrice(item.unitPrice * item.quantity, storeRate, isArabic),
-            color = TextWhite,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp
-        )
-    }
-}
-
-@Composable
-fun FinancialpricingSummarySheet(order: Order, isArabic: Boolean, storeRate: Double) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, BorderColor),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = if (isArabic) "تفاصيل الدفعات والعمولات" else "Financial Statement",
-                fontWeight = FontWeight.Bold,
-                color = TextWhite,
-                fontSize = 13.sp
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            InvoiceSummaryLine(
-                label = if (isArabic) "القيمة الصافية للمنتجات" else "Subtotal Net Sales",
-                value = CurrencyManager.formatPrice(order.totalAmount, storeRate, isArabic)
-            )
-
-            InvoiceSummaryLine(
-                label = if (isArabic) "ضريبة الخدمة المشتركة (0%)" else "WasetPlus Escrow fee (0%)",
-                value = if (isArabic) "0 ل.س" else "FREE"
-            )
-
-            InvoiceSummaryLine(
-                label = if (isArabic) "عمولة حجز الضمان والوساطة" else "Platform Protection Cover",
-                value = if (isArabic) "مجاني" else "Covered"
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-            HorizontalDivider(color = BorderColor, thickness = 0.5.dp)
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (isArabic) "الصافي المراد تحصيله:" else "Payout Net Balance:",
-                    fontWeight = FontWeight.ExtraBold,
-                    color = TextWhite,
-                    fontSize = 13.sp
-                )
-                Text(
-                    text = CurrencyManager.formatPrice(order.totalAmount, storeRate, isArabic),
-                    fontWeight = FontWeight.ExtraBold,
-                    color = PrimaryGreen,
-                    fontSize = 16.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun InvoiceSummaryLine(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = label, color = TextGray, fontSize = 11.sp)
-        Text(text = value, color = TextWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun CustomerDispatchSheet(order: Order, isArabic: Boolean, onCopyClick: (String) -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = BorderColor.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(0.5.dp, BorderColor),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = if (isArabic) "معلومات مستلم الطرد 👤" else "Consignee Profile 👤",
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite,
-                    fontSize = 13.sp
-                )
-
-                TextButton(
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.height(24.dp),
-                    onClick = {
+            OrderDetailsLayout(
+                order = order,
+                isArabic = isArabic,
+                storeRate = storeRate,
+                isSellerView = true,
+                headerActions = {
+                    IconButton(onClick = {
                         val dispatchNote = """
                             Order ID: ${order.orderId}
                             Customer: ${order.customerName}
                             Phone: ${order.customerPhone}
                             Shipping Address: ${order.shippingAddress}
                         """.trimIndent()
-                        onCopyClick(dispatchNote)
+                        onCopyDetails(dispatchNote)
+                    }) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = if (isArabic) "نسخ" else "Copy",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
-                ) {
-                    Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(12.dp), tint = PrimaryGreen)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (isArabic) "نسخ للترحيل" else "Copy Dispatch",
-                        color = PrimaryGreen,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = if (isArabic) "إغلاق" else "Close",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                bottomActions = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (order.status.equals("Pending", ignoreCase = true) || order.status.equals("Processing", ignoreCase = true)) {
+                            OutlinedButton(
+                                onClick = { onUpdateStatus("Cancelled") },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                                border = BorderStroke(1.dp, Color.Red),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (isArabic) "إلغاء تماماً" else "Cancel Order", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        when (order.status) {
+                            "Pending" -> {
+                                Button(
+                                    onClick = { onUpdateStatus("Processing") },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(if (isArabic) "تأكيد وقبول" else "Accept Order", fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                            "Processing" -> {
+                                Button(
+                                    onClick = { onUpdateStatus("Shipped") },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF29B6F6)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(if (isArabic) "شحن الطرد" else "Dispatch Items", fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                            "Shipped" -> {
+                                Button(
+                                    onClick = { onUpdateStatus("Delivered") },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF26A69A)),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(if (isArabic) "تسليم الطلب" else "Confirm Delivered", fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                            else -> {
+                                Button(
+                                    onClick = onDismiss,
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = BorderColor),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(if (isArabic) "إغلاق النافذة" else "Dismiss Receipt", fontWeight = FontWeight.Bold, color = TextWhite)
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            CustomerFieldDetail(
-                icon = Icons.Default.Person,
-                label = if (isArabic) "اسم المستلم" else "Full Name",
-                value = order.customerName.ifBlank { if (isArabic) "زبون المنصة" else "Guest Buyer" }
             )
-
-            CustomerFieldDetail(
-                icon = Icons.Default.Phone,
-                label = if (isArabic) "رقم الاتصال المسجل" else "Contact Phone",
-                value = order.customerPhone.ifBlank { "N/A" }
-            )
-
-            CustomerFieldDetail(
-                icon = Icons.Default.Map,
-                label = if (isArabic) "عنوان الشحن المعتمد" else "Authorized Address",
-                value = order.shippingAddress.ifBlank { if (isArabic) "دمشق، سوريا" else "Damascus, Syria" }
-            )
-        }
-    }
-}
-
-@Composable
-fun CustomerFieldDetail(icon: ImageVector, label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = TextGray, modifier = Modifier.size(14.dp))
-        Column {
-            Text(text = label, color = TextGray, fontSize = 10.sp)
-            Text(text = value, color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
     }
 }

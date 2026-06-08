@@ -58,10 +58,19 @@ class StoreManagementViewModel(
         }
     }
 
-    fun addProduct(title: String, price: Double, description: String, imageUrls: List<String>, categoryId: String, currency: String = "USD") {
-        val storeId = state.value.store?.id ?: return
+    fun addProduct(title: String, price: Double, description: String, imageUrls: List<String>, categoryId: String, currency: String = "USD", condition: String = "new") {
+        val store = state.value.store ?: return
+        val storeId = store.id
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
+            val storeCurrency = store.storeCurrency
+            val exchangeRate = if (store.exchangeRate <= 0) 12500.0 else store.exchangeRate
+            val (priceUSD, priceSYP) = if (storeCurrency == "USD") {
+                price to (price * exchangeRate)
+            } else {
+                (price / exchangeRate) to price
+            }
+            
             val product = Product(
                 id = "", // Firestore will generate
                 title = title,
@@ -75,7 +84,12 @@ class StoreManagementViewModel(
                 isAvailable = true,
                 stockCount = 100,
                 currency = currency,
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
+                condition = condition,
+                priceUSD = priceUSD,
+                priceSYP = priceSYP,
+                storeCurrency = storeCurrency,
+                exchangeRateUsed = exchangeRate
             )
             val result = productRepo.addProduct(product)
             if (result.isSuccess) {
@@ -91,9 +105,23 @@ class StoreManagementViewModel(
     }
 
     fun updateProduct(product: Product) {
+        val store = state.value.store ?: return
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            val result = productRepo.updateProduct(product)
+            val storeCurrency = store.storeCurrency
+            val exchangeRate = if (store.exchangeRate <= 0) 12500.0 else store.exchangeRate
+            val (priceUSD, priceSYP) = if (storeCurrency == "USD") {
+                product.price to (product.price * exchangeRate)
+            } else {
+                (product.price / exchangeRate) to product.price
+            }
+            val updatedProduct = product.copy(
+                priceUSD = priceUSD,
+                priceSYP = priceSYP,
+                storeCurrency = storeCurrency,
+                exchangeRateUsed = exchangeRate
+            )
+            val result = productRepo.updateProduct(updatedProduct)
             if (result.isSuccess) {
                 _state.update { it.copy(isLoading = false) }
             } else {
@@ -125,7 +153,11 @@ class StoreManagementViewModel(
                 logoUrl = logoUrl ?: currentStore.logoUrl,
                 bannerUrl = bannerUrl ?: currentStore.bannerUrl,
                 usdExchangeRate = usdExchangeRate,
-                defaultCurrency = defaultCurrency
+                defaultCurrency = defaultCurrency,
+                exchangeRate = usdExchangeRate,
+                storeCurrency = defaultCurrency,
+                exchangeRateUpdatedAt = com.google.firebase.Timestamp.now(),
+                usingGlobalRate = false
             )
             val result = storeRepo.updateStore(updatedStore)
             if (result.isSuccess) {

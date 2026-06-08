@@ -38,14 +38,6 @@ import com.example.domain.model.Product
 import com.example.domain.model.Store
 import com.example.ui.theme.*
 
-// Premium Dynamic Theme Palette
-private val DarkBg: Color get() = BrandBackground
-private val DarkCard: Color get() = BrandSurface
-private val PrimaryGreen: Color get() = BrandPrimary
-private val TextWhite: Color get() = BrandTextPrimary
-private val TextGray: Color get() = BrandTextMuted
-private val BorderColor: Color get() = BrandSoftGray
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoreDetailScreen(
@@ -71,20 +63,20 @@ fun StoreDetailScreen(
     }
 
     Scaffold(
-        containerColor = DarkBg,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when {
                 state.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = PrimaryGreen)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 state.error != null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
                             text = state.error!!,
-                            color = TextGray,
+                            color = MaterialTheme.colorScheme.error,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(24.dp)
                         )
@@ -134,7 +126,7 @@ fun StoreContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
-                        .background(DarkCard)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     AsyncImage(
                         model = store.bannerUrl,
@@ -176,8 +168,8 @@ fun StoreContent(
                         .size(90.dp)
                         .offset(y = (-10).dp),
                     shape = CircleShape,
-                    color = DarkCard,
-                    border = BorderStroke(3.dp, PrimaryGreen)
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.background)
                 ) {
                     AsyncImage(
                         model = store.logoUrl,
@@ -194,43 +186,48 @@ fun StoreContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = store.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = TextWhite,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center
                 )
                 
+                Spacer(modifier = Modifier.height(4.dp))
+                
                 Text(
                     text = "@${store.ownerUsername}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextGray,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
                 if (category != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(
-                        color = PrimaryGreen.copy(alpha = 0.1f),
+                        color = MaterialTheme.colorScheme.primaryContainer,
                         shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, PrimaryGreen.copy(alpha = 0.5f))
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                     ) {
                         Text(
                             text = category.getName(LanguageManager.isArabic(context)),
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            color = PrimaryGreen,
-                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-                StoreBadgesContainer(store = store)
+                Spacer(modifier = Modifier.height(16.dp))
+                StoreBadgesContainer(
+                    store = store,
+                    horizontalArrangement = Arrangement.Center
+                )
             }
         }
 
@@ -244,20 +241,20 @@ fun StoreContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "${products.size}", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(text = androidx.compose.ui.res.stringResource(R.string.products_label), color = TextGray, fontSize = 12.sp)
+                    Text(text = "${products.size}", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(text = androidx.compose.ui.res.stringResource(R.string.products_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
                 
                 VerticalDivider(
                     modifier = Modifier
                         .padding(horizontal = 32.dp)
                         .height(24.dp),
-                    color = BorderColor
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 )
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "${store.followersCount}", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(text = androidx.compose.ui.res.stringResource(R.string.follower_label), color = TextGray, fontSize = 12.sp)
+                    Text(text = "${store.followersCount}", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(text = androidx.compose.ui.res.stringResource(R.string.follower_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
             }
         }
@@ -274,21 +271,21 @@ fun StoreContent(
                     Button(
                         onClick = onManageClick,
                         modifier = Modifier.fillMaxWidth(0.9f),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text(androidx.compose.ui.res.stringResource(R.string.manage_store_label), color = DarkBg, fontWeight = FontWeight.ExtraBold)
+                        Text(androidx.compose.ui.res.stringResource(R.string.manage_store_label), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.ExtraBold)
                     }
                 } else {
                     OutlinedButton(
                         onClick = { /* Follow Logic */ },
                         modifier = Modifier.fillMaxWidth(0.9f),
-                        border = BorderStroke(1.5.dp, PrimaryGreen),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(14.dp)
                     ) {
-                        Icon(Icons.Default.Add, null, tint = PrimaryGreen, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(androidx.compose.ui.res.stringResource(R.string.follow_label), color = PrimaryGreen, fontWeight = FontWeight.ExtraBold)
+                        Text(androidx.compose.ui.res.stringResource(R.string.follow_label), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
                     }
                 }
             }
@@ -301,13 +298,13 @@ fun StoreContent(
                     text = androidx.compose.ui.res.stringResource(R.string.about_store_label),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = TextWhite
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = store.description.takeIf { it.isNotBlank() } ?: androidx.compose.ui.res.stringResource(R.string.no_description),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = TextGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 22.sp
                 )
             }
@@ -315,7 +312,7 @@ fun StoreContent(
 
         // Divider
         item {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 24.dp), color = BorderColor)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 24.dp), color = MaterialTheme.colorScheme.surfaceVariant)
         }
 
         // 6) Products Section Title
@@ -324,7 +321,7 @@ fun StoreContent(
                 text = androidx.compose.ui.res.stringResource(R.string.products_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
         }
@@ -340,13 +337,13 @@ fun StoreContent(
                     Surface(
                         modifier = Modifier.size(80.dp),
                         shape = CircleShape,
-                        color = DarkCard
+                        color = MaterialTheme.colorScheme.surface
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.ShoppingCart,
                                 contentDescription = null,
-                                tint = PrimaryGreen.copy(alpha = 0.5f),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                                 modifier = Modifier.size(40.dp)
                             )
                         }
@@ -354,13 +351,13 @@ fun StoreContent(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = androidx.compose.ui.res.stringResource(R.string.no_products_yet),
-                        color = TextWhite,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = androidx.compose.ui.res.stringResource(R.string.follow_for_updates),
-                        color = TextGray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 48.dp, vertical = 4.dp)
@@ -406,8 +403,8 @@ fun ProductCard(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        border = BorderStroke(1.dp, BorderColor),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
@@ -415,7 +412,7 @@ fun ProductCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1.1f)
-                    .background(Color.Black.copy(alpha = 0.2f))
+                    .background(Color.Black.copy(alpha = 0.05f))
             ) {
                 AsyncImage(
                     model = product.imageUrls.firstOrNull(),
@@ -423,6 +420,13 @@ fun ProductCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(8.dp)
+                ) {
+                    ConditionBadge(condition = product.condition)
+                }
             }
             Column(
                 modifier = Modifier.padding(12.dp)
@@ -431,7 +435,7 @@ fun ProductCard(
                     text = product.title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextWhite,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -441,7 +445,7 @@ fun ProductCard(
                         text = CurrencyManager.formatPrice(product.price, usdExchangeRate, LanguageManager.isArabic(context)),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
-                        color = PrimaryGreen
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }

@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
     
     lifecycleScope.launch {
         ServiceLocator.productRepository.seedCategories()
+        com.example.data.repository.DatabaseSeeder.seedReviewsOnly()
     }
 
     enableEdgeToEdge()

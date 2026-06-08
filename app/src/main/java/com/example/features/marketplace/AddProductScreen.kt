@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -74,6 +75,7 @@ fun AddProductScreen(
         }
     }
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
+    var selectedCondition by remember { mutableStateOf("new") }
     var isSubmitting by remember { mutableStateOf(false) }
     var isSuccess by remember { mutableStateOf(false) }
 
@@ -415,6 +417,53 @@ fun AddProductScreen(
                     }
                 }
 
+                // Unified Product Condition Selection
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(id = R.string.product_condition_label),
+                        color = BrandTextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val conditions = listOf(
+                            "new" to R.string.condition_new,
+                            "open_box" to R.string.condition_open_box,
+                            "like_new" to R.string.condition_like_new,
+                            "excellent" to R.string.condition_excellent,
+                            "good" to R.string.condition_good,
+                            "fair" to R.string.condition_fair,
+                            "used" to R.string.condition_used,
+                            "for_parts" to R.string.condition_for_parts
+                        )
+                        conditions.forEach { (key, strId) ->
+                            val isSelected = selectedCondition == key
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSelected) BrandPrimary else BrandSurface)
+                                    .border(1.dp, if (isSelected) BrandPrimary else BrandSoftGray, RoundedCornerShape(10.dp))
+                                    .clickable { selectedCondition = key }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                                    .testTag("condition_chip_$key")
+                            ) {
+                                Text(
+                                    text = stringResource(id = strId),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.White else BrandTextPrimary
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // 4. Description Input
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -591,7 +640,8 @@ fun AddProductScreen(
                                 isAvailable = true,
                                 stockCount = 100,
                                 currency = selectedCurrency,
-                                createdAt = System.currentTimeMillis()
+                                createdAt = System.currentTimeMillis(),
+                                condition = selectedCondition
                             )
                             val res = ServiceLocator.productRepository.addProduct(newProduct)
                             isSubmitting = false

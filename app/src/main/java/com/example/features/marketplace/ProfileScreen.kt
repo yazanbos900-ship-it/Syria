@@ -1,5 +1,7 @@
 package com.example.features.marketplace
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -36,6 +39,7 @@ import com.example.domain.model.Store
 import com.example.domain.model.User
 import com.example.ui.theme.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +50,7 @@ fun ProfileScreen(
     onNavigateToStoreManagement: () -> Unit = {},
     onNavigateToAdmin: () -> Unit = {},
     onNavigateToOrders: () -> Unit = {},
+    onNavigateToSellerProfile: (String) -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -63,6 +68,33 @@ fun ProfileScreen(
     var showNotificationsDialog by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
     var showOrdersDialog by remember { mutableStateOf(false) }
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+
+    // Core image upload states
+    var tempName by remember { mutableStateOf("") }
+    var tempAvatarUrl by remember { mutableStateOf("") }
+    var isUploadingAvatar by remember { mutableStateOf(false) }
+    var uploadError by remember { mutableStateOf<String?>(null) }
+
+    val avatarPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            coroutineScope.launch {
+                isUploadingAvatar = true
+                uploadError = null
+                val uploader = CloudinaryUploader()
+                uploader.uploadFile(it.toString())
+                    .onSuccess { url ->
+                        tempAvatarUrl = url
+                    }
+                    .onFailure { err ->
+                        uploadError = err.message ?: (if (isArabic) "فشل التحميل" else "Upload failed")
+                    }
+                isUploadingAvatar = false
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         isLoading = true
@@ -71,6 +103,10 @@ fun ProfileScreen(
         if (session != null) {
             val store = ServiceLocator.storeRepository.getStoreByOwnerId(session.id)
             ownStore = store
+            if (store != null) {
+                // Registered store owner: redirect to Store Settings immediately!
+                onNavigateToStoreManagement()
+            }
         }
         isLoading = false
     }
@@ -125,13 +161,37 @@ fun ProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // 1. Profile Header
-                ProfileHeaderSection(user = currentUser, context = context, isArabic = isArabic)
+                ProfileHeaderSection(
+                    user = currentUser,
+                    context = context,
+                    isArabic = isArabic,
+                    onEditProfile = {
+                        currentUser?.let { user ->
+                            tempName = user.name
+                            tempAvatarUrl = user.profileImageUrl ?: ""
+                            uploadError = null
+                            showEditProfileDialog = true
+                        }
+                    }
+                )
 
                 // 2. Marketplace Section
                 SectionHeader(title = if (isArabic) "السوق" else "Marketplace", isArabic = isArabic)
 
                 BrandCard(modifier = Modifier.fillMaxWidth()) {
                     Column {
+                        currentUser?.let { user ->
+                            ProfileMenuRow(
+                                icon = Icons.Default.ListAlt,
+                                title = if (isArabic) "إعلاناتي المباشرة" else "My Direct Listings / Ads",
+                                subtitle = if (isArabic) "إدارة وتعديل وحذف إعلاناتي المبوبة" else "Manage, edit or delete your posted ads",
+                                isArabic = isArabic,
+                                onClick = { onNavigateToSellerProfile(user.id) },
+                                testTag = "profile_my_ads_row"
+                            )
+                            HorizontalDivider(color = BrandSoftGray, modifier = Modifier.padding(horizontal = 16.dp))
+                        }
+
                         ProfileMenuRow(
                             icon = Icons.Default.Favorite,
                             title = if (isArabic) "المفضلة" else "Wishlist",
@@ -558,13 +618,13 @@ fun ProfileScreen(
                         fontSize = 14.sp
                     )
                     Text(
-                        text = if (isArabic) "الموقع والجودة" else "Secure Trade Escrow Guarantee",
+                        text = if (isArabic) "وساطة التنسيق التجاري" else "Marketplace Intermediary Policy",
                         color = BrandTextPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
                     Text(
-                        text = if (isArabic) "يقوم تطبيق WasetPlus بضمان سلامة التعاملات التجارية في العراق لضمان حقوق المشتري والبائع على حد سواء." else "WasetPlus ensures all payments are safely deposited in local Iraqi escrow guarantees until shipment verification.",
+                        text = if (isArabic) "تعمل منصة وسيط بلس كـ وسيط تنظيمي وتنسيقي بين البائع والمشتري لتسهيل وتوثيق الطلبيات ولا نقوم بتحصيل أو مسك أي مبالغ مالية حقيقية." else "WasetPlus operates as a neutral marketplace coordinator between buyers and sellers. We do not hold, process, or handle real funds on the platform.",
                         color = BrandTextMuted,
                         fontSize = 12.sp
                     )
@@ -658,26 +718,279 @@ fun ProfileScreen(
             shape = RoundedCornerShape(16.dp)
         )
     }
+
+    // ------------------------------------------------------------------------
+    // Edit Profile Modal Dialog Setup
+    // ------------------------------------------------------------------------
+    if (showEditProfileDialog && currentUser != null) {
+        val user = currentUser!!
+        var isSaving by remember { mutableStateOf(false) }
+
+        val presetAvatars = listOf(
+            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+            "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150"
+        )
+
+        AlertDialog(
+            onDismissRequest = { if (!isSaving && !isUploadingAvatar) showEditProfileDialog = false },
+            title = {
+                Text(
+                    text = if (isArabic) "تعديل الملف الشخصي" else "Edit Core Settings",
+                    color = BrandTextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Modern Avatar picker area
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(96.dp)
+                                .clip(CircleShape)
+                                .background(BrandSoftGray)
+                                .clickable(enabled = !isUploadingAvatar && !isSaving) {
+                                    avatarPicker.launch("image/*")
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (tempAvatarUrl.isNotEmpty()) {
+                                AsyncImage(
+                                    model = tempAvatarUrl,
+                                    contentDescription = "Avatar Preview",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(BrandPrimary.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Default Avatar",
+                                        tint = BrandPrimary,
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                }
+                            }
+
+                            if (isUploadingAvatar) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.5f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = BrandPrimary,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.35f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = "Pick Image",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        TextButton(
+                            onClick = { avatarPicker.launch("image/*") },
+                            enabled = !isUploadingAvatar && !isSaving,
+                            colors = ButtonDefaults.textButtonColors(contentColor = BrandPrimary)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoLibrary,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = if (isArabic) "اختر صورة من الاستوديو" else "Pick from gallery",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+
+                        if (uploadError != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = uploadError!!,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = tempName,
+                        onValueChange = { tempName = it },
+                        label = { Text(if (isArabic) "الاسم العريض" else "Display Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSaving
+                    )
+
+                    Text(
+                        text = if (isArabic) "أو اختر صورة جاهزة:" else "Or pick a beautiful preset avatar:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BrandTextMuted,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        presetAvatars.forEach { url ->
+                            Box(
+                                modifier = Modifier
+                                    .size(45.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandSoftGray)
+                                    .clickable(enabled = !isUploadingAvatar && !isSaving) { tempAvatarUrl = url }
+                                    .let {
+                                        if (tempAvatarUrl == url) {
+                                            it.background(BrandPrimary, CircleShape)
+                                                .padding(3.dp)
+                                                .clip(CircleShape)
+                                        } else {
+                                            it
+                                        }
+                                    }
+                            ) {
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isSaving = true
+                        coroutineScope.launch {
+                            try {
+                                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                val updates = mapOf(
+                                    "name" to tempName,
+                                    "profileImageUrl" to tempAvatarUrl
+                                )
+                                db.collection("users").document(user.id).update(updates).await()
+
+                                // Update direct ad owner name instantly!
+                                val adsQuery = db.collection("direct_ads")
+                                    .whereEqualTo("ownerUid", user.id)
+                                    .get()
+                                    .await()
+                                
+                                for (doc in adsQuery.documents) {
+                                    db.collection("direct_ads")
+                                        .document(doc.id)
+                                        .update("ownerUsername", tempName)
+                                        .await()
+                                }
+
+                                currentUser = currentUser?.copy(name = tempName, profileImageUrl = tempAvatarUrl)
+                                showEditProfileDialog = false
+                            } catch (e: Exception) {
+                                // gracefully handled
+                            } finally {
+                                isSaving = false
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    enabled = tempName.isNotEmpty() && !isSaving && !isUploadingAvatar
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
+                    } else {
+                        Text(if (isArabic) "حفظ" else "Save Changes")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showEditProfileDialog = false },
+                    enabled = !isSaving
+                ) {
+                    Text(if (isArabic) "إلغاء" else "Cancel")
+                }
+            },
+            containerColor = BrandSurface,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
 }
 
 @Composable
-fun ProfileHeaderSection(user: User?, context: android.content.Context, isArabic: Boolean) {
-    BrandCard(modifier = Modifier.fillMaxWidth()) {
+fun ProfileHeaderSection(user: User?, context: android.content.Context, isArabic: Boolean, onEditProfile: () -> Unit) {
+    BrandCard(modifier = Modifier.fillMaxWidth().clickable { onEditProfile() }) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = user?.profileImageUrl ?: "https://i.imgur.com/g0K5Iu9.jpeg",
-                contentDescription = null,
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(BrandSoftGray),
-                contentScale = ContentScale.Crop
-            )
+            Box(contentAlignment = Alignment.BottomEnd) {
+                AsyncImage(
+                    model = user?.profileImageUrl ?: "https://i.imgur.com/g0K5Iu9.jpeg",
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .background(BrandSoftGray),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(BrandPrimary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Profile",
+                        tint = androidx.compose.ui.graphics.Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.width(16.dp))
 

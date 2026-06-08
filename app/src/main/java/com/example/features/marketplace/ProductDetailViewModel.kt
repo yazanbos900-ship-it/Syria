@@ -7,10 +7,12 @@ import com.example.domain.model.Product
 import com.example.domain.model.RecommendationCriteria
 import com.example.domain.model.Store
 import com.example.domain.model.ComparisonResult
+import com.example.domain.model.Review
 import com.example.domain.repository.ProductRepository
 import com.example.domain.repository.RecommendationRepository
 import com.example.domain.repository.StoreRepository
 import com.example.domain.repository.ComparisonRepository
+import com.example.domain.repository.ReviewRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,12 @@ data class ProductDetailUiState(
     val store: Store? = null,
     val error: String? = null,
     
+    // Reviews
+    val reviews: List<Review> = emptyList(),
+    val reviewsLoading: Boolean = false,
+    val userReview: Review? = null,
+    val reviewsError: String? = null,
+
     // Recommendations business flow states
     val recsLoading: Boolean = false,
     val recsAppending: Boolean = false,
@@ -45,7 +53,8 @@ class ProductDetailViewModel(
     private val productRepo: ProductRepository,
     private val storeRepo: StoreRepository,
     private val recommendationRepo: RecommendationRepository,
-    private val comparisonRepo: ComparisonRepository
+    private val comparisonRepo: ComparisonRepository,
+    private val reviewRepo: ReviewRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProductDetailUiState())
@@ -53,6 +62,7 @@ class ProductDetailViewModel(
 
     private var recommendationsJob: Job? = null
     private var comparisonJob: Job? = null
+    private var reviewsJob: Job? = null
 
     fun loadProduct(productId: String) {
         viewModelScope.launch {
@@ -74,11 +84,80 @@ class ProductDetailViewModel(
 
                     // Seed real-time product comparisons from Firestore
                     loadComparison(product)
+
+                    // Load reviews
+                    loadReviews(productId)
                 } else {
                     _state.update { it.copy(isLoading = false, error = "المنتج غير موجود") }
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل المنتج") }
+            }
+        }
+    }
+
+    private fun loadReviews(productId: String) {
+        reviewsJob?.cancel()
+        _state.update { it.copy(reviewsLoading = true) }
+        
+        reviewsJob = viewModelScope.launch {
+            reviewRepo.getReviews(productId)
+                .catch { exception ->
+                    _state.update { it.copy(reviewsLoading = false, reviewsError = exception.message) }
+                }
+                .collect { reviewsList ->
+                    _state.update { it.copy(reviewsLoading = false, reviews = reviewsList) }
+                }
+        }
+    }
+
+    fun submitReview(productId: String, userId: String, userName: String, rating: Int, comment: String, images: List<String> = emptyList(), existingReview: Review?) {
+        viewModelScope.launch {
+            val uploader = FirebaseStorageUploader()
+            val finalImageUrls = mutableListOf<String>()
+
+            val toUpload = images.filter { !it.startsWith("http") }
+            val existing = images.filter { it.startsWith("http") }
+
+            finalImageUrls.addAll(existing)
+
+            for (uri in toUpload) {
+                val reviewId = existingReview?.id ?: java.util.UUID.randomUUID().toString()
+                val fileName = "img_${java.util.UUID.randomUUID()}"
+                val path = "products/$productId/reviews/$reviewId/$fileName"
+                val uploadResult = uploader.uploadFile(uri, path)
+                if (uploadResult.isSuccess) {
+                    finalImageUrls.add(uploadResult.getOrThrow())
+                }
+            }
+
+            if (existingReview != null) {
+                reviewRepo.updateReview(existingReview.copy(rating = rating, comment = comment, images = finalImageUrls))
+            } else {
+                val newReview = Review(
+                    productId = productId,
+                    userId = userId,
+                    userName = userName,
+                    rating = rating,
+                    comment = comment,
+                    images = finalImageUrls
+                )
+                reviewRepo.addReview(newReview)
+            }
+        }
+    }
+    
+    fun deleteReview(reviewId: String, productId: String) {
+        viewModelScope.launch {
+            reviewRepo.deleteReview(reviewId, productId)
+        }
+    }
+    
+    fun loadUserReview(productId: String, userId: String) {
+        viewModelScope.launch {
+            val result = reviewRepo.getUserReviewForProduct(productId, userId)
+            if (result.isSuccess) {
+                _state.update { it.copy(userReview = result.getOrNull()) }
             }
         }
     }

@@ -1,5 +1,7 @@
 package com.example.domain.model
 
+import com.google.firebase.Timestamp
+
 data class Store(
     val id: String,
     val name: String,
@@ -26,5 +28,12 @@ data class Store(
     val city: String = "",
     val district: String = "",
     val fullAddress: String = "",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    
+    // Exchange Rate Management fields
+    val exchangeRate: Double = 12500.0,
+    val storeCurrency: String = "USD",
+    val exchangeRateUpdatedAt: Timestamp? = null,
+    val usingGlobalRate: Boolean = true
 )
+

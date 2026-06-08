@@ -64,7 +64,8 @@ data class MarketProduct(
     val storeName: String,
     val deliveryTime: String, // "Same Day", "Within 3 Days", "Standard (1 Week)"
     val dateAdded: String, // YYYY-MM-DD
-    val imageUrl: String
+    val imageUrl: String,
+    val condition: String = "new"
 )
 
 enum class SortOption(val label: String) {
@@ -215,13 +216,14 @@ fun SearchScreen(
     var minRatingFilter by SharedFilterState.minRatingFilterState
     var deliveryFilterSameDayOnly by SharedFilterState.deliveryFilterSameDayOnlyState
     var selectedSortOption by SharedFilterState.selectedSortOptionState
+    var selectedConditionFilter by SharedFilterState.selectedConditionFilterState
 
     // Categories defined for multi-vendor search
     val filterCategories = listOf("All", "Apparel", "Artisanal", "Bespoke", "Furniture", "Wellness")
     val ratingOptions = listOf(0.0, 4.0, 4.5, 4.8)
 
     // Filter computation logic (instant, reactive and high performance updates)
-    val filteredProducts = remember(queryText, selectedCategoryFilter, maxPriceRange, minRatingFilter, deliveryFilterSameDayOnly, selectedSortOption) {
+    val filteredProducts = remember(queryText, selectedCategoryFilter, maxPriceRange, minRatingFilter, deliveryFilterSameDayOnly, selectedSortOption, selectedConditionFilter) {
         productCatalog.filter { product ->
             val matchesQuery = product.name.contains(queryText, ignoreCase = true) || 
                                product.category.contains(queryText, ignoreCase = true) ||
@@ -231,8 +233,9 @@ fun SearchScreen(
             val matchesPrice = product.price <= maxPriceRange
             val matchesRating = product.rating >= minRatingFilter
             val matchesDelivery = !deliveryFilterSameDayOnly || product.deliveryTime == "Same Day"
+            val matchesCondition = selectedConditionFilter == "All" || product.condition.lowercase() == selectedConditionFilter.lowercase()
 
-            matchesQuery && matchesCategory && matchesPrice && matchesRating && matchesDelivery
+            matchesQuery && matchesCategory && matchesPrice && matchesRating && matchesDelivery && matchesCondition
         }.sortedWith { a, b ->
             when (selectedSortOption) {
                 SortOption.Newest -> b.dateAdded.compareTo(a.dateAdded)
@@ -745,23 +748,12 @@ fun SearchScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
 
-                                // Delivery indicator tag (Same day or fast Shipping highlights conversion)
                                 Box(
                                     modifier = Modifier
+                                        .align(Alignment.BottomStart)
                                         .padding(8.dp)
-                                        .align(Alignment.TopStart)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(
-                                            if (product.deliveryTime == "Same Day") Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
-                                        )
-                                        .padding(horizontal = 6.dp, vertical = 3.dp)
                                 ) {
-                                    Text(
-                                        text = if (product.deliveryTime == "Same Day") stringResource(id = R.string.same_day_delivery_badge) else stringResource(id = R.string.fast_delivery),
-                                        color = if (product.deliveryTime == "Same Day") BrandPrimary else Color(0xFFE65100),
-                                        fontSize = 8.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    ConditionBadge(condition = product.condition, isAr = isAr)
                                 }
 
                                 // Savings discount tag

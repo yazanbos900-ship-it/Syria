@@ -166,7 +166,7 @@
     <!-- Cart -->
     <string name="cart_title">سلة التسوق</string>
     <string name="items_count">%1$d منتجات</string>
-    <string name="total_payable">إجمالي الدفع (شامل الضريبة)</string>
+    <string name="total_payable">الإجمالي (شامل الضريبة)</string>
     <string name="saving_extra">توفير إضافي</string>
     <string name="secure_escrow">ضمان وسيط آمن</string>
     <string name="proceed_to_checkout">إتمام الشراء</string>
@@ -234,4 +234,15 @@
     <string name="manage_products">إدارة المنتجات</string>
     <string name="manage_users">إدارة المستخدمين</string>
     <string name="admin_unauthorized">تم رفض الوصول: مطلوب صلاحية مسؤول.</string>
+
+    <!-- Product Condition System -->
+    <string name="product_condition_label">حالة المنتج</string>
+    <string name="condition_new">جديد</string>
+    <string name="condition_open_box">مفتوح العلبة</string>
+    <string name="condition_like_new">شبه جديد</string>
+    <string name="condition_excellent">ممتاز</string>
+    <string name="condition_good">جيد</string>
+    <string name="condition_fair">مقبول</string>
+    <string name="condition_used">مستعمل</string>
+    <string name="condition_for_parts">للتصليح / لا يعمل</string>
 </resources>

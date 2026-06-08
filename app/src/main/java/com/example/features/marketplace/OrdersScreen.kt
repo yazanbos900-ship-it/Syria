@@ -289,64 +289,6 @@ fun OrderCard(
                 }
             }
 
-            // Payment method inside the Card
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = if (order.paymentMethod.contains("Delivery", ignoreCase = true)) Icons.Default.LocalShipping else Icons.Default.AccountBalanceWallet,
-                        contentDescription = null,
-                        tint = BrandPrimary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    val displayMethod = when {
-                        order.paymentMethod.contains("Syriatel", ignoreCase = true) -> if (isArabic) "سيرياتيل كاش" else "Syriatel Cash"
-                        order.paymentMethod.contains("MTN", ignoreCase = true) -> if (isArabic) "ام تي ان كاش" else "MTN Cash"
-                        else -> if (isArabic) "الدفع عند الاستلام" else "Cash On Delivery"
-                    }
-                    Text(
-                        text = displayMethod,
-                        fontSize = 12.sp,
-                        color = BrandTextPrimary,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                val payLabel = when (order.paymentStatus) {
-                    "Paid" -> if (isArabic) "تم الدفع" else "Paid"
-                    "Failed" -> if (isArabic) "فشل الدفع" else "Failed"
-                    "Cancelled" -> if (isArabic) "ملغي" else "Cancelled"
-                    else -> if (isArabic) "معلق" else "Pending"
-                }
-
-                val payColor = when (order.paymentStatus) {
-                    "Paid" -> BrandPrimary
-                    "Failed" -> Color.Red
-                    "Cancelled" -> Color.Gray
-                    else -> Color(0xFFE5A93C)
-                }
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(payColor.copy(alpha = 0.1f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = payLabel,
-                        fontSize = 10.sp,
-                        color = payColor,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
             // Divider
             HorizontalDivider(color = BrandSoftGray, thickness = 1.dp)
 
@@ -826,7 +768,7 @@ fun TrackingTimelineDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = if (isArabic) "أموالك محفوظة بأمان تام عبر وسيط بلس حتى تتأكد من سلامة الطرد المستلم." else "Your payment is legally held inside WasetPlus safe local escrow until you inspect package arrivals.",
+                            text = if (isArabic) "تعمل المنصة كوسيط تنسيقي بينك وبين البائع. يرجى التنسيق المباشر وترتيب تفاصيل الدفع الفعلي مع البائع." else "The platform acts as a coordination intermediary. Please coordinate directly with the seller to finalize actual payment arrangement details.",
                             color = BrandPrimary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
@@ -852,228 +794,61 @@ fun OrderDetailDialog(
     onDismiss: () -> Unit,
     onReorder: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = if (isArabic) "تفاصيل معاملة طلبك" else "Order Receipts",
-                fontWeight = FontWeight.Bold,
-                color = BrandTextPrimary,
-                fontSize = 18.sp
-            )
-        },
-        text = {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    // ID & Placed
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = if (isArabic) "رقم المعاملة:" else "Order Ref ID:",
-                            color = BrandTextMuted,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = "#${order.orderId.uppercase()}",
-                            fontWeight = FontWeight.Bold,
-                            color = BrandTextPrimary,
-                            fontSize = 12.sp
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(8.dp)
+        ) {
+            OrderDetailsLayout(
+                order = order,
+                isArabic = isArabic,
+                isSellerView = false,
+                headerActions = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = if (isArabic) "إغلاق" else "Close",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
+                },
+                bottomActions = {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = if (isArabic) "تاريخ الإنشاء:" else "Transaction Date:",
-                            color = BrandTextMuted,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = formatDate(order.createdAt),
-                            fontWeight = FontWeight.SemiBold,
-                            color = BrandTextPrimary,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = if (isArabic) "المعرض البائع:" else "Fulfillment Merchant:",
-                            color = BrandTextMuted,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = order.storeName,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandPrimary,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HorizontalDivider(color = BrandSoftGray)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Section: Items Title
-                    Text(
-                        text = if (isArabic) "العناصر المشتراة" else "Purchased Items",
-                        fontWeight = FontWeight.Bold,
-                        color = BrandTextPrimary,
-                        fontSize = 13.sp
-                    )
-                }
-
-                items(order.items) { item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AsyncImage(
-                            model = item.productImage.ifEmpty { "https://i.imgur.com/g0K5Iu9.jpeg" },
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(BrandSoftGray),
-                            contentScale = ContentScale.Crop
-                        )
-
-                        Column(modifier = Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Text(
-                                text = item.productName,
-                                fontWeight = FontWeight.SemiBold,
-                                color = BrandTextPrimary,
-                                fontSize = 12.sp,
-                                maxLines = 1
-                            )
-                            Text(
-                                text = "${item.quantity} x ${formatCurrencyString(item.unitPrice, isArabic)}",
-                                color = BrandTextMuted,
-                                fontSize = 11.sp
+                                text = if (isArabic) "إغلاق" else "Close",
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
-                        Text(
-                            text = formatCurrencyString(item.unitPrice * item.quantity, isArabic),
-                            fontWeight = FontWeight.Bold,
-                            color = BrandTextPrimary,
-                            fontSize = 12.sp
-                        )
+                        Button(
+                            onClick = {
+                                onDismiss()
+                                onReorder()
+                            },
+                            modifier = Modifier.weight(1.5f),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Text(
+                                text = if (isArabic) "إعادة طلب العناصر" else "Reorder Items",
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
-
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = BrandSoftGray)
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Totals breakdown
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = if (isArabic) "المجموع الفرعي:" else "Subtotal Amount:",
-                            color = BrandTextMuted,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = formatCurrencyString(order.totalAmount, isArabic),
-                            color = BrandTextPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = if (isArabic) "رسوم التوصيل المحلي:" else "Local Logistics Fees:",
-                            color = BrandTextMuted,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = if (isArabic) "مبني مجاناً" else "Free Delivery",
-                            color = BrandPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = BrandSoftGray)
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (isArabic) "المبلغ الكلي الكلي:" else "Final Order Total:",
-                            fontWeight = FontWeight.ExtraBold,
-                            color = BrandTextPrimary,
-                            fontSize = 14.sp
-                        )
-
-                        Text(
-                            text = formatCurrencyString(order.totalAmount, isArabic),
-                            fontWeight = FontWeight.Black,
-                            color = BrandPrimary,
-                            fontSize = 16.sp
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(text = if (isArabic) "إغلاق" else "Close", color = BrandTextPrimary)
-                }
-
-                Button(
-                    onClick = {
-                        onDismiss()
-                        onReorder()
-                    },
-                    modifier = Modifier.weight(1.5f),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
-                ) {
-                    Text(text = if (isArabic) "إعادة طلب العناصر" else "Reorder Items", color = Color.White)
-                }
-            }
-        },
-        containerColor = BrandSurface,
-        shape = RoundedCornerShape(20.dp)
-    )
+            )
+        }
+    }
 }
 
 // ------------------------------------------------------------------------

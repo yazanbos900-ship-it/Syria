@@ -166,7 +166,7 @@
     <!-- Cart -->
     <string name="cart_title">Shopping Cart</string>
     <string name="items_count">%1$d Items</string>
-    <string name="total_payable">Total Payable (VAT Incl.)</string>
+    <string name="total_payable">Grand Total (VAT Incl.)</string>
     <string name="saving_extra">Saving Extra</string>
     <string name="secure_escrow">Secure Escrow</string>
     <string name="proceed_to_checkout">Proceed to Checkout</string>
@@ -234,4 +234,15 @@
     <string name="manage_products">Manage Products</string>
     <string name="manage_users">Manage Users</string>
     <string name="admin_unauthorized">Access Denied: Admin role required.</string>
+
+    <!-- Product Condition System -->
+    <string name="product_condition_label">Product Condition</string>
+    <string name="condition_new">New</string>
+    <string name="condition_open_box">Open Box</string>
+    <string name="condition_like_new">Like New</string>
+    <string name="condition_excellent">Excellent</string>
+    <string name="condition_good">Good</string>
+    <string name="condition_fair">Fair</string>
+    <string name="condition_used">Used</string>
+    <string name="condition_for_parts">For Parts / Not Working</string>
 </resources>

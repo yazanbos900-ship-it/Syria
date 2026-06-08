@@ -55,6 +55,7 @@ class FirebaseRecommendationRepositoryImpl : RecommendationRepository {
             val reviewCount = (get("reviewCount") as? Number)?.toInt() ?: 0
             val isAvailable = getBoolean("isAvailable") ?: true
             val stockCount = (get("stockCount") as? Number)?.toInt() ?: 10
+            val condition = getString("condition") ?: "new"
             
             Product(
                 id = id,
@@ -68,7 +69,8 @@ class FirebaseRecommendationRepositoryImpl : RecommendationRepository {
                 reviewCount = reviewCount,
                 isAvailable = isAvailable,
                 stockCount = stockCount,
-                createdAt = getCreatedAt(this)
+                createdAt = getCreatedAt(this),
+                condition = condition
             )
         } catch (e: Exception) {
             Log.e(tag, "Error parsing product $id in recommendation engine", e)

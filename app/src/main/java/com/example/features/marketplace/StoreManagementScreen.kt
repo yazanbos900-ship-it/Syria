@@ -222,7 +222,7 @@ fun StoreManagementScreen(
                         SellerTab.PRODUCTS -> {
                             ProductsSection(
                                 products = state.products,
-                                rate = store.usdExchangeRate,
+                                rate = store.exchangeRate,
                                 isArabic = isArabic,
                                 onAddProduct = {
                                     productToEdit = null
@@ -267,14 +267,14 @@ fun StoreManagementScreen(
         val store = state.store!!
         AddEditProductDialog(
             product = productToEdit,
-            usdExchangeRate = store.usdExchangeRate,
-            defaultStoreCurrency = store.defaultCurrency,
+            usdExchangeRate = store.exchangeRate,
+            defaultStoreCurrency = store.storeCurrency,
             isArabic = isArabic,
             onDismiss = { showAddEditProductDialog = false },
-            onSave = { title, price, desc, categoryId, imageUris, currency ->
+            onSave = { title, price, desc, categoryId, imageUris, currency, cond ->
                 if (productToEdit == null) {
                     // Adding
-                    viewModel.addProduct(title, price, desc, imageUris, categoryId, currency)
+                    viewModel.addProduct(title, price, desc, imageUris, categoryId, currency, cond)
                 } else {
                     // Editing
                     val updated = productToEdit!!.copy(
@@ -283,7 +283,8 @@ fun StoreManagementScreen(
                         description = desc,
                         categoryId = categoryId,
                         imageUrls = imageUris,
-                        currency = currency
+                        currency = currency,
+                        condition = cond
                     )
                     viewModel.updateProduct(updated)
                 }
@@ -356,15 +357,15 @@ fun DashboardSection(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     MetricWidgetCard(
                         title = if (isArabic) "العملة الافتراضية" else "Active Currency",
-                        value = store.defaultCurrency,
-                        subtitle = if (store.defaultCurrency == "USD") "American Dollar ($)" else "Syrian Pound (ل.س)",
+                        value = store.storeCurrency,
+                        subtitle = if (store.storeCurrency == "USD") "American Dollar ($)" else "Syrian Pound (ل.س)",
                         icon = Icons.Default.MonetizationOn,
                         iconTint = Color(0xFFFFD700),
                         modifier = Modifier.weight(1f)
                     )
                     MetricWidgetCard(
                         title = if (isArabic) "سعر صرف متجرك" else "USD Conversion Rate",
-                        value = "${store.usdExchangeRate.toInt()} ل.س",
+                        value = "${store.exchangeRate.toInt()} ل.س",
                         subtitle = if (isArabic) "لكل 1 دولار أمريكي" else "per 1 USD",
                         icon = Icons.Default.SwapHoriz,
                         iconTint = Color(0xFFFF69B4),
@@ -1020,8 +1021,8 @@ fun SettingsSection(
 ) {
     var name by remember { mutableStateOf(store.name) }
     var desc by remember { mutableStateOf(store.description) }
-    var exchangeRateStr by remember { mutableStateOf(store.usdExchangeRate.toString()) }
-    var defaultCurrency by remember { mutableStateOf(store.defaultCurrency) }
+    var exchangeRateStr by remember { mutableStateOf(store.exchangeRate.toInt().toString()) }
+    var defaultCurrency by remember { mutableStateOf(store.storeCurrency) }
     var logoUrl by remember { mutableStateOf(store.logoUrl) }
     var bannerUrl by remember { mutableStateOf(store.bannerUrl) }
 
@@ -1156,6 +1157,153 @@ fun SettingsSection(
 
                     Text(
                         text = if (isArabic) "انقر فوق المساحة لتغيير الغلاف أو شعار المتجر" else "Tap cards to customize store visuals",
+                        fontSize = 11.sp,
+                        color = TextGray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        // New Currency & Exchange Rate Section Card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, BorderColor),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        text = if (isArabic) "إعدادات العملة والسعر" else "Currency & Exchange Settings",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = TextWhite
+                    )
+
+                    // Currency Selector (Toggle Chips style)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = if (isArabic) "العملة الافتراضية" else "Store Currency",
+                            color = TextWhite,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            listOf("USD" to (if (isArabic) "USD $" else "USD $"), "SYP" to (if (isArabic) "ليرة سورية" else "Syrian Pound")).forEach { (currCode, currLabel) ->
+                                val isSelected = defaultCurrency == currCode
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) PrimaryGreen.copy(alpha = 0.15f) else DarkBg)
+                                        .border(
+                                            1.5.dp,
+                                            if (isSelected) PrimaryGreen else BorderColor,
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                        .clickable { defaultCurrency = currCode }
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = currLabel,
+                                        color = if (isSelected) PrimaryGreen else TextGray,
+                                        fontSize = 14.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Exchange Rate input with validation
+                    var rateErrorStr by remember { mutableStateOf<String?>(null) }
+                    
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = if (isArabic) "سعر الصرف" else "Exchange Rate",
+                            color = TextWhite,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        OutlinedTextField(
+                            value = exchangeRateStr,
+                            onValueChange = { newValue ->
+                                exchangeRateStr = newValue
+                                val dValue = newValue.toDoubleOrNull()
+                                rateErrorStr = when {
+                                    newValue.isEmpty() || dValue == null || dValue == 0.0 -> if (isArabic) "أدخل سعر صرف صحيح" else "Enter a valid exchange rate"
+                                    dValue < 1000.0 -> if (isArabic) "السعر منخفض جداً" else "Rate is too low"
+                                    dValue > 100000.0 -> if (isArabic) "السعر مرتفع جداً" else "Rate is too high"
+                                    else -> null
+                                }
+                            },
+                            placeholder = { Text("1 USD = ؟ ل.س", color = TextGray, fontSize = 13.sp) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextWhite,
+                                unfocusedTextColor = TextWhite,
+                                focusedBorderColor = if (rateErrorStr != null) Color.Red else PrimaryGreen,
+                                unfocusedBorderColor = if (rateErrorStr != null) Color.Red else BorderColor,
+                                focusedContainerColor = DarkBg,
+                                unfocusedContainerColor = DarkBg
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().testTag("store_exchange_rate_input"),
+                            isError = rateErrorStr != null
+                        )
+                        if (rateErrorStr != null) {
+                            Text(
+                                text = rateErrorStr!!,
+                                color = Color.Red,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    // Save Button specifically for Currency and Rate Settings: "حفظ إعدادات العملة"
+                    Button(
+                        onClick = {
+                            val dValue = exchangeRateStr.toDoubleOrNull()
+                            val validationError = when {
+                                exchangeRateStr.isEmpty() || dValue == null || dValue == 0.0 -> if (isArabic) "أدخل سعر صرف صحيح" else "Enter a valid exchange rate"
+                                dValue < 1000.0 -> if (isArabic) "السعر منخفض جداً" else "Rate is too low"
+                                dValue > 100000.0 -> if (isArabic) "السعر مرتفع جداً" else "Rate is too high"
+                                else -> null
+                            }
+                            rateErrorStr = validationError
+                            if (validationError == null && dValue != null) {
+                                onSave(name, desc, dValue, selectedCategory?.id ?: store.categoryId, logoUrl, bannerUrl, defaultCurrency)
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        enabled = !isUploadingLogo && !isUploadingBanner && !isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("save_currency_settings_button")
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(color = DarkBg, modifier = Modifier.size(20.dp))
+                        } else {
+                            Text(
+                                text = if (isArabic) "حفظ إعدادات العملة" else "Save Currency Settings",
+                                color = DarkBg,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = if (isArabic) "سيُستخدم هذا السعر تلقائياً عند إضافة المنتجات" else "This rate will be automatically used when adding products",
                         fontSize = 11.sp,
                         color = TextGray,
                         textAlign = TextAlign.Center,
@@ -1503,7 +1651,7 @@ fun AddEditProductDialog(
     defaultStoreCurrency: String,
     isArabic: Boolean,
     onDismiss: () -> Unit,
-    onSave: (title: String, price: Double, desc: String, categoryId: String, imageUris: List<String>, currency: String) -> Unit
+    onSave: (title: String, price: Double, desc: String, categoryId: String, imageUris: List<String>, currency: String, condition: String) -> Unit
 ) {
     var title by remember { mutableStateOf(product?.title ?: "") }
     var price by remember { mutableStateOf(product?.price?.let { if (it > 0.0) it.toString() else "" } ?: "") }
@@ -1511,6 +1659,7 @@ fun AddEditProductDialog(
     var selectedCurrency by remember { mutableStateOf(product?.currency ?: defaultStoreCurrency) }
     var imageUris by remember { mutableStateOf<List<String>>(product?.imageUrls ?: emptyList()) }
     var isUploadingImage by remember { mutableStateOf(false) }
+    var condition by remember { mutableStateOf(product?.condition ?: "new") }
 
     val categories = SharedFilterState.categoriesList.filter { it.id != "All" }
     var selectedCategory by remember { mutableStateOf(categories.find { it.id == product?.categoryId } ?: categories.firstOrNull()) }
@@ -1622,12 +1771,12 @@ fun AddEditProductDialog(
                 // Real-time conversion preview calculation wrapper
                 val parsedDoublePrice = price.toDoubleOrNull()
                 if (parsedDoublePrice != null && parsedDoublePrice > 0.0) {
-                    val rate = usdExchangeRate
-                    val equivalentAmount = if (selectedCurrency == "USD") parsedDoublePrice * rate else parsedDoublePrice / rate
-                    val formattedEquivalent = if (selectedCurrency == "USD") {
-                        String.format("%,d", equivalentAmount.toLong()) + " " + (if (isArabic) "ل.س" else "SYP")
+                    val rate = if (usdExchangeRate <= 0.0) 12500.0 else usdExchangeRate
+                    val equivalentAmount = if (defaultStoreCurrency == "USD") parsedDoublePrice * rate else parsedDoublePrice / rate
+                    val formattedEquivalent = if (defaultStoreCurrency == "USD") {
+                        "≈ ${String.format("%,d", equivalentAmount.toLong())} ل.س"
                     } else {
-                        String.format("%.2f", equivalentAmount) + " " + (if (isArabic) "دولار" else "USD")
+                        "≈ $ ${String.format("%.2f", equivalentAmount)}"
                     }
 
                     Box(
@@ -1638,12 +1787,8 @@ fun AddEditProductDialog(
                             .padding(10.dp)
                     ) {
                         Text(
-                            text = String.format(
-                                "%s: %s",
-                                if (isArabic) "السعر المقابل تقريبياً" else "Approximated Conversion Pair",
-                                formattedEquivalent
-                            ),
-                            fontSize = 11.sp,
+                            text = formattedEquivalent,
+                            fontSize = 13.sp,
                             color = PrimaryGreen,
                             fontWeight = FontWeight.Bold
                         )
@@ -1711,6 +1856,53 @@ fun AddEditProductDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(Icons.Default.ArrowDropDown, null, tint = PrimaryGreen)
+                        }
+                    }
+                }
+
+                // Condition selection
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(id = R.string.product_condition_label),
+                        color = TextWhite,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val conditions = listOf(
+                            "new" to R.string.condition_new,
+                            "open_box" to R.string.condition_open_box,
+                            "like_new" to R.string.condition_like_new,
+                            "excellent" to R.string.condition_excellent,
+                            "good" to R.string.condition_good,
+                            "fair" to R.string.condition_fair,
+                            "used" to R.string.condition_used,
+                            "for_parts" to R.string.condition_for_parts
+                        )
+                        conditions.forEach { (key, strId) ->
+                            val isSelected = condition == key
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSelected) PrimaryGreen else DarkBg)
+                                    .border(1.dp, if (isSelected) PrimaryGreen else BorderColor, RoundedCornerShape(10.dp))
+                                    .clickable { condition = key }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                                    .testTag("dialog_condition_chip_$key")
+                            ) {
+                                Text(
+                                    text = stringResource(id = strId),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.White else TextGray
+                                )
+                            }
                         }
                     }
                 }
@@ -1824,7 +2016,7 @@ fun AddEditProductDialog(
                     Button(
                         onClick = {
                             if (isFormValid) {
-                                onSave(title, priceValNum, desc, selectedCategory!!.id, imageUris, selectedCurrency)
+                                onSave(title, priceValNum, desc, selectedCategory!!.id, imageUris, selectedCurrency, condition)
                             }
                         },
                         modifier = Modifier.weight(1.5f),

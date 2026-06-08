@@ -16,10 +16,20 @@ data class Product(
     val isApproved: Boolean = true,
     val isFlagged: Boolean = false,
     val flagReason: String = "",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val condition: String = "new",
+    val sellerType: String = "",
+    val sellerId: String = "",
+    
+    // Exchange Rate Management integration
+    val priceUSD: Double = 0.0,
+    val priceSYP: Double = 0.0,
+    val storeCurrency: String = "USD",
+    val exchangeRateUsed: Double = 12500.0
 )
 
 fun Product.getPriceInUSD(exchangeRate: Double): Double {
     val rate = if (exchangeRate <= 0) 13500.0 else exchangeRate
     return if (currency == "SYP") price / rate else price
 }
+

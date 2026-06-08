@@ -1,175 +1,53 @@
 package com.example.features.marketplace
 
-import com.example.domain.model.getPriceInUSD
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
-import com.example.R
-import coil.compose.AsyncImage
-import com.example.core.utils.LanguageManager
-import com.example.core.utils.CurrencyManager
-import androidx.compose.ui.platform.LocalContext
-import com.example.ui.theme.BrandBackground
-import com.example.ui.theme.BrandPrimary
-import com.example.ui.theme.BrandSoftGray
-import com.example.ui.theme.BrandSurface
-import com.example.ui.theme.BrandTextMuted
-import com.example.ui.theme.BrandTextPrimary
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.features.marketplace.ProductDetailViewModel
-import androidx.compose.ui.platform.testTag
-import com.example.domain.model.RecommendationCriteria
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.example.R
+import com.example.core.utils.CurrencyManager
+import com.example.core.utils.LanguageManager
 import com.example.domain.model.Product
+import com.example.domain.model.RecommendationCriteria
+import com.example.domain.model.getPriceInUSD
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
-import kotlin.math.roundToInt
 
-// Realistic data structure for direct high-conversion sales
-data class DetailProduct(
-    val id: String,
-    val name: String,
-    val price: Double,
-    val originalPrice: Double,
-    val discountPercent: Int,
-    val rating: Double,
-    val reviewsCount: Int,
-    val vendorName: String,
-    val isVerifiedVendor: Boolean,
-    val deliveryPromise: String,
-    val badge: String,
-    val images: List<String>,
-    val description: String,
-    val specifications: List<Pair<String, String>>,
-    val stockCount: Int
-)
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-val mockProductRepository = listOf(
-    DetailProduct(
-        id = "apple_watch_ultra_2",
-        name = "WasetPlus Precision Active Chrono (Elite Edition)",
-        price = 189.0,
-        originalPrice = 378.0,
-        discountPercent = 50,
-        rating = 4.9,
-        reviewsCount = 143,
-        vendorName = "Bespoke Horology Lab",
-        isVerifiedVendor = true,
-        deliveryPromise = "Ships today • Free 2-Day Delivery",
-        badge = "SPECIAL 50% OFF FLASH OFFER",
-        images = listOf(
-            "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?auto=format&fit=crop&w=800&q=80",
-            "https://images.unsplash.com/photo-1517502884422-41eaaced0168?auto=format&fit=crop&w=800&q=80",
-            "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80"
-        ),
-        description = "Crafted for connoisseurs of extreme durability and high performance. Features dual-frequency GPS, a state-of-the-art sapphire crystal shield screen, aerospace titanium framing, and an ultra-dense battery capacity built to last up to 72 hours. Certified Escrow Protected with WasetPlus insurance.",
-        specifications = listOf(
-            "Chassis" to "Aerospace-Grade Titanium",
-            "Glass" to "Sapphire Crystal Shield",
-            "Telemetry" to "HR, SpO2, Dual-GPS & Altimeter",
-            "Battery Life" to "Up to 72 Hrs Under Load",
-            "Waterproof" to "IPX8 Certified (Up to 100m)"
-        ),
-        stockCount = 4
-    ),
-    DetailProduct(
-        id = "woolen_trench_coat",
-        name = "Sovereign Tailored Woolen Overcoat",
-        price = 249.0,
-        originalPrice = 498.0,
-        discountPercent = 50,
-        rating = 4.8,
-        reviewsCount = 92,
-        vendorName = "Atelier & Co London",
-        isVerifiedVendor = true,
-        deliveryPromise = "Ships Tomorrow • Premium Eco-Packaging",
-        badge = "🔥 SCARCITY WARNING: FEW UNITS REMAINING",
-        images = listOf(
-            "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=800&q=80",
-            "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=80"
-        ),
-        description = "Woven from superfine double-faced merino wool yarn, this Sovereign Longline Trench Coat is a masterclass in classic tailoring and fluid modern structure. Hand-finished seams combine warmth and structure without bulky weight. WasetPlus verified genuine seller.",
-        specifications = listOf(
-            "Material" to "90% Merino Wool, 10% Cashmere",
-            "Weave" to "Double-faced premium stitch",
-            "Origin" to "Hand-finished in Atelier London",
-            "Fit" to "Slightly oversized drape silhouette"
-        ),
-        stockCount = 3
-    ),
-    DetailProduct(
-        id = "ceramic_vase",
-        name = "Nordic Earth Artisanal Terracotta Vase",
-        price = 79.0,
-        originalPrice = 140.0,
-        discountPercent = 43,
-        rating = 4.95,
-        reviewsCount = 68,
-        vendorName = "Studio Terrena Craft",
-        isVerifiedVendor = true,
-        deliveryPromise = "Ships today • Safe Fragile Insurance",
-        badge = "✨ COLLECTORS CHOICE • HEIRLOOM CLASS",
-        images = listOf(
-            "https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=800&q=80",
-            "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&w=800&q=80"
-        ),
-        description = "Turned carefully on the wheel and fired twice in solar-powered kilns, this ceramic work is crafted with heavy stoneware earth. The coarse organic sand texture is finished with a stunning iron silicate wash, creating raw, tactile depth resembling Nordic sea cliffs.",
-        specifications = listOf(
-            "Clay Type" to "Iron stoneware volcanic clay",
-            "Texture" to "Coarse sand with raw silicate wash",
-            "Dimensions" to "Height: 28cm, Width: 18cm",
-            "Firing Temp" to "Cone 10 oxidized (1280°C)"
-        ),
-        stockCount = 7
-    )
-)
-
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ProductDetailScreen(
     productId: String?,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onContactSeller: (String) -> Unit = {},
+    onSellerProfileClick: (String, String) -> Unit = { _, _ -> }
 ) {
     val viewModel: ProductDetailViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -177,27 +55,48 @@ fun ProductDetailScreen(
                 com.example.core.di.ServiceLocator.productRepository,
                 com.example.core.di.ServiceLocator.storeRepository,
                 com.example.core.di.ServiceLocator.recommendationRepository,
-                com.example.core.di.ServiceLocator.comparisonRepository
+                com.example.core.di.ServiceLocator.comparisonRepository,
+                com.example.core.di.ServiceLocator.reviewRepository
             ) as T
         }
     })
     
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isAr = LanguageManager.isArabic(LocalContext.current)
-
+    
     LaunchedEffect(productId) {
         if (productId != null) {
             viewModel.loadProduct(productId)
         }
     }
-
-    // Adapt Product model to DetailProduct or use directly. 
-    // Since DetailProduct is used for UI, we can map it.
-    val domainProduct = state.product
     
+    val domainProduct = state.product
+    var currentUserSession by remember { mutableStateOf<com.example.domain.model.User?>(null) }
+    var adOwnerUid by remember { mutableStateOf<String?>(null) }
+    var adOwnerName by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(domainProduct) {
+        if (domainProduct != null) {
+            currentUserSession = com.example.core.di.ServiceLocator.authRepository.getCurrentUserSession()
+            if (domainProduct.storeId == "direct_ad") {
+                val db = FirebaseFirestore.getInstance()
+                db.collection("direct_ads").document(domainProduct.id).get()
+                    .addOnSuccessListener { doc ->
+                        if (doc.exists()) {
+                            adOwnerUid = doc.getString("ownerUid")
+                            adOwnerName = doc.getString("ownerUsername")
+                        }
+                    }
+            }
+            if (currentUserSession != null) {
+                viewModel.loadUserReview(domainProduct.id, currentUserSession!!.id)
+            }
+        }
+    }
+
     if (state.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = BrandPrimary)
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
         return
     }
@@ -205,7 +104,7 @@ fun ProductDetailScreen(
     if (state.error != null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = state.error!!, color = Color.Red)
+                Text(text = state.error!!, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = onBack) { Text("Back") }
             }
@@ -220,154 +119,73 @@ fun ProductDetailScreen(
         return
     }
 
-    // Mapping logic
-    val product = DetailProduct(
-        id = domainProduct.id,
-        name = domainProduct.title,
-        price = domainProduct.getPriceInUSD(state.store?.usdExchangeRate ?: 13500.0),
-        originalPrice = domainProduct.getPriceInUSD(state.store?.usdExchangeRate ?: 13500.0) * 1.5, // Mocking original price
-        discountPercent = 33,
-        rating = domainProduct.rating.toDouble(),
-        reviewsCount = domainProduct.reviewCount,
-        vendorName = state.store?.name ?: "Bespoke Horology Lab", // Fetch real store name loaded from Firestore
-        isVerifiedVendor = true,
-        deliveryPromise = "Ships today",
-        badge = if (domainProduct.stockCount < 5) "Limited Offer" else "Special Discount",
-        images = if (domainProduct.imageUrls.isNotEmpty()) domainProduct.imageUrls else listOf("https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80"),
-        description = domainProduct.description,
-        specifications = listOf("Shipping" to "International", "Support" to "24/7"),
-        stockCount = domainProduct.stockCount
-    )
+    val storeExchangeRate = state.store?.usdExchangeRate ?: 13500.0
+    val priceInStoreCurrency = domainProduct.getPriceInUSD(storeExchangeRate)
+    val originalPriceInStoreCurrency = priceInStoreCurrency * 1.5
 
-    val marketProduct = remember(product.id) {
-        productCatalog.find { it.id == product.id } ?: MarketProduct(
-            id = product.id,
-            name = product.name,
-            price = product.price,
-            originalPrice = product.originalPrice,
-            rating = product.rating,
-            reviewsCount = product.reviewsCount,
+    val marketProduct = remember(domainProduct.id) {
+        productCatalog.find { it.id == domainProduct.id } ?: MarketProduct(
+            id = domainProduct.id,
+            name = domainProduct.title,
+            price = priceInStoreCurrency,
+            originalPrice = originalPriceInStoreCurrency,
+            rating = domainProduct.rating.toDouble(),
+            reviewsCount = domainProduct.reviewCount,
             category = "General",
-            storeName = product.vendorName,
+            storeName = state.store?.name ?: "Store",
             deliveryTime = "Standard",
-            dateAdded = "2026-05-25",
-            imageUrl = product.images.firstOrNull() ?: ""
+            dateAdded = "Today",
+            imageUrl = domainProduct.imageUrls.firstOrNull() ?: ""
         )
     }
 
-    var quantity by remember { mutableStateOf(1) }
     val isLiked = SharedWishlistState.isWishlisted(marketProduct)
+    val images = if (domainProduct.imageUrls.isNotEmpty()) domainProduct.imageUrls else listOf("")
     
-    // Fake interactive countdown timer for scarcity and higher CTA conversion
-    var secondsRemaining by remember { mutableStateOf(522) } // 8 mins 42 secs
-    LaunchedEffect(Unit) {
-        while (secondsRemaining > 0) {
-            delay(1000)
-            secondsRemaining--
-        }
-    }
+    var quantity by remember { mutableIntStateOf(1) }
 
-    val minutes = secondsRemaining / 60
-    val seconds = secondsRemaining % 60
-    val timerString = String.format("%02d:%02d", minutes, seconds)
-
-    // Pulsing alpha for the limited flash banner
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_banner"
-    )
-
-    // Layout configuration with sticky bottom bar
     Scaffold(
-        containerColor = BrandBackground,
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            // Elegant Editorial Floating Title Frame
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(BrandSurface)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(BrandBackground)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Navigate Back",
-                        tint = BrandTextPrimary
-                    )
-                }
-
-                Text(
-                    text = stringResource(id = R.string.product_design),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = BrandTextPrimary,
-                    letterSpacing = 1.5.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    IconButton(
-                        onClick = { SharedWishlistState.toggleWishlist(marketProduct) },
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(BrandBackground)
-                    ) {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { SharedWishlistState.toggleWishlist(marketProduct) }) {
                         Icon(
                             imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = stringResource(id = R.string.add_to_wishlist),
-                            tint = if (isLiked) Color.Red else BrandTextPrimary
+                            contentDescription = "Wishlist",
+                            tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     }
-
-                    IconButton(
-                        onClick = {},
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(BrandBackground)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = stringResource(id = R.string.share),
-                            tint = BrandTextPrimary
-                        )
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurface)
                     }
-                }
-            }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f)
+                ),
+                windowInsets = WindowInsets(0.dp)
+            )
         },
         bottomBar = {
-            // High-Conversion Sticky Sticky bottom Add to Cart bar
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(16.dp, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
-                colors = CardDefaults.cardColors(containerColor = BrandSurface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 16.dp,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             ) {
                 Column(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .navigationBarsPadding()
                         .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Quick Scarcity + Total Price line
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -375,76 +193,138 @@ fun ProductDetailScreen(
                     ) {
                         Column {
                             Text(
-                                text = stringResource(id = R.string.order_total),
-                                fontSize = 10.sp,
-                                color = BrandTextMuted,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
+                                text = "Total Price",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            val totalPayable = product.price * quantity
                             Text(
-                                text = "$${String.format("%.2f", totalPayable)}",
+                                text = CurrencyManager.formatPrice(priceInStoreCurrency * quantity, storeExchangeRate, isAr),
                                 fontSize = 24.sp,
-                                color = BrandPrimary,
-                                fontWeight = FontWeight.ExtraBold
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
-
-                        // Sparking badge showing time countdown
+                        
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFFFFF3CD))
+                                .background(MaterialTheme.colorScheme.secondaryContainer)
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFD32F2F))
-                            )
                             Text(
-                                text = stringResource(id = R.string.locked_rate, timerString),
-                                color = Color(0xFF856404),
-                                fontSize = 11.sp,
+                                text = if (domainProduct.isAvailable) "In Stock" else "Out of Stock",
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Direct Conversion Large Checkout Action
-                    Button(
-                        onClick = {
-                            SharedCartState.addProductToCart(marketProduct)
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BrandPrimary,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(58.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
+                        val sellerUid = if (domainProduct.storeId == "direct_ad") adOwnerUid else state.store?.ownerId
+                        val sellerName = if (domainProduct.storeId == "direct_ad") (adOwnerName ?: "Seller") else (state.store?.ownerUsername ?: state.store?.name ?: "Seller")
+                        val isSellerMe = currentUserSession?.id != null && sellerUid != null && (currentUserSession?.id == sellerUid)
+
+                        if (currentUserSession != null && sellerUid != null && !isSellerMe) {
+                            var isCheckingChat by remember { mutableStateOf(false) }
+
+                            OutlinedButton(
+                                onClick = {
+                                    val currentUid = currentUserSession?.id ?: return@OutlinedButton
+                                    val targetSellerUid = sellerUid
+                                    isCheckingChat = true
+                                    val db = FirebaseFirestore.getInstance()
+
+                                    db.collection("chats")
+                                        .whereEqualTo("buyerUid", currentUid)
+                                        .whereEqualTo("productId", domainProduct.id)
+                                        .get()
+                                        .addOnSuccessListener { querySnapshot ->
+                                            if (querySnapshot != null && !querySnapshot.isEmpty) {
+                                                val existingChatId = querySnapshot.documents.first().id
+                                                isCheckingChat = false
+                                                onContactSeller(existingChatId)
+                                            } else {
+                                                val newChatId = db.collection("chats").document().id
+                                                val buyerNameStr = currentUserSession!!.name
+                                                val imageToUse = if (domainProduct.imageUrls.isNotEmpty()) domainProduct.imageUrls.first() else ""
+
+                                                val chatData = hashMapOf(
+                                                    "chatId" to newChatId,
+                                                    "participants" to listOf(currentUid, targetSellerUid),
+                                                    "buyerUid" to currentUid,
+                                                    "sellerUid" to targetSellerUid,
+                                                    "buyerName" to buyerNameStr,
+                                                    "sellerName" to sellerName,
+                                                    "productId" to domainProduct.id,
+                                                    "productTitle" to domainProduct.title,
+                                                    "productImage" to imageToUse,
+                                                    "lastMessage" to "Conversation started",
+                                                    "lastMessageSenderId" to "system",
+                                                    "lastMessageTime" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                                                    "unreadCount_$currentUid" to 0,
+                                                    "unreadCount_$targetSellerUid" to 0,
+                                                    "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                                )
+
+                                                db.collection("chats").document(newChatId).set(chatData)
+                                                    .addOnSuccessListener {
+                                                        isCheckingChat = false
+                                                        onContactSeller(newChatId)
+                                                    }
+                                                    .addOnFailureListener {
+                                                        isCheckingChat = false
+                                                    }
+                                            }
+                                        }
+                                        .addOnFailureListener {
+                                            isCheckingChat = false
+                                        }
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                enabled = !isCheckingChat
+                            ) {
+                                if (isCheckingChat) {
+                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = { SharedCartState.addProductToCart(marketProduct) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = stringResource(id = R.string.add_to_cart_securely),
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp
-                            )
+                            Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(20.dp))
+                        }
+                        
+                        Button(
+                            onClick = { SharedCartState.addProductToCart(marketProduct) },
+                            modifier = Modifier
+                                .weight(2f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text("Buy Now", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -455,1016 +335,903 @@ fun ProductDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.Top
+                .verticalScroll(rememberScrollState())
         ) {
+            // Product Gallery
+            val pagerState = rememberPagerState(pageCount = { images.size })
             
-            // Image Carousel with Interactive Pinch-to-Zoom layout
-            val pagerState = rememberPagerState(pageCount = { product.images.size })
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(340.dp)
-                    .background(BrandSurface)
+                    .aspectRatio(1f)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
-                    // Transformable / scale states for robust zooming
-                    var scale by remember { mutableStateOf(1f) }
-                    var offset by remember { mutableStateOf(Offset.Zero) }
-                    val stateTransform = rememberTransformableState { zoomChange, offsetChange, _ ->
-                        scale = (scale * zoomChange).coerceIn(1f, 3.5f)
-                        offset += offsetChange
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .transformable(state = stateTransform)
-                            .clip(RoundedCornerShape(0.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = product.images[page],
-                            contentDescription = "High resolution product preview. Pinch to zoom.",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer(
-                                    scaleX = scale,
-                                    scaleY = scale,
-                                    translationX = offset.x,
-                                    translationY = offset.y
-                                )
-                        )
-                    }
+                    AsyncImage(
+                        model = images[page],
+                        contentDescription = "Product Image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
-                // Smooth luxury linear overlay looking down
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.15f))
+                // Image Indicators
+                if (images.size > 1) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        repeat(images.size) { index ->
+                            val isSelected = pagerState.currentPage == index
+                            Box(
+                                modifier = Modifier
+                                    .size(if (isSelected) 10.dp else 8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                             )
-                        )
-                )
-
-                // Page numbering overlay badge
+                        }
+                    }
+                }
+                
+                // Discount Badge overlay
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
+                        .align(Alignment.TopEnd)
                         .padding(16.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.65f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .background(MaterialTheme.colorScheme.error)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "${pagerState.currentPage + 1} / ${product.images.size}",
-                        color = Color.White,
-                        fontSize = 11.sp,
+                        text = "33% OFF",
+                        color = MaterialTheme.colorScheme.onError,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
+            }
 
-                // Help hint for zooming interaction
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(16.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(BrandSurface.copy(alpha = 0.85f))
-                        .border(1.dp, BrandSoftGray, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
+            // Product Core Information
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Electronics / Smartwatches",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = domainProduct.title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = "Rating",
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = stringResource(id = R.string.pinch_to_zoom),
-                        color = BrandTextPrimary,
-                        fontSize = 10.sp,
+                        text = "${domainProduct.rating} (${domainProduct.reviewCount} Reviews)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                 }
-            }
 
-            // Limited-time offer badge (UI only) - Scarcity & Conversion driving
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFE8F5E9)) // Light mint green background
-                    .padding(vertical = 10.dp, horizontal = 24.dp)
-            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(BrandPrimary)
-                                .graphicsLayer(alpha = pulseAlpha)
-                        )
-                        Text(
-                            text = if (product.badge == "Limited Offer") stringResource(id = R.string.limited_offer) else stringResource(id = R.string.special_discount),
-                            color = BrandPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-
-                    // Scarcity state (stock)
-                    if (product.stockCount <= 5) {
-                        Text(
-                            text = stringResource(id = R.string.only_left, product.stockCount),
-                            color = Color(0xFFC62828), // Dark warning red
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
+                    Text(
+                        text = CurrencyManager.formatPrice(priceInStoreCurrency, storeExchangeRate, isAr),
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = CurrencyManager.formatPrice(originalPriceInStoreCurrency, storeExchangeRate, isAr),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textDecoration = TextDecoration.LineThrough
+                    )
                 }
             }
 
-            // Product Core Editorial Details Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = BrandSurface)
-            ) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(horizontal = 24.dp))
+
+            // Store or Seller Info Card
+            if (domainProduct.sellerType == "DIRECT_SELLER" || state.store != null) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.Top
+                    modifier = Modifier.padding(24.dp)
                 ) {
-                    // Vendor Details with Trust signals
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = product.vendorName,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandTextMuted
+                    Text(
+                        text = "Sold By",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onSellerProfileClick(
+                                    domainProduct.sellerType,
+                                    domainProduct.sellerId.ifEmpty { state.store?.id ?: "" }
                                 )
-                                if (product.isVerifiedVendor && state.store == null) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = "Verified Vendor",
-                                        tint = BrandPrimary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val logoUrl = if (domainProduct.sellerType == "DIRECT_SELLER") "" else state.store?.logoUrl ?: ""
+                            val sellerNameDisplay = if (domainProduct.sellerType == "DIRECT_SELLER") adOwnerName ?: "Direct Seller" else state.store?.name ?: "Store"
+                            
+                            AsyncImage(
+                                model = logoUrl,
+                                contentDescription = "Store Logo",
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = sellerNameDisplay,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                val currentStore = state.store
+                                if (domainProduct.sellerType == "STORE" && currentStore != null) {
+                                    StoreBadgesContainer(store = currentStore, horizontalArrangement = Arrangement.Start)
+                                    Text("Store ›", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                } else {
+                                    Text("Seller ›", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                                 }
                             }
-                            if (state.store != null) {
-                                StoreBadgesContainer(store = state.store!!)
-                            }
-                        }
-
-                        // Rating pill
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(BrandBackground)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = Color(0xFFFFB300),
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = "${product.rating}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandTextPrimary
-                            )
-                            Text(
-                                text = "(${product.reviewsCount})",
-                                fontSize = 10.sp,
-                                color = BrandTextMuted
-                            )
                         }
                     }
+                }
+                
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(horizontal = 24.dp))
+            }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+            // Description Section
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Description",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = domainProduct.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 24.sp
+                )
+            }
 
-                    // Title
-                    Text(
-                        text = product.name,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandTextPrimary,
-                        lineHeight = 28.sp
-                    )
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.padding(horizontal = 24.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Price display (Huge aesthetic hierarchy)
-                    Row(
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val detailExchangeRate = state.store?.usdExchangeRate ?: 13500.0
-                        val detailIsArabic = LanguageManager.isArabic(LocalContext.current)
-                        Text(
-                            text = CurrencyManager.formatPrice(product.price, detailExchangeRate, detailIsArabic),
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = BrandPrimary
-                        )
-
-                        Text(
-                            text = CurrencyManager.formatPrice(product.originalPrice, detailExchangeRate, detailIsArabic),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            textDecoration = TextDecoration.LineThrough,
-                            color = BrandTextMuted
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFFFFEBEE))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "-${product.discountPercent}% OFF",
-                                color = Color(0xFFC62828),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+            // Additional Info
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Specifications",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        SpecRow("Condition", domainProduct.condition.uppercase())
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
+                        SpecRow("Available Stock", "${domainProduct.stockCount} items left")
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
+                        SpecRow("Authenticity", "Verified by Platform")
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = BrandSoftGray, thickness = 1.dp)
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Trust Signals Section
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Trust item 1
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.Security,
-                                contentDescription = null,
-                                tint = BrandPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(id = R.string.escrow_policy),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandTextPrimary
-                            )
-                            Text(
-                                text = stringResource(id = R.string.protected_by),
-                                fontSize = 9.sp,
-                                color = BrandTextMuted
-                            )
-                        }
-                        
-                        // Trust item 2
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.Bolt,
-                                contentDescription = null,
-                                tint = BrandPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(id = R.string.immediate_dispatch),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandTextPrimary
-                            )
-                            Text(
-                                text = product.deliveryPromise,
-                                fontSize = 9.sp,
-                                color = BrandTextMuted
-                            )
-                        }
-
-                        // Trust item 3
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.Undo,
-                                contentDescription = null,
-                                tint = BrandPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(id = R.string.free_returns),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BrandTextPrimary
-                            )
-                            Text(
-                                text = stringResource(id = R.string.thirty_day_window),
-                                fontSize = 9.sp,
-                                color = BrandTextMuted
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = BrandSoftGray, thickness = 1.dp)
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Description
-                    Text(
-                        text = stringResource(id = R.string.story_context),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandTextMuted,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = product.description,
-                        fontSize = 14.sp,
-                        color = BrandTextPrimary,
-                        lineHeight = 22.sp
-                    )
                 }
             }
 
-            // Interactive Stepper / Quantity selector Card
-            Card(
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Quantity Selector (Internal Page)
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = BrandSurface)
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
             ) {
+                Text(
+                    text = "Quantity",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .wrapContentWidth()
+                        .clip(RoundedCornerShape(32.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            text = stringResource(id = R.string.quantity_selector),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandTextMuted,
-                            letterSpacing = 1.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(id = R.string.choose_dynamic_size),
-                            fontSize = 12.sp,
-                            color = BrandTextPrimary
-                        )
-                    }
-
-                    // Luxury Stepper Controller Design without external symbols dependence
-                    Row(
+                    IconButton(
+                        onClick = { if (quantity > 1) quantity-- },
                         modifier = Modifier
-                            .background(BrandBackground, RoundedCornerShape(12.dp))
-                            .border(1.dp, BrandSoftGray, RoundedCornerShape(12.dp))
-                            .padding(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface)
                     ) {
-                        // Subtract button
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(BrandBackground)
-                                .clickable { if (quantity > 1) quantity-- }
-                                .border(1.dp, BrandSoftGray, RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "—",
-                                color = BrandTextPrimary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text("-", style = MaterialTheme.typography.titleMedium)
+                    }
+                    Text(
+                        text = quantity.toString(),
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(
+                        onClick = { if (quantity < domainProduct.stockCount) quantity++ },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.background)
+                    ) {
+                        Text("+", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Reviews Section
+            ProductReviewsSection(
+                productId = domainProduct.id,
+                state = state,
+                currentUserSession = currentUserSession,
+                viewModel = viewModel
+            )
+            
+            Spacer(modifier = Modifier.height(48.dp))
+        }
+    }
+}
 
-                        Text(
-                            text = "$quantity",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandTextPrimary
-                        )
+@Composable
+fun SpecRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
 
-                        // Add button
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(BrandBackground)
-                                .clickable { if (quantity < product.stockCount) quantity++ }
-                                .border(1.dp, BrandSoftGray, RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
+@Composable
+fun ProductReviewsSection(
+    productId: String,
+    state: ProductDetailUiState,
+    currentUserSession: com.example.domain.model.User?,
+    viewModel: ProductDetailViewModel
+) {
+    var showReviewDialog by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Customer Reviews",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.Bold
+            )
+            
+            if (currentUserSession != null) {
+                TextButton(onClick = { showReviewDialog = true }) {
+                    Text(
+                        text = if (state.userReview == null) "Write a Review" else "Edit Your Review",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Rating Summary Card
+        val totalReviews = state.product?.reviewCount ?: 0
+        val ratingAvg = state.product?.rating ?: 0.0
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Average Rating
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = String.format(Locale.US, "%.1f", ratingAvg),
+                        style = MaterialTheme.typography.displayMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Black
+                    )
+                    Row {
+                        repeat(5) { i ->
                             Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add Quantity",
-                                tint = BrandTextPrimary,
+                                imageVector = if (i < ratingAvg.toInt()) Icons.Default.Star else if (i.toFloat() < ratingAvg.toFloat()) Icons.Default.StarHalf else Icons.Default.StarOutline,
+                                contentDescription = null,
+                                tint = Color(0xFFFFC107),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Based on $totalReviews ratings",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-            }
 
-            // Price comparison layout
-            val compResult = state.comparisonResult
+                Spacer(modifier = Modifier.width(16.dp))
 
-            if (state.comparisonLoading) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 24.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = BrandSurface)
+                // Distribution Bars
+                Column(
+                    modifier = Modifier.weight(1.5f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = if (isAr) "تحليل مقارنة الأسعار في السوق" else "MARKET PRICE COMPARISON",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandTextMuted,
-                            letterSpacing = 1.sp,
-                            modifier = Modifier.align(Alignment.Start)
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        CircularProgressIndicator(
-                            color = BrandPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = if (isAr) "يرجى الانتظار، يجري تحميل أسعار المقارنة..." else "Loading real-time market intelligent comparisons...",
-                            fontSize = 11.sp,
-                            color = BrandTextMuted
-                        )
+                    val reviews = state.reviews
+                    val starCounts = IntArray(6) { 0 }
+                    reviews.forEach {
+                        if (it.rating in 1..5) {
+                            starCounts[it.rating]++
+                        }
+                    }
+
+                    for (i in 5 downTo 1) {
+                        val count = starCounts[i]
+                        val proportion = if (reviews.isEmpty()) 0f else count.toFloat() / reviews.size.toFloat()
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "$i",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.width(10.dp)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = Color(0xFFFFC107),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            LinearProgressIndicator(
+                                progress = { proportion },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = Color(0xFFFFC107),
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = count.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.width(20.dp)
+                            )
+                        }
                     }
                 }
-            } else if (compResult != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 24.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = BrandSurface)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        val allImages = state.reviews.flatMap { it.images }
+        if (allImages.isNotEmpty()) {
+            Text(
+                text = "Photos from Customers",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            androidx.compose.foundation.lazy.LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(allImages.size) { index ->
+                    var showFullscreen by remember { mutableStateOf(false) }
+
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showFullscreen = true }
                     ) {
-                        Text(
-                            text = if (isAr) "تحليل مقارنة الأسعار في السوق" else "MARKET PRICE COMPARISON",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandTextMuted,
-                            letterSpacing = 1.sp
+                        coil.compose.AsyncImage(
+                            model = allImages[index],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant)
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                    }
 
-                        // Stats Grid: Min, Avg, Max
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    if (showFullscreen) {
+                        androidx.compose.ui.window.Dialog(
+                            onDismissRequest = { showFullscreen = false },
+                            properties = androidx.compose.ui.window.DialogProperties(
+                                usePlatformDefaultWidth = false,
+                                dismissOnBackPress = true,
+                                dismissOnClickOutside = true
+                            )
                         ) {
-                            Column(modifier = Modifier.weight(1.1f)) {
-                                Text(
-                                    text = if (isAr) "أقل سعر مقارن" else "Lowest Comp Price",
-                                    fontSize = 9.sp,
-                                    color = BrandTextMuted,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = CurrencyManager.formatPrice(compResult.minPrice, state.store?.usdExchangeRate ?: 13500.0, isAr),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandTextPrimary
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1.2f)) {
-                                Text(
-                                    text = if (isAr) "متوسط السوق" else "Market Average",
-                                    fontSize = 9.sp,
-                                    color = BrandTextMuted,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = CurrencyManager.formatPrice(compResult.avgPrice, state.store?.usdExchangeRate ?: 13500.0, isAr),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandPrimary
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1.1f)) {
-                                Text(
-                                    text = if (isAr) "أعلى سعر مقارن" else "Highest Comp Price",
-                                    fontSize = 9.sp,
-                                    color = BrandTextMuted,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = CurrencyManager.formatPrice(compResult.maxPrice, state.store?.usdExchangeRate ?: 13500.0, isAr),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandTextPrimary
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Position & Percentage stats badge
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(BrandPrimary.copy(alpha = 0.08f))
-                                .border(0.5.dp, BrandPrimary.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                val positionText = when (compResult.position) {
-                                    "Low" -> if (isAr) "خيار ذكي (أقل من متوسط السوق)" else "Excellent Deal (Below Market Avg)"
-                                    "High" -> if (isAr) "خيار حصري (أعلى من متوسط السوق)" else "Premium Grade (Above Market Avg)"
-                                    else -> if (isAr) "سعر متوازن وسطي" else "Communal Average (Balanced)"
-                                }
-                                Text(
-                                    text = positionText,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandTextPrimary
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                val diffText = if (compResult.percentageDifference < 0) {
-                                    val formatted = String.format("%.1f", kotlin.math.abs(compResult.percentageDifference))
-                                    if (isAr) "أوفر بنسبة $formatted% مقارنة بباقي المتاجر المماثلة" else "$formatted% cheaper than competitor average"
-                                } else {
-                                    val formatted = String.format("%.1f", compResult.percentageDifference)
-                                    if (isAr) "أعلى بنسبة $formatted% مقارنة بباقي المتاجر المماثلة" else "$formatted% higher than competitor average"
-                                }
-                                Text(
-                                    text = diffText,
-                                    fontSize = 11.sp,
-                                    color = BrandTextMuted
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Subheading for other comparable stores
-                        Text(
-                            text = if (isAr) "المتاجر والمخازن البديلة المتاحة" else "AVAILABLE SOURCING & COMPETITORS",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandTextMuted,
-                            letterSpacing = 0.5.sp
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Show list of actual comparable competitor products loaded dynamically from Firestore
-                        compResult.comparableProducts.forEachIndexed { idx, item ->
-                            Row(
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 10.dp)
-                                    .clickable {
-                                        viewModel.loadProduct(item.product.id)
-                                    },
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                    .fillMaxSize()
+                                    .background(Color.Black)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = item.storeName,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = BrandTextPrimary
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = "★ " + String.format("%.1f", item.storeRating),
-                                            fontSize = 11.sp,
-                                            color = Color(0xFFC49000),
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = item.product.title,
-                                        fontSize = 11.sp,
-                                        color = BrandTextMuted,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+                                    initialPage = index,
+                                    pageCount = { allImages.size }
+                                )
+                                androidx.compose.foundation.pager.HorizontalPager(
+                                    state = pagerState,
+                                    modifier = Modifier.fillMaxSize()
+                                ) { page ->
+                                    coil.compose.AsyncImage(
+                                        model = allImages[page],
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier.fillMaxSize()
                                     )
                                 }
-                                
-                                Text(
-                                    text = CurrencyManager.formatProductPrice(item.product, state.store?.usdExchangeRate ?: 13500.0, isAr),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = BrandTextPrimary
-                                )
-                            }
-                            if (idx < compResult.comparableProducts.size - 1) {
-                                HorizontalDivider(color = BrandSoftGray, thickness = 0.5.dp)
+
+                                IconButton(
+                                    onClick = { showFullscreen = false },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(16.dp)
+                                        .size(48.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = Color.White
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            } else {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 24.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = BrandSurface)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        Text(
-                            text = if (isAr) "تحليل مقارنة الأسعار في السوق" else "MARKET PRICE COMPARISON",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BrandTextMuted,
-                            letterSpacing = 1.sp
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = if (isAr) "لا تتوفر منتجات كافية للمقارنة في السوق حالياً." else "Insufficient comparable products available.",
-                            fontSize = 13.sp,
-                            color = BrandTextMuted,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
             }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
-            // Related products horizontal scroll section
-            Column(
+        if (state.reviewsLoading) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            }
+        } else if (state.reviews.isEmpty()) {
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp)
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (isAr) "توصيات مجتمعية ذكية" else "COMMUNAL RECOMMENDATIONS",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = BrandTextMuted,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    text = "No reviews yet. Be the first to review!",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                
-                // Active criteria filter chips row
-                RecommendationCriteriaSelector(
-                    selected = state.selectedCriteria,
-                    onSelected = { criteria -> viewModel.changeRecommendationCriteria(criteria) },
-                    isAr = isAr
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                if (state.recsLoading) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        repeat(5) {
-                            RecommendationSkeletonItem()
-                        }
-                    }
-                } else if (state.recsError != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 16.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(BrandSurface)
-                            .border(0.5.dp, BrandSoftGray, RoundedCornerShape(12.dp))
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = state.recsError ?: "",
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(
-                                onClick = { viewModel.changeRecommendationCriteria(state.selectedCriteria) }
-                            ) {
-                                Text(
-                                    text = if (isAr) "إعادة المحاولة" else "Retry",
-                                    color = BrandPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                } else if (state.recommendations.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isAr) "لا توجد توصيات مطابقة حالياً." else "No recommendations found.",
-                            color = BrandTextMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        state.recommendations.forEach { relProduct ->
-                            RecommendationCard(
-                                product = relProduct,
-                                exchangeRate = state.store?.usdExchangeRate ?: 13500.0,
-                                isAr = isAr,
-                                onClick = {
-                                    viewModel.trackRecommendationClick(relProduct.id, relProduct.categoryId, relProduct.storeId)
-                                    viewModel.loadProduct(relProduct.id)
-                                }
-                            )
-                        }
-
-                        // Infinite scroll / pagination action trigger card
-                        if (!state.hasReachedEnd) {
-                            Card(
-                                modifier = Modifier
-                                    .width(160.dp)
-                                    .height(180.dp)
-                                    .clickable { viewModel.loadMoreRecommendations() }
-                                    .testTag("load_more_recs_button"),
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(0.5.dp, BrandSoftGray),
-                                colors = CardDefaults.cardColors(containerColor = BrandSurface)
-                            ) {
-                                Column(
-                                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    if (state.recsAppending) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            color = BrandPrimary,
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = null,
-                                            tint = BrandPrimary,
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = if (isAr) "عرض المزيد" else "Show more",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = BrandTextPrimary
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                state.reviews.forEach { review ->
+                    ReviewItem(review = review, currentUserId = currentUserSession?.id, onDelete = {
+                        viewModel.deleteReview(review.id, productId)
+                    })
                 }
             }
         }
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun RecommendationCriteriaSelector(
-    selected: RecommendationCriteria,
-    onSelected: (RecommendationCriteria) -> Unit,
-    isAr: Boolean
-) {
-    val options = listOf(
-        RecommendationCriteria.BEST_RATED to (if (isAr) "الأعلى تقييماً" else "Top Rated"),
-        RecommendationCriteria.TRENDING to (if (isAr) "شائع ومقترح" else "Trending"),
-        RecommendationCriteria.MOST_VIEWED to (if (isAr) "الأكثر مشاهدة" else "Most Viewed"),
-        RecommendationCriteria.MOST_FAVORITED to (if (isAr) "المفضلة" else "Favorites"),
-        RecommendationCriteria.CATEGORY_PREFERENCE to (if (isAr) "فئات تهمك" else "Category Prefs"),
-        RecommendationCriteria.STORE_PREFERENCE to (if (isAr) "متاجر مفضلة" else "Store Prefs")
-    )
-    
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        options.forEach { (crit, label) ->
-            val isSelected = selected == crit
-            FilterChip(
-                selected = isSelected,
-                onClick = { onSelected(crit) },
-                label = { Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = BrandPrimary,
-                    selectedLabelColor = Color.White,
-                    containerColor = BrandSurface,
-                    labelColor = BrandTextPrimary
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    borderColor = if (isSelected) Color.Transparent else BrandSoftGray,
-                    selectedBorderColor = Color.Transparent,
-                    enabled = true,
-                    selected = isSelected
-                )
-            )
-        }
+    if (showReviewDialog) {
+        WriteReviewDialog(
+            existingReview = state.userReview,
+            onDismiss = { showReviewDialog = false },
+            onSubmit = { rating, comment, selectedImages ->
+                if (currentUserSession != null) {
+                    viewModel.submitReview(
+                        productId = productId,
+                        userId = currentUserSession.id,
+                        userName = currentUserSession.name,
+                        rating = rating,
+                        comment = comment,
+                        images = selectedImages,
+                        existingReview = state.userReview
+                    )
+                }
+                showReviewDialog = false
+            }
+        )
     }
 }
 
 @Composable
-fun RecommendationCard(
-    product: Product,
-    exchangeRate: Double,
-    isAr: Boolean,
-    onClick: () -> Unit
-) {
+fun ReviewItem(review: com.example.domain.model.Review, currentUserId: String?, onDelete: () -> Unit) {
+    val formatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.US) }
+    val dateStr = formatter.format(Date(review.createdAt))
+
     Card(
-        modifier = Modifier
-            .width(160.dp)
-            .clickable(onClick = onClick)
-            .testTag("product_recommendation_${product.id}"),
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(0.5.dp, BrandSoftGray),
-        colors = CardDefaults.cardColors(containerColor = BrandSurface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column {
-            Box(modifier = Modifier.fillMaxWidth().height(115.dp)) {
-                AsyncImage(
-                    model = product.imageUrls.firstOrNull() ?: "",
-                    contentDescription = product.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-                // Rating overlay badge
-                Box(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                        .align(Alignment.TopEnd)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = Color(0xFFFFB300),
-                            modifier = Modifier.size(10.dp)
-                        )
                         Text(
-                            text = String.format("%.1f", product.rating),
-                            color = Color.White,
-                            fontSize = 9.sp,
+                            text = if (review.userName.isNotEmpty()) review.userName.take(1).uppercase() else "?",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.Bold
                         )
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = review.userName.ifBlank { "Anonymous user" },
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = dateStr,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                if (currentUserId == review.userId) {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Review",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row {
+                repeat(5) { i ->
+                    Icon(
+                        imageVector = if (i < review.rating) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = null,
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            
+            if (review.comment.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = review.comment,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 20.sp
+                )
+            }
+
+            if (review.images.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(review.images.size) { index ->
+                        var showFullscreen by remember { mutableStateOf(false) }
+
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showFullscreen = true }
+                        ) {
+                            coil.compose.AsyncImage(
+                                model = review.images[index],
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant)
+                            )
+                        }
+
+                        if (showFullscreen) {
+                            androidx.compose.ui.window.Dialog(
+                                onDismissRequest = { showFullscreen = false },
+                                properties = androidx.compose.ui.window.DialogProperties(
+                                    usePlatformDefaultWidth = false,
+                                    dismissOnBackPress = true,
+                                    dismissOnClickOutside = true
+                                )
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black)
+                                ) {
+                                    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+                                        initialPage = index,
+                                        pageCount = { review.images.size }
+                                    )
+                                    androidx.compose.foundation.pager.HorizontalPager(
+                                        state = pagerState,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) { page ->
+                                        coil.compose.AsyncImage(
+                                            model = review.images[page],
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Fit,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = { showFullscreen = false },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(16.dp)
+                                            .size(48.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Close",
+                                            tint = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WriteReviewDialog(
+    existingReview: com.example.domain.model.Review?,
+    onDismiss: () -> Unit,
+    onSubmit: (rating: Int, comment: String, localImages: List<String>) -> Unit
+) {
+    var rating by remember { mutableStateOf(existingReview?.rating ?: 5) }
+    var comment by remember { mutableStateOf(existingReview?.comment ?: "") }
+    var selectedImages by remember { mutableStateOf<List<String>>(existingReview?.images ?: emptyList()) }
+
+    val photoLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetMultipleContents()
+    ) { uris ->
+        val urisStrings = uris.map { it.toString() }
+        val remainingSpace = 5 - selectedImages.size
+        selectedImages = selectedImages + urisStrings.take(remainingSpace)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (existingReview == null) "Write a Review" else "Edit Review",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
             Column(
-                modifier = Modifier.padding(10.dp)
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = product.title,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = BrandTextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text = "Tap a star to rate",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = if (product.isAvailable) {
-                        if (isAr) "متوفر للطلب" else "In stock"
-                    } else {
-                        if (isAr) "غير متوفر" else "Out of stock"
-                    },
-                    fontSize = 10.sp,
-                    color = if (product.isAvailable) BrandPrimary else BrandTextMuted,
-                    maxLines = 1
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    repeat(5) { i ->
+                        val starIndex = i + 1
+                        IconButton(onClick = { rating = starIndex }) {
+                            Icon(
+                                imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = "Rate $starIndex stars",
+                                tint = Color(0xFFFFC107),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text("Share your experience (optional)") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    shape = RoundedCornerShape(12.dp)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Photos section
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = CurrencyManager.formatProductPrice(product, exchangeRate, isAr),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = BrandPrimary
+                        text = "Photos (${selectedImages.size}/5)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    Text(
-                        text = "(${product.reviewCount})",
-                        fontSize = 9.sp,
-                        color = BrandTextMuted
-                    )
+                    if (selectedImages.size < 5) {
+                        TextButton(onClick = { photoLauncher.launch("image/*") }) {
+                            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add")
+                        }
+                    }
+                }
+                
+                if (selectedImages.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.foundation.lazy.LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(selectedImages.size) { index ->
+                            val imageUrl = selectedImages[index]
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            ) {
+                                coil.compose.AsyncImage(
+                                    model = imageUrl,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant)
+                                )
+                                IconButton(
+                                    onClick = { 
+                                        val mutableList = selectedImages.toMutableList()
+                                        mutableList.removeAt(index)
+                                        selectedImages = mutableList
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                        .size(24.dp)
+                                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun RecommendationSkeletonItem() {
-    Card(
-        modifier = Modifier.width(160.dp),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(0.5.dp, BrandSoftGray),
-        colors = CardDefaults.cardColors(containerColor = BrandSurface)
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(115.dp)
-                    .background(BrandSoftGray)
-            )
-            Column(modifier = Modifier.padding(10.dp)) {
-                Box(modifier = Modifier.height(12.dp).fillMaxWidth().background(BrandSoftGray))
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(modifier = Modifier.height(10.dp).width(80.dp).background(BrandSoftGray))
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Box(modifier = Modifier.height(14.dp).width(50.dp).background(BrandSoftGray))
-                    Box(modifier = Modifier.height(10.dp).width(20.dp).background(BrandSoftGray))
-                }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSubmit(rating, comment.trim(), selectedImages) },
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Submit")
             }
-        }
-    }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
 }

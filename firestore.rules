@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // Base rule for all collections
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Rules for reviews
+    match /products/{productId}/reviews/{reviewId} {
+      // Anyone can read reviews
+      allow read: if true;
+      
+      // Only authenticated users can create reviews
+      // Ensure user ID in the document matches their auth uid
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      
+      // Users can only edit or delete their own reviews
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+  }
+}

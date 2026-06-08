@@ -21,6 +21,8 @@ import com.example.features.marketplace.StoreManagementScreen
 import com.example.features.marketplace.OrdersScreen
 import com.example.features.marketplace.CheckoutScreen
 import com.example.features.admin.AdminDashboardScreen
+import com.example.features.chat.ChatListScreen
+import com.example.features.chat.ChatScreen
 
 @Composable
 fun NavigationGraph(
@@ -140,7 +142,17 @@ fun NavigationGraph(
             val productId = backStackEntry.arguments?.getString("productId")
             ProductDetailScreen(
                 productId = productId,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onContactSeller = { chatId ->
+                    navController.navigate(Screen.ChatDetail.createRoute(chatId))
+                },
+                onSellerProfileClick = { sellerType, id ->
+                    if (sellerType == "STORE") {
+                        navController.navigate(Screen.StoreDetail.createRoute(id))
+                    } else {
+                        navController.navigate(Screen.SellerProfile.createRoute(id))
+                    }
+                }
             )
         }
 
@@ -159,6 +171,22 @@ fun NavigationGraph(
                 },
                 onManageStore = {
                     navController.navigate(Screen.StoreManagement.route)
+                }
+            )
+        }
+        
+        composable(
+            route = Screen.SellerProfile.route,
+            arguments = listOf(
+                navArgument("sellerId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val sellerId = backStackEntry.arguments?.getString("sellerId") ?: ""
+            com.example.features.marketplace.SellerProfileScreen(
+                sellerId = sellerId,
+                onBack = { navController.popBackStack() },
+                onProductClick = { productId ->
+                    navController.navigate(Screen.ProductDetail.createRoute(productId))
                 }
             )
         }
@@ -181,6 +209,9 @@ fun NavigationGraph(
                 onNavigateToStoreManagement = { navController.navigate(Screen.StoreManagement.route) },
                 onNavigateToAdmin = { navController.navigate(Screen.AdminDashboard.route) },
                 onNavigateToOrders = { navController.navigate(Screen.Orders.route) },
+                onNavigateToSellerProfile = { sellerId ->
+                    navController.navigate(Screen.SellerProfile.createRoute(sellerId))
+                },
                 onSignOut = {
                     navController.navigate(Screen.Authentication.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
@@ -211,6 +242,12 @@ fun NavigationGraph(
             )
         }
 
+        composable(route = Screen.PostDirectAd.route) {
+            com.example.features.marketplace.PostDirectAdScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         composable(route = Screen.StoreManagement.route) {
             StoreManagementScreen(
                 onBack = { navController.popBackStack() },
@@ -223,6 +260,27 @@ fun NavigationGraph(
 
         composable(route = Screen.AdminDashboard.route) {
             AdminDashboardScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(route = Screen.ChatList.route) {
+            ChatListScreen(
+                onNavigateToChat = { chatId ->
+                    navController.navigate(Screen.ChatDetail.createRoute(chatId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.ChatDetail.route,
+            arguments = listOf(
+                navArgument("chatId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+            ChatScreen(
+                chatId = chatId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

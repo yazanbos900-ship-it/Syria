@@ -11,19 +11,19 @@ import kotlinx.coroutines.tasks.await
 object DatabaseSeeder {
     private const val TAG = "DatabaseSeeder"
 
-    // 5 Specific Categories required by the prompt
+    // Categories supporting user request and existing dataset
     private val categories = listOf(
         mapOf(
             "id" to "apparel",
-            "nameAr" to "الألبسة والأزياء",
-            "nameEn" to "Apparel",
+            "nameAr" to "الأزياء والملابس",
+            "nameEn" to "Fashion",
             "iconName" to "checkroom",
             "imageUrl" to "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=600"
         ),
         mapOf(
             "id" to "furniture",
-            "nameAr" to "الأثاث والديكور",
-            "nameEn" to "Furniture",
+            "nameAr" to "الأثاث والديكور المنزلي",
+            "nameEn" to "Home & Furniture",
             "iconName" to "chair",
             "imageUrl" to "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=600"
         ),
@@ -47,6 +47,34 @@ object DatabaseSeeder {
             "nameEn" to "Bespoke",
             "iconName" to "palette",
             "imageUrl" to "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600"
+        ),
+        mapOf(
+            "id" to "electronics",
+            "nameAr" to "الإلكترونيات والتقنية",
+            "nameEn" to "Electronics",
+            "iconName" to "devices",
+            "imageUrl" to "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600"
+        ),
+        mapOf(
+            "id" to "vehicles",
+            "nameAr" to "السيارات والمركبات",
+            "nameEn" to "Vehicles",
+            "iconName" to "directions_car",
+            "imageUrl" to "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600"
+        ),
+        mapOf(
+            "id" to "sports",
+            "nameAr" to "الرياضة واللياقة البدنية",
+            "nameEn" to "Sports",
+            "iconName" to "sports_soccer",
+            "imageUrl" to "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=600"
+        ),
+        mapOf(
+            "id" to "services",
+            "nameAr" to "الخدمات المهنية والتقنية",
+            "nameEn" to "Services",
+            "iconName" to "build",
+            "imageUrl" to "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600"
         )
     )
 
@@ -862,6 +890,437 @@ object DatabaseSeeder {
         )
     )
 
+    private fun getImagesForCategory(categoryId: String, primaryImage: String): List<String> {
+        val additional = when (categoryId) {
+            "apparel" -> listOf(
+                "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600",
+                "https://images.unsplash.com/photo-1509319117193-57bab727e09d?w=600",
+                "https://images.unsplash.com/photo-1542272604-787c3835535d?w=600",
+                "https://images.unsplash.com/photo-1576871337622-98d48d4aa53e?w=600"
+            )
+            "furniture" -> listOf(
+                "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600",
+                "https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=600",
+                "https://images.unsplash.com/photo-1581428982868-e410dd047a90?w=600",
+                "https://images.unsplash.com/photo-1503602642458-232111445657?w=600"
+            )
+            "wellness" -> listOf(
+                "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600",
+                "https://images.unsplash.com/photo-1608571424266-edfa99721c3b?w=600",
+                "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600",
+                "https://images.unsplash.com/photo-1616683693504-3ea7e9ad6fec?w=600"
+            )
+            "artisanal" -> listOf(
+                "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600",
+                "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=600",
+                "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=600",
+                "https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=600"
+            )
+            "bespoke" -> listOf(
+                "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=600",
+                "https://images.unsplash.com/photo-1547996160-81dfa63595aa?w=600",
+                "https://images.unsplash.com/photo-1588449668365-d15e397f6787?w=600",
+                "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=600"
+            )
+            "electronics" -> listOf(
+                "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600",
+                "https://images.unsplash.com/photo-1525609004556-c46c7d6cf0a3?w=600",
+                "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=600",
+                "https://images.unsplash.com/photo-1496181130207-f397653a0262?w=600"
+            )
+            "vehicles" -> listOf(
+                "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=600",
+                "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600",
+                "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600",
+                "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600"
+            )
+            "sports" -> listOf(
+                "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600",
+                "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600",
+                "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600",
+                "https://images.unsplash.com/photo-1507398941214-572c25f4b1dc?w=600"
+            )
+            "services" -> listOf(
+                "https://images.unsplash.com/photo-1521791136368-1a46909745f4?w=600",
+                "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600",
+                "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600",
+                "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600"
+            )
+            else -> listOf(
+                "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600",
+                "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600",
+                "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=600"
+            )
+        }
+        val count = (0..3).random()
+        val picked = additional.shuffled().take(count)
+        return (listOf(primaryImage) + picked).distinct()
+    }
+
+    private val seedDirectAds = listOf(
+        mapOf(
+            "ownerUid" to "ad_user_1",
+            "ownerUsername" to "أحمد العتيبي",
+            "userAvatar" to "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150",
+            "title" to "هاتف آيفون 14 برو ماكس مستعمل بحالة الوكالة 256 جيجا",
+            "price" to 850.0,
+            "categoryId" to "electronics",
+            "condition" to "used",
+            "description" to "هاتف آيفون 14 برو ماكس نظيف جداً وصحة البطارية 91% ولم يخضع لأي صيانة من قبل. يأتي مع العلبة الأصلية والشاحن السريع الأصلي للبيع بداعي الترقية والتسليم يد بيد في وسط المدينة.",
+            "location" to "عمان، الصويفية",
+            "coverImage" to "https://images.unsplash.com/photo-1496181130207-f397653a0262?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_2",
+            "ownerUsername" to "رائد القاسم",
+            "userAvatar" to "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150",
+            "title" to "شاشة ألعاب منحنية سامسونج أوديسي 32 بوصة 144 هرتز",
+            "price" to 290.0,
+            "categoryId" to "electronics",
+            "condition" to "used",
+            "description" to "شاشة ألعاب ممتازة ومريحة للعين بدقة QHD استجابة 1 ملي ثانية. خالية من البكسلات الميتة أو أي عيوب بصرية. البيع بسعر مغري ومناسب جداً للمصممين ومحبي الألعاب الإلكترونية الثقيلة.",
+            "location" to "اربد، شارع الجامعة",
+            "coverImage" to "https://images.unsplash.com/photo-1547082299-de196ea013d6?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_3",
+            "ownerUsername" to "يوسف الصمادي",
+            "userAvatar" to "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+            "title" to "جهاز بلايستيشن 5 نسخة الأقراص مع يدين تحكم وإصدارين من الألعاب",
+            "price" to 420.0,
+            "categoryId" to "electronics",
+            "condition" to "used",
+            "description" to "جهاز سوني بلاي ستيشن 5 مستخدم لفترة وجيزة جداً ومعه كامل ملحقاته والكرتون الأصلي. نسخة مميزة تدعم الأقراص واللعب بجودة 4K حقيقية بدون تقطيع.",
+            "location" to "الزرقاء، حي معصوم",
+            "coverImage" to "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_4",
+            "ownerUsername" to "أبو فهد الحسام",
+            "userAvatar" to "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+            "title" to "سيارة تويوتا كامري موديل 2018 فل كامل فحص كامل",
+            "price" to 16500.0,
+            "categoryId" to "vehicles",
+            "condition" to "used",
+            "description" to "تويوتا كامري مميزة بلون لؤلؤي خارق النظافة وموفرة جداً في استهلاك الوقود بفضل نظام الهايبرد الهجين. صيانات دورية في الوكالة ولا تحتاج لأي مصاريف استهلاكية حالية.",
+            "location" to "عمان، الجبيهة",
+            "coverImage" to "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_5",
+            "ownerUsername" to "سالم الخالدي",
+            "userAvatar" to "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+            "title" to "دراجة نارية ياماها R6 موديل 2020 ممشى قليل جداً",
+            "price" to 7800.0,
+            "categoryId" to "vehicles",
+            "condition" to "used",
+            "description" to "دراجة ياماها جبارة وسريعة للشباب ومحبي المغامرة والسرعة المنضبطة. إطارات جديدة ممتازة وصيانة شاملة من الزيوت والفلاتر قبل أسبوعين فقط.",
+            "location" to "عمان، عبدون",
+            "coverImage" to "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_6",
+            "ownerUsername" to "نادر المصري",
+            "userAvatar" to "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150",
+            "title" to "هوندا سيفيك موديل 2015 بحالة ممتازة واستهلاك رائع",
+            "price" to 9500.0,
+            "categoryId" to "vehicles",
+            "condition" to "used",
+            "description" to "سيارة هوندا سيفيك اقتصادية وعائلية ممتازة للاستخدام اليومي والذهاب للجامعة أو العمل. الترخيص والتأمين ساريان لستة أشهر قادمة.",
+            "location" to "العقبة، المنطقة الخامسة",
+            "coverImage" to "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_7",
+            "ownerUsername" to "أم محمد الداود",
+            "userAvatar" to "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+            "title" to "طقم كنب تركي فاخر يتسع لـ 9 أشخاص بحالة شبيهة بالجديد",
+            "price" to 450.0,
+            "categoryId" to "furniture",
+            "condition" to "used",
+            "description" to "طقم كنب تركي مريح جداً بألوان متناسقة رمادي زيتي وبيج هادئ، يتضمن طاولة وسطية خشبية أنيقة وثلاث طاولات زاوية صغيرة متناسقة. البيع الفوري بداعي السفر العاجل لخارج البلاد.",
+            "location" to "عمان، تلاع العلي",
+            "coverImage" to "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_8",
+            "ownerUsername" to "عمر العبادي",
+            "userAvatar" to "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150",
+            "title" to "غرفة نوم ماستر خشب بلوط متين وتصميم ملكي راقٍ",
+            "price" to 850.0,
+            "categoryId" to "furniture",
+            "condition" to "new",
+            "description" to "غرفة نوم كاملة تشمل سرير مزدوج كبير وخزانة ملابس بستة أبواب وتسريحة أنيقة مع مرآة مضاءة و2 كومودينة. متينة للغاية وخشب نخب أول لتمنحك الراحة والتميز الملكي.",
+            "location" to "اربد، الحي الشرقي",
+            "coverImage" to "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_9",
+            "ownerUsername" to "فارس الجابري",
+            "userAvatar" to "https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?w=150",
+            "title" to "طاولة سفرة خشب زان ملونة تتسع لـ 6 مقاعد مخملية مريحة",
+            "price" to 220.0,
+            "categoryId" to "furniture",
+            "condition" to "used",
+            "description" to "سفرة طعام دافئة وجميلة تناسب الشقق الحديثة مع مقاعد وثيرة ومخملية ناعمة وسهلة النظيف. بحالة نظيفة جداً وخالية من أي خدوش بصرية وبسعر مغري وقابل للتفاوض.",
+            "location" to "عمان، خلدا",
+            "coverImage" to "https://images.unsplash.com/photo-1577140917170-285929fb55b7?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_10",
+            "ownerUsername" to "خالد منصور",
+            "userAvatar" to "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150",
+            "title" to "سترة ليزر جلدية إيطالية أصلية لون أسود ملكي",
+            "price" to 120.0,
+            "categoryId" to "apparel",
+            "condition" to "used",
+            "description" to "معطف جلدي فاخر قادم ومستورد من إيطاليا مباشرة للرجال مقاس Large. يعطي إطلالة أنيقة ودافئة جداً في الشتاء وفي حالة ممتازة ولا يحتوي على أي تمزقات.",
+            "location" to "عمان، الصويفية",
+            "coverImage" to "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_11",
+            "ownerUsername" to "يسرى كمال",
+            "userAvatar" to "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+            "title" to "فستان سهرة وتطريز فلسطيني يدوي أصيل غاية في الروعة",
+            "price" to 350.0,
+            "categoryId" to "apparel",
+            "condition" to "new",
+            "description" to "ثوب فلسطيني غرزة فلاحي ناعمة ومحبوك يدوياً على مدى أربعة أشهر. قطعة فنية راقية ومناسبة للمناسبات والأفراح لتجعل حضورك مميزاً للغاية وبألوان تطريز تراثية جذابة جداً.",
+            "location" to "عمان، ضاحية الرشيد",
+            "coverImage" to "https://images.unsplash.com/photo-1518049360965-5406c5029e2c?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_12",
+            "ownerUsername" to "طارق الدباس",
+            "userAvatar" to "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150",
+            "title" to "حذاء ركض رياضي ماركة نايكي أصلي مقاس 43 خفيف جداً",
+            "price" to 65.0,
+            "categoryId" to "apparel",
+            "condition" to "used",
+            "description" to "حذاء رياضي نخب أول من ناكي اشتريته قبل أسبوع ولم يناسب مقاسي تماماً. لم يلبس سوى مرة واحدة للتجربة ومريح ومثالي للجري الطويل وحماية مفاصل الركبة.",
+            "location" to "السلط، وسط البلد",
+            "coverImage" to "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_13",
+            "ownerUsername" to "عامر التميمي",
+            "userAvatar" to "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150",
+            "title" to "مجموعة دمبلز وأثقال حديدية متكاملة 50 كيلو غرام للتدريب المنزلي",
+            "price" to 85.0,
+            "categoryId" to "sports",
+            "condition" to "new",
+            "description" to "حقيبة أوزان متكاملة مع ذراع بار طويل للصدر وذراعين صغيرين للدمبلز مع قفازات رياضية مجانية. مناسبة جداً للتمارين الرياضية المنزلية والحفاظ على اللياقة البدنية والنشاط.",
+            "location" to "عمان، الياسمين",
+            "coverImage" to "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_14",
+            "ownerUsername" to "سامر حداد",
+            "userAvatar" to "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150",
+            "title" to "دراجة هوائية هجينة تريك أصلية بحالة ممتازة وخفيفة الوزن",
+            "price" to 310.0,
+            "categoryId" to "sports",
+            "condition" to "used",
+            "description" to "دراجة تريك رياضية ممتازة للتنزه وممارسة رياضة ركوب الدراجات اليومية. هيكل ألومنيوم خفيف وتروس شيمانو ياباني أصلي مع ملحقات إضاءة وخوذة مجانية.",
+            "location" to "مأدبا، حنينا",
+            "coverImage" to "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_15",
+            "ownerUsername" to "عادل العساف",
+            "userAvatar" to "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150",
+            "title" to "طاولة تنس طاولة داخلية مع كامل كرات ومضارب اللعب",
+            "price" to 150.0,
+            "categoryId" to "sports",
+            "condition" to "used",
+            "description" to "طاولة تنس طاولة قابلة للطي ومجهزة بعجلات لسهولة المنقل والتخزين. مثالية جداً للاستخدام في غرف المعيشة أو الفناء الخلفي وتأتي مع شبكة قوية وأربع مضارب جودة عالية و6 كرات.",
+            "location" to "عمان، مرج الحمام",
+            "coverImage" to "https://images.unsplash.com/photo-1534158914592-062992fbe900?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_16",
+            "ownerUsername" to "الأستاذ رأفت",
+            "userAvatar" to "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+            "title" to "خدمة دروس خصوصية رياضيات وفيزياء لطلاب التوجيهي والثانوية",
+            "price" to 15.0,
+            "categoryId" to "services",
+            "condition" to "new",
+            "description" to "مدرس ذو خبرة طويلة ومميزة 12 سنة يقدم حصصاً وتدريساً خصوصياً وتبسيطاً للمفاهيم الصعبة للطلاب لضمان التفوق والحصول على أعلى الدرجات. الجلسة الأولى مجانية لتقييم الاحتياج وتحديد خطة الدراسة.",
+            "location" to "عمان، الجبيهة",
+            "coverImage" to "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_17",
+            "ownerUsername" to "مروة عيسى",
+            "userAvatar" to "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+            "title" to "خدمة تصميم جرافيكي احترافي شعارات وهوية بصرية للشركات الناشئة",
+            "price" to 75.0,
+            "categoryId" to "services",
+            "condition" to "new",
+            "description" to "مصمم جرافيكي مبدع وخبرة بالعمل مع كبرى المؤسسات. أقدم خدمات تصميم الشعارات الفريدة والمطبوعات واللوحات الإعلانية ومحتوى السوشيال ميديا الإبداعي بسرعة وسعر مناسب للجميع.",
+            "location" to "الزرقاء، الضليل",
+            "coverImage" to "https://images.unsplash.com/photo-1626785774573-4b799315345d?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_18",
+            "ownerUsername" to "حمزة قنديل",
+            "userAvatar" to "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+            "title" to "برمجة وتطوير تطبيقات موبايل أندرويد وآيفون متكاملة ومحمية",
+            "price" to 450.0,
+            "categoryId" to "services",
+            "condition" to "new",
+            "description" to "مطور تطبيقات محترف ذو محفظة أعمال ثرية. أقوم ببناء وتصميم تطبيق متجر إلكتروني أو نظام داخلي لعملك باستخدام أحدث التقنيات مع دعم فني مجاني لمدة ستة أشهر وصيانة دورية شاملة.",
+            "location" to "عمان، الشميساني",
+            "coverImage" to "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_19",
+            "ownerUsername" to "دانية صبحي",
+            "userAvatar" to "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
+            "title" to "جهاز مساج وتدليك الظهر والأكتاف الكهربائي ذو التدفئة الذكية",
+            "price" to 35.0,
+            "categoryId" to "wellness",
+            "condition" to "new",
+            "description" to "جهاز رائع وذكي لإزالة الإرهاق وتشنجات الرقبة والأكتاف بعد ساعات طويلة من العمل المكتبي أو القيادة. يضم 4 بكرات تدوير وتدفئة متناسبة لتنشيط الدورة الدموية للجسم والرقبة.",
+            "location" to "عمان، خلدا",
+            "coverImage" to "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600"
+        ),
+        mapOf(
+            "ownerUid" to "ad_user_20",
+            "ownerUsername" to "ليلى حداد",
+            "userAvatar" to "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=150",
+            "title" to "طقم شموع عطرية عضوية طبيعية مهدئة للنوم والاسترخاء",
+            "price" to 22.0,
+            "categoryId" to "wellness",
+            "condition" to "new",
+            "description" to "مجموعة مميزة من أربع شموع عطرية مصنوعة بالكامل من شمع الصويا وزيوت اللافندر والياسمين والبابونج والورد الطبيعية. تعطي توهجاً هادئاً وراحة نفسية بالمنزل وساعات احتراق طويلة خالية من الدخان المضر.",
+            "location" to "اربد، حوارة",
+            "coverImage" to "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=600"
+        )
+    )
+
+    suspend fun seedReviewsOnly(): Result<Unit> = coroutineScope {
+        val db = try {
+            FirebaseFirestore.getInstance()
+        } catch (e: Exception) {
+            Log.e(TAG, "FirebaseFirestore is not available", e)
+            return@coroutineScope Result.failure(Exception("Firestore is unavailable"))
+        }
+
+        val auth = try {
+            FirebaseAuth.getInstance()
+        } catch (e: Exception) {
+            Log.e(TAG, "FirebaseAuth is not available", e)
+            return@coroutineScope Result.failure(Exception("Auth is not available"))
+        }
+
+        try {
+            Log.d(TAG, "Seeding reviews...")
+            
+            // Check if reviews already seeded to prevent duplication
+            val seedDoc = db.collection("seeds").document("reviews_seeder").get().await()
+            if (seedDoc.exists()) {
+                Log.d(TAG, "🚀 Reviews already seeded beautifully. Skipping.")
+                return@coroutineScope Result.success(Unit)
+            }
+
+            // Create or login a dummy user to satisfy Firestore rules
+            val dummyEmail = "reviewer_seed@example.com"
+            val dummyPassword = "Password123!"
+            val uid = try {
+                val signupResult = auth.createUserWithEmailAndPassword(dummyEmail, dummyPassword).await()
+                signupResult.user?.uid ?: java.util.UUID.randomUUID().toString()
+            } catch (e: Exception) {
+                try {
+                    val loginResult = auth.signInWithEmailAndPassword(dummyEmail, dummyPassword).await()
+                    loginResult.user?.uid ?: java.util.UUID.randomUUID().toString()
+                } catch (e2: Exception) {
+                    java.util.UUID.randomUUID().toString()
+                }
+            }
+
+            val reviewListParams = listOf(
+                Pair(5, "This product is fantastic! Exact quality as described. - منتج رائع جداً، جودة مطابقة للوصف تماماً."),
+                Pair(4, "Very good, highly recommended. - جيد جداً، أوصي به بشدة."),
+                Pair(5, "Amazing experience, fast shipping. - تجربة مذهلة وشحن سريع."),
+                Pair(3, "It's okay, but the packaging was slightly damaged. - لا بأس به، لكن التغليف كان متضرراً قليلاً."),
+                Pair(4, "Satisfied with the purchase. - راضٍ تماماً عن الشراء."),
+                Pair(5, "Perfect! Beautiful details. - مثالي! تفاصيل جميلة جداً."),
+                Pair(1, "Not as expected at all. - ليس كما توقعت أبداً."),
+                Pair(2, "Below average quality. - الجودة أقل من المتوسط."),
+                Pair(5, "Best value for money. - أفضل قيمة مقابل السعر."),
+                Pair(4, "Good quality but shipping took a while. - نوعية جيدة ولكن الشحن استغرق وقتاً طويلاً.")
+            )
+
+            val reviewerNames = listOf("Ahmed Ali", "Sarah M", "Omar K", "Mona Y", "Khalid R", "Nour S", "Ali H", "Yousef A")
+            val reviewImagesPool = listOf(
+                "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400",
+                "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400",
+                "https://images.unsplash.com/photo-1593998066526-65fcab3021a2?w=400",
+                "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400"
+            )
+
+            var reviewCount = 0
+            val allProductDocs = db.collection("products").get().await()
+            for (productDoc in allProductDocs.documents) {
+                // Generate 2-4 reviews per product
+                val numReviews = (2..4).random()
+                
+                var sumRating = 0
+                for (i in 0 until numReviews) {
+                    val reviewParam = reviewListParams.random()
+                    val reviewerName = reviewerNames.random()
+                    val includeImage = java.util.Random().nextBoolean()
+                    val images = if (includeImage) listOf(reviewImagesPool.random(), reviewImagesPool.random()) else emptyList()
+                    
+                    val reviewId = db.collection("products").document(productDoc.id).collection("reviews").document().id
+                    val reviewMap = hashMapOf(
+                        "id" to reviewId,
+                        "productId" to productDoc.id,
+                        "userId" to uid,  // Match auth rule!
+                        "userName" to reviewerName,
+                        "rating" to reviewParam.first,
+                        "comment" to reviewParam.second,
+                        "images" to images,
+                        "createdAt" to System.currentTimeMillis() - (86400000L * (1..30).random())
+                    )
+                    db.collection("products").document(productDoc.id)
+                        .collection("reviews")
+                        .document(reviewId)
+                        .set(reviewMap)
+                        .await()
+                    
+                    sumRating += reviewParam.first
+                    reviewCount++
+                }
+                
+                // Update product stats
+                db.collection("products").document(productDoc.id).update(
+                    mapOf(
+                        "rating" to (sumRating.toDouble() / numReviews),
+                        "reviewCount" to numReviews,
+                        "totalRatings" to numReviews
+                    )
+                ).await()
+                
+                if (reviewCount >= 50) break
+            }
+            
+            // Mark as seeded
+            db.collection("seeds").document("reviews_seeder").set(mapOf("timestamp" to System.currentTimeMillis())).await()
+            
+            // Sign out the dummy user
+            auth.signOut()
+
+            Log.d(TAG, "Successfully seeded $reviewCount reviews with images!")
+            return@coroutineScope Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed seeding reviews", e)
+            return@coroutineScope Result.failure(e)
+        }
+    }
+
     suspend fun seedDatabase(): Result<Unit> = coroutineScope {
         val db = try {
             FirebaseFirestore.getInstance()
@@ -878,14 +1337,14 @@ object DatabaseSeeder {
         }
 
         try {
-            // Check if market_v2 seeder is already completed successfully to avoid wasteful execution and rate limits
-            val seedDoc = db.collection("seeds").document("market_v2").get().await()
+            // Check if market_v5_verification_seeder seeder is already completed successfully to avoid wasteful execution and rate limits
+            val seedDoc = db.collection("seeds").document("market_v5_verification_seeder").get().await()
             if (seedDoc.exists()) {
-                Log.d(TAG, "🚀 Database already seeded beautifully with market_v2 dataset. Skipping duplication.")
+                Log.d(TAG, "🚀 Database already seeded beautifully with market_v5_verification_seeder dataset. Skipping duplication.")
                 return@coroutineScope Result.success(Unit)
             }
 
-            Log.d(TAG, "🧹 Database clean-up started: Deleting old products, stores, categories, interactions...")
+            Log.d(TAG, "🧹 Database clean-up started: Deleting old products, stores, categories, direct_ads, interactions...")
 
             // Helper to wipe collections safely in Firestore
             suspend fun wipeCollection(collectionName: String) {
@@ -908,39 +1367,118 @@ object DatabaseSeeder {
             wipeCollection("products")
             wipeCollection("stores")
             wipeCollection("categories")
-            wipeCollection("interactions") // cleanup historic interactions 
+            wipeCollection("direct_ads")
+            wipeCollection("interactions") // cleanup historic interactions
+
+            // Seed settings/marketplace document
+            val settingsData = mapOf(
+                "platformFeePercent" to 5.0,
+                "vatPercent" to 3.0,
+                "defaultShippingFeeSyp" to 20000.0,
+                "supportedCities" to listOf("Damascus", "Aleppo", "Homs", "Hama", "Latakia", "Tartous"),
+                "supportedPaymentMethods" to listOf("Cash On Delivery", "Syriatel Cash", "MTN Cash"),
+                "defaultCurrency" to "USD",
+                "defaultExchangeRate" to 13500.0
+            )
+            db.collection("settings").document("marketplace").set(settingsData).await()
+            Log.d(TAG, "Seeded global settings/marketplace rate to 13500.0 SYP/USD")
 
             // Initialize batch for our primary database seed writes
             val writeBatch = db.batch()
 
-            Log.d(TAG, "🌱 Seeding 5 specified modern categories: Apparel, Furniture, Wellness, Artisanal, Bespoke")
+            Log.d(TAG, "🌱 Seeding categories with Fashion & Home & Furniture updates...")
             categories.forEach { cat ->
                 val id = cat["id"] as String
                 writeBatch.set(db.collection("categories").document(id), cat)
             }
 
+            // 3 additional stores to complete exactly 15 stores target
+            val additionalStores = listOf(
+                SeedStore(
+                    storeId = "store_phoenix_fashion",
+                    nameEn = "Phoenix Fashion",
+                    nameAr = "أزياء فينيكس",
+                    email = "phoenix.fashion@market.com",
+                    username = "phoenix.fashion",
+                    password = "seeding_phoenix_123",
+                    categoryId = "apparel",
+                    logoUrl = "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400",
+                    bannerUrl = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1000",
+                    descEn = "Premium hand-woven silk fabrics and customized apparel designed for exceptional events.",
+                    descAr = "أقمشة حريرية فاخرة مغزولة يدوياً وتصاميم ألبسة فريدة مصممة لتناسب كافة المناسبات.",
+                    rating = 4.9f,
+                    products = listOf(
+                        SeedProduct("Embellished Evening Silk Dress", "فستان سهرة مطرز بالحرير", "Luxurious silk wrap with floral hand embroidery.", "فستان سهرة فاخر بقصة التفاف وتطريزات يدوية من نقوش الورد الجبلي.", 150.0, "https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=500", 4.9f, 15, 5),
+                        SeedProduct("Classic Wool Study Blazer", "سترة صوف كلاسيكية للدراسة والعمل", "Hand-tailored tweed structure with deep double ventilation pockets.", "سترة تويد دافئة للعمل مجهزة بجيوب مزدوجة مريحة وحياكة يدوية على الياقة.", 85.0, "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500", 4.7f, 12, 10),
+                        SeedProduct("Suede Comfort Loafers", "حذاء لوفر سويدي مرن ومريح", "Flexible split-sole everyday casual shoes.", "حذاء لوفر يومي خفيف مصنوع يدوياً من أفضل طبقات جلد السويد المريح وبلون عسلي.", 65.0, "https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=500", 4.6f, 18, 12),
+                        SeedProduct("Silk Pattern Pocket Square", "منديل جيب حريري منقوش", "Finished with rolled edges by local family crafters.", "منديل جيب حريري ناعم منسوج بنقش دمشقي متداخل ليضفي بهاءً وتكاملاً على بذلتك الرسمية.", 15.0, "https://images.unsplash.com/photo-1589756823853-eed4a5ad8108?w=500", 4.5f, 24, 30),
+                        SeedProduct("Handmade Leather Holdall Bag", "حقيبة سفر جلدية كبيرة مصنوعة يدوياً", "Robust waxed-thread travel bag featuring solid brass zippers.", "حقيبة عطلات نهاية الأسبوع تتسع لكافة احتياجاتك ومصنوعة من جلود البقر السميكة ومثبتة بنحاس خالص.", 190.0, "https://images.unsplash.com/photo-1588449668365-d15e397f6787?w=500", 4.8f, 9, 3)
+                    )
+                ),
+                SeedStore(
+                    storeId = "store_lux_electronics",
+                    nameEn = "Lux Electronics",
+                    nameAr = "لوكس للإلكترونيات الفاخرة",
+                    email = "lux.electronics@market.com",
+                    username = "lux.electronics",
+                    password = "seeding_lux_123",
+                    categoryId = "electronics",
+                    logoUrl = "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400",
+                    bannerUrl = "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=1000",
+                    descEn = "Bespoke sound setups, custom audiophile walnut headphones, and modern retro music players.",
+                    descAr = "تجهيزات صوتية فاخرة وسماعات خشب الجوز الاحترافية بالإضافة لأجهزة تشغيل الموسيقى الكلاسيكية.",
+                    rating = 4.8f,
+                    products = listOf(
+                        SeedProduct("Walnut Wood Pro Audiophile Headphones", "سماعات رأس احترافية من خشب الجوز", "Open-back detailed dynamic response high impedance.", "سماعات رأس مفتوحة الظهر مصنعة بقرص خشبي من الجوز الصلب لصوت دافئ واستجابة ترددية خارقة.", 320.0, "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500", 4.9f, 21, 4),
+                        SeedProduct("Retro Amber Tube Amp Pre-amplifier", "مضخم صوت كلاسيكي بالأنابيب الكهرمانية", "Warm analog design delivering high-fidelity desktop sound.", "مضخم صوت عتيق بالأنابيب الكهرمانية يضفي دفئاً ومثالية دقيقة لأصوات الآلات الموسيقية لسطح مكتبك.", 180.0, "https://images.unsplash.com/photo-1547082299-de196ea013d6?w=500", 4.7f, 12, 5),
+                        SeedProduct("Gold Plated Hi-Fi Interconnects", "كابلات توصيل صوتية مطلية بالذهب", "Shielded oxygen-free copper cables featuring brass housing.", "كابلات فائقة التوصيل والحماية مطلية بالذهب لضمان نقاء الصوت وتألق الترددات وخلوها من الضوضاء.", 45.0, "https://images.unsplash.com/photo-1624222247566-7f8240269ac1?w=500", 4.6f, 35, 15),
+                        SeedProduct("Bespoke Walnut Slat Soundbar", "مكبر صوت عريض بشرائح خشب الجوز", "Clean wireless stereophonic column wrapped in acoustic cloth.", "نظام صوتي لاسلكي مدمج مكسو بشرائح من خشب الجوز والشاش الصوتي لتقديم تجربة استماع محيطية متطورة.", 280.0, "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=500", 4.8f, 15, 6),
+                        SeedProduct("Minimal Aluminum Desktop DAC", "محول إشارات صوتية رقمي ألومنيوم", "Supports high resolution audio with customizable filter profiles.", "محول صوتي ناصع ومتين يحول الملفات الرقمية لموجات تناظرية فائقة الدقة والوضوح لتفاصيل غنية للغاية.", 110.0, "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500", 4.5f, 14, 8)
+                    )
+                ),
+                SeedStore(
+                    storeId = "store_velo_sports",
+                    nameEn = "Velo Sports Studio",
+                    nameAr = "فيلو للرياضة واللياقة",
+                    email = "velo.sports@market.com",
+                    username = "velo.sports",
+                    password = "seeding_velo_123",
+                    categoryId = "sports",
+                    logoUrl = "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400",
+                    bannerUrl = "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1000",
+                    descEn = "Bespoke high-performance carbon bicycles and custom tailored fitness wear designed for extreme endurance.",
+                    descAr = "دراجات هوائية رياضية فائقة الخفة من ألياف الكربون وتجهيزات لياقة مخصصة ومطرزة لقوات التحمل.",
+                    rating = 4.7f,
+                    products = listOf(
+                        SeedProduct("Bespoke Road Carbon Bicycle V1", "دراجة طريق كربونية فائقة الخفة", "Handmade custom paint layout with electronic groupset.", "دراجة طريق يدوية الهيكل من خشب كربون الطيران متميزة بناقل حركة إلكتروني سلس وتصميم انسيابي فريد.", 2400.0, "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=500", 4.9f, 8, 2),
+                        SeedProduct("Custom Tailored Cycling Jersey", "قميص ركوب الدراجات الرياضي المخصص", "Ergonomic antibacterial compression pattern woven to fit perfectly.", "قميص رياضي مضاد للتعرق والبكتيريا والروائح يتم ضبط قياساته وخفة دروزه ليجعلك تتنفس بكفاءة في السباقات.", 55.0, "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=500", 4.8f, 19, 15),
+                        SeedProduct("Pro Carbon Bicycle Helmet", "خوذة دراجين كربونية احترافية", "High safety impact absorption layout featuring magnetic buckles.", "خوذة رأس كربونية بالغة القوة والأمان تدمج تهوية عميقة وتثبيتاً مغناطيسياً سهلاً لخوض المنحدرات بأمان.", 120.0, "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=500", 4.7f, 14, 8),
+                        SeedProduct("Custom Compression Sport Socks", "جوارب ضغط رياضية معززة الكاحل", "Reinforced heel cushion structures avoiding blisters.", "جوارب رياضية تعزز الكورة الدموية وتدعم الكاحل لتجنب الإجهاد والاحتكاكات الطويلة أثناء التمرين الصارم.", 18.0, "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500", 4.6f, 32, 25),
+                        SeedProduct("Suede Padded Road Cycling Gloves", "قفازات قيادة دراجات مبطنة بالسويد", "Dampens vibrations with anatomical placement inserts.", "قفازات يد خفيفة ذات كف من جلد السويد المبطن خصيصاً لامتصاص اهتزاز المقود الطويل وتحسين التشبث.", 35.0, "https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=500", 4.5f, 11, 20)
+                    )
+                )
+            )
+
+            val allStoresToSeed = seedStores + additionalStores
             val savedSellerAccounts = mutableListOf<Map<String, String>>()
 
             Log.d(TAG, "👥 Dynamic Seller Registration in Firebase Auth & Auth database synchronization")
 
-            // Register all 12 seller accounts asynchronously in Firebase Auth for amazing speed!
-            val authDeferreds = seedStores.map { seedStore ->
+            // Register all 15 seller accounts asynchronously in Firebase Auth for amazing speed!
+            val authDeferreds = allStoresToSeed.map { seedStore ->
                 async {
                     try {
-                        // Register dynamically
                         val signupResult = auth.createUserWithEmailAndPassword(seedStore.email, seedStore.password).await()
                         val uid = signupResult.user?.uid ?: "uid_${seedStore.storeId}"
                         Log.d(TAG, "Successfully registered seller '${seedStore.nameEn}' as Auth User $uid")
                         uid to seedStore
                     } catch (e: Exception) {
-                        // User might already exists, query UID by signing in
                         try {
                             val loginResult = auth.signInWithEmailAndPassword(seedStore.email, seedStore.password).await()
                             val uid = loginResult.user?.uid ?: "uid_${seedStore.storeId}"
                             Log.d(TAG, "Seller already registered, recovered existing Auth User $uid")
                             uid to seedStore
                         } catch (e2: Exception) {
-                            // If login also fails (e.g. password mismatch/rate limit), create a deterministic safe UID
                             val hardcodedUid = "uid_${seedStore.storeId.replace("[^a-zA-Z0-9]".toRegex(), "")}"
                             Log.d(TAG, "Auth registration and login failed for '${seedStore.nameEn}', using stable fallback ID: $hardcodedUid")
                             hardcodedUid to seedStore
@@ -951,8 +1489,30 @@ object DatabaseSeeder {
 
             val registeredSellers = authDeferreds.awaitAll()
 
+            // 10 custom rates spanning across realistic values requested (12000, 12500, 13000, 11800, etc.)
+            val customRatesList = listOf(
+                12000.0,
+                12500.0,
+                13000.0,
+                11800.0,
+                12200.0,
+                12700.0,
+                13200.0,
+                11500.0,
+                12800.0,
+                12400.0
+            )
+
             // Map and write each Seller Profile user, Store, and Products data
-            registeredSellers.forEach { (uid, seedStore) ->
+            registeredSellers.forEachIndexed { i, (uid, seedStore) ->
+                // First 5 stores use Global Rate, other 10 stores use Custom Rate
+                val usingGlobal = i < 5
+                val rate = if (usingGlobal) {
+                    13500.0 // settings default rate
+                } else {
+                    customRatesList[(i - 5) % customRatesList.size]
+                }
+
                 // 1. User Record inside 'users' collection
                 val userRef = db.collection("users").document(uid)
                 val userMap = hashMapOf(
@@ -973,6 +1533,7 @@ object DatabaseSeeder {
                     "name" to seedStore.nameAr,       // Arabic is main localized property
                     "storeName" to seedStore.nameEn,  // English fallback or search
                     "ownerId" to uid,
+                    "ownerUserId" to uid,             // backward compatibility
                     "ownerUsername" to seedStore.username,
                     "logoUrl" to seedStore.logoUrl,
                     "bannerUrl" to seedStore.bannerUrl,
@@ -982,34 +1543,61 @@ object DatabaseSeeder {
                     "status" to "active",
                     "rating" to seedStore.rating,
                     "isVerified" to true,
-                    "usdExchangeRate" to 13500.0,
-                    "createdAt" to System.currentTimeMillis() - (3600000 * (1..48).random())
+                    "usdExchangeRate" to rate,
+                    "createdAt" to System.currentTimeMillis() - (3600000 * (1..48).random()),
+                    
+                    // Unified exchange rate support
+                    "usingGlobalRate" to usingGlobal,
+                    "exchangeRate" to rate,
+                    "storeCurrency" to "USD",
+                    "defaultCurrency" to "USD",
+                    "exchangeRateUpdatedAt" to com.google.firebase.Timestamp.now()
                 )
                 writeBatch.set(storeRef, storeMap)
 
-                // 3. Products under this Store: 8 products each
+                // 3. Products under this Store: 5 to 10 products each
                 seedStore.products.forEachIndexed { index, item ->
                     val prodId = "prod_${seedStore.storeId}_$index"
                     val prodRef = db.collection("products").document(prodId)
 
+                    val prodImages = getImagesForCategory(seedStore.categoryId, item.imageUrl)
+                    val cover = prodImages.firstOrNull() ?: item.imageUrl
+
+                    // Alternating mixed currencies for rich analysis
+                    val currency = if (index % 2 == 0) "USD" else "SYP"
+                    val priceUSD = item.price
+                    val priceSYP = item.price * rate
+                    val finalPrice = if (currency == "USD") priceUSD else priceSYP
+
                     val prodMap = hashMapOf(
                         "id" to prodId,
-                        "title" to item.titleAr, // Primary Arabic 
+                        "title" to item.titleAr, // Primary Arabic
                         "name" to item.titleEn,   // Secondary English
                         "description" to item.descAr, // Primary Arabic
                         "descEn" to item.descEn,     // Secondary English
-                        "price" to item.price,
-                        "imageUrls" to listOf(item.imageUrl),
-                        "images" to listOf(item.imageUrl),
-                        "coverImage" to item.imageUrl,
+                        "price" to finalPrice,
+                        "imageUrls" to prodImages,
+                        "images" to prodImages,
+                        "coverImage" to cover,
                         "categoryId" to seedStore.categoryId,
                         "category" to seedStore.categoryId,
                         "storeId" to seedStore.storeId,
+                        "storeName" to seedStore.nameEn,
+                        "storeLogo" to seedStore.logoUrl,
+                        "type" to "store_product",
                         "rating" to item.rating,
                         "reviewCount" to item.reviews,
                         "isAvailable" to true,
+                        "stock" to item.stock,
                         "stockCount" to item.stock,
-                        "createdAt" to System.currentTimeMillis() - (120000 * index)
+                        "createdAt" to System.currentTimeMillis() - (120000 * index),
+
+                        // Dual price conversion fields integration
+                        "currency" to currency,
+                        "priceUSD" to priceUSD,
+                        "priceSYP" to priceSYP,
+                        "storeCurrency" to "USD",
+                        "exchangeRateUsed" to rate
                     )
                     writeBatch.set(prodRef, prodMap)
                 }
@@ -1026,23 +1614,132 @@ object DatabaseSeeder {
                 )
             }
 
-            // Write all accounts credentials into a dedicated Firestore seed document for seamless testing 
+            // 4. Seeding Direct Ads (at least 20 items, alternating currencies)
+            Log.d(TAG, "🌱 Seeding 20 specified modern direct ads...")
+            seedDirectAds.forEachIndexed { index, ad ->
+                val adId = "ad_${ad["categoryId"]}_$index"
+                val adRef = db.collection("direct_ads").document(adId)
+
+                val adImages = getImagesForCategory(ad["categoryId"] as String, ad["coverImage"] as String)
+                val firstImg = adImages.firstOrNull() ?: ad["coverImage"] as String
+
+                val currency = if (index % 2 == 0) "USD" else "SYP"
+                val basePrice = ad["price"] as Double
+                val price = if (currency == "USD") basePrice else basePrice * 13500.0
+
+                val adMap = hashMapOf(
+                    "id" to adId,
+                    "adId" to adId,
+                    "type" to "direct_ad",
+                    "ownerUid" to ad["ownerUid"],
+                    "userId" to ad["ownerUid"],
+                    "ownerUsername" to ad["ownerUsername"],
+                    "userName" to ad["ownerUsername"],
+                    "userAvatar" to ad["userAvatar"],
+                    "title" to ad["title"],
+                    "price" to price,
+                    "categoryId" to ad["categoryId"],
+                    "condition" to ad["condition"],
+                    "description" to ad["description"],
+                    "location" to ad["location"],
+                    "images" to adImages,
+                    "imageUrls" to adImages,
+                    "coverImage" to firstImg,
+                    "status" to "active",
+                    "createdAt" to System.currentTimeMillis() - (3600000 * index),
+                    "currency" to currency
+                )
+                writeBatch.set(adRef, adMap)
+            }
+
+            // Write all accounts credentials into a dedicated Firestore seed document for seamless testing
             val seedCredentialsRef = db.collection("seeds").document("seller_accounts")
             writeBatch.set(seedCredentialsRef, mapOf("accounts" to savedSellerAccounts))
 
-            // Write completion metadata flag to ensure seeder is never repeated once successfully processed is done
-            val metaSeedRef = db.collection("seeds").document("market_v2")
+            // Write completion metadata flag under market_v5_verification_seeder
+            val metaSeedRef = db.collection("seeds").document("market_v5_verification_seeder")
             writeBatch.set(metaSeedRef, mapOf(
                 "seededAt" to System.currentTimeMillis(),
                 "categoriesCount" to categories.size,
-                "storesCount" to seedStores.size,
-                "productsCount" to seedStores.size * 8,
+                "storesCount" to allStoresToSeed.size,
+                "productsCount" to allStoresToSeed.sumOf { it.products.size },
+                "directAdsCount" to seedDirectAds.size,
                 "status" to "completed"
             ))
 
             // Commit the entire relational dataset atomically in a single, efficient, unified batch!
             writeBatch.commit().await()
-            Log.d(TAG, "🎉 Firebase Relational Seeding Completed Successfully! Created ${categories.size} categories, ${seedStores.size} stores and ${seedStores.size * 8} products.")
+            Log.d(TAG, "🎉 Firebase Relational Seeding Completed Successfully! Created ${categories.size} categories, ${allStoresToSeed.size} stores, ${allStoresToSeed.sumOf { it.products.size }} products, and ${seedDirectAds.size} direct ads.")
+
+            // Seed reviews sequentially
+            Log.d(TAG, "Seeding reviews...")
+            val reviewListParams = listOf(
+                Pair(5, "This product is fantastic! Exact quality as described. - منتج رائع جداً، جودة مطابقة للوصف تماماً."),
+                Pair(4, "Very good, highly recommended. - جيد جداً، أوصي به بشدة."),
+                Pair(5, "Amazing experience, fast shipping. - تجربة مذهلة وشحن سريع."),
+                Pair(3, "It's okay, but the packaging was slightly damaged. - لا بأس به، لكن التغليف كان متضرراً قليلاً."),
+                Pair(4, "Satisfied with the purchase. - راضٍ تماماً عن الشراء."),
+                Pair(5, "Perfect! Beautiful details. - مثالي! تفاصيل جميلة جداً."),
+                Pair(1, "Not as expected at all. - ليس كما توقعت أبداً."),
+                Pair(2, "Below average quality. - الجودة أقل من المتوسط."),
+                Pair(5, "Best value for money. - أفضل قيمة مقابل السعر."),
+                Pair(4, "Good quality but shipping took a while. - نوعية جيدة ولكن الشحن استغرق وقتاً طويلاً.")
+            )
+
+            val reviewerNames = listOf("Ahmed Ali", "Sarah M", "Omar K", "Mona Y", "Khalid R", "Nour S", "Ali H", "Yousef A")
+            val reviewImagesPool = listOf(
+                "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400",
+                "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400",
+                "https://images.unsplash.com/photo-1593998066526-65fcab3021a2?w=400",
+                "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400"
+            )
+
+            var reviewCount = 0
+            val allProductDocs = db.collection("products").get().await()
+            for (productDoc in allProductDocs.documents) {
+                // Generate 2-4 reviews per product
+                val numReviews = (2..4).random()
+                
+                var sumRating = 0
+                for (i in 0 until numReviews) {
+                    val reviewParam = reviewListParams.random()
+                    val reviewerName = reviewerNames.random()
+                    val includeImage = java.util.Random().nextBoolean()
+                    val images = if (includeImage) listOf(reviewImagesPool.random(), reviewImagesPool.random()) else emptyList()
+                    
+                    val reviewId = db.collection("products").document(productDoc.id).collection("reviews").document().id
+                    val reviewMap = hashMapOf(
+                        "id" to reviewId,
+                        "productId" to productDoc.id,
+                        "userId" to "seed_user_${java.util.UUID.randomUUID()}",
+                        "userName" to reviewerName,
+                        "rating" to reviewParam.first,
+                        "comment" to reviewParam.second,
+                        "images" to images,
+                        "createdAt" to System.currentTimeMillis() - (86400000L * (1..30).random())
+                    )
+                    db.collection("products").document(productDoc.id)
+                        .collection("reviews")
+                        .document(reviewId)
+                        .set(reviewMap)
+                        .await()
+                    
+                    sumRating += reviewParam.first
+                    reviewCount++
+                }
+                
+                // Update product stats
+                db.collection("products").document(productDoc.id).update(
+                    mapOf(
+                        "rating" to (sumRating.toDouble() / numReviews),
+                        "reviewCount" to numReviews,
+                        "totalRatings" to numReviews
+                    )
+                ).await()
+                
+                if (reviewCount >= 50) break
+            }
+            Log.d(TAG, "Successfully seeded $reviewCount reviews with images!")
 
             // Log out the last seeder authenticated handler so we don't mess up the application tester session state
             try {

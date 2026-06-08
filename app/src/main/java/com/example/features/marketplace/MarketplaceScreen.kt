@@ -143,6 +143,62 @@ fun MarketplaceScreen(
     val recommendationsState by productViewModel.recommendationsState.collectAsStateWithLifecycle()
     val bestRatedState by productViewModel.bestRatedState.collectAsStateWithLifecycle()
     
+    var directAdsList by remember { mutableStateOf<List<com.example.domain.model.Product>>(emptyList()) }
+    var isLoadingDirectAds by remember { mutableStateOf(false) }
+    var directAdsError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        isLoadingDirectAds = true
+        try {
+            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            db.collection("direct_ads")
+                .whereEqualTo("status", "active")
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        directAdsError = e.message
+                        isLoadingDirectAds = false
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        val ads = snapshot.documents.mapNotNull { doc ->
+                            try {
+                                val id = doc.id
+                                val title = doc.getString("title") ?: ""
+                                val description = doc.getString("description") ?: ""
+                                val price = (doc.get("price") as? Number)?.toDouble() ?: 0.0
+                                val images = (doc.get("images") as? List<String>) ?: (doc.get("imageUrls") as? List<String>) ?: emptyList()
+                                val categoryId = doc.getString("categoryId") ?: ""
+                                com.example.domain.model.Product(
+                                    id = id,
+                                    title = title,
+                                    description = description,
+                                    price = price,
+                                    imageUrls = images,
+                                    categoryId = categoryId,
+                                    storeId = "direct_ad", // set to "direct_ad" to show the Direct Ad badge
+                                    rating = 5.0f,
+                                    reviewCount = 0,
+                                    isAvailable = true,
+                                    stockCount = 1,
+                                    currency = "USD",
+                                    isApproved = true,
+                                    isFlagged = false,
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            } catch (ex: Exception) {
+                                null
+                            }
+                        }
+                        directAdsList = ads
+                    }
+                    isLoadingDirectAds = false
+                }
+        } catch (e: Exception) {
+            directAdsError = e.message
+            isLoadingDirectAds = false
+        }
+    }
+    
     var showBottomSheet by remember { mutableStateOf(false) }
 
     val promoBanners = remember {
@@ -737,6 +793,17 @@ fun MarketplaceScreen(
                 state = mainState,
                 onRequestPlan = { tier -> mainViewModel.requestSubscription(tier) },
                 isAr = com.example.core.utils.LanguageManager.isArabic(context)
+            )
+
+            // Direct Ads Section
+            ProductHorizontalSection(
+                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "الإعلانات المباشرة" else "Direct Ads",
+                products = directAdsList,
+                isLoading = isLoadingDirectAds,
+                error = directAdsError,
+                stores = storeState.stores,
+                onProductClick = onProductSelected,
+                context = context
             )
 
             // 1. New Arrivals Section
@@ -1622,8 +1689,13 @@ fun ProductRowCard(
     context: android.content.Context
 ) {
     val isAr = com.example.core.utils.LanguageManager.isArabic(context)
-    val matchingStore = stores.find { it.id == product.storeId }
-    val productStoreName = matchingStore?.name ?: (if (isAr) "متجر مرخّص" else "Licensed Store")
+    val isDirectAd = product.storeId == "direct_ad"
+    val matchingStore = if (isDirectAd) null else stores.find { it.id == product.storeId }
+    val productStoreName = if (isDirectAd) {
+        if (isAr) "إعلان مباشر" else "Direct Ad"
+    } else {
+        matchingStore?.name ?: (if (isAr) "متجر مرخّص" else "Licensed Store")
+    }
     val productRate = matchingStore?.usdExchangeRate ?: 13500.0
     val formattedPrice = CurrencyManager.formatProductPrice(
         product,
@@ -1646,6 +1718,24 @@ fun ProductRowCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+
+            if (isDirectAd) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFF2196F3)) // Vibrant blue for direct ad badge
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (isAr) "إعلان مباشر" else "Direct Ad",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
 
             val normalizedPrice = product.getPriceInUSD(productRate)
             val marketProduct = MarketProduct(
@@ -1682,6 +1772,14 @@ fun ProductRowCard(
                     tint = if (isWishlisted) Color.Red else BrandTextMuted,
                     modifier = Modifier.size(14.dp)
                 )
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(6.dp)
+            ) {
+                ConditionBadge(condition = product.condition, isAr = isAr)
             }
         }
         Column(modifier = Modifier.padding(10.dp)) {
@@ -1780,3 +1878,4 @@ fun ProductSkeletonCard() {
         )
     }
 }
+

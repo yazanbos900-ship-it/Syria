@@ -42,6 +42,7 @@ class FirebaseComparisonRepositoryImpl : ComparisonRepository {
             val reviewCount = (get("reviewCount") as? Number)?.toInt() ?: 0
             val isAvailable = getBoolean("isAvailable") ?: true
             val stockCount = (get("stockCount") as? Number)?.toInt() ?: 10
+            val condition = getString("condition") ?: "new"
             
             val createdAt = try {
                 val timestamp = getTimestamp("createdAt")
@@ -62,7 +63,8 @@ class FirebaseComparisonRepositoryImpl : ComparisonRepository {
                 reviewCount = reviewCount,
                 isAvailable = isAvailable,
                 stockCount = stockCount,
-                createdAt = createdAt
+                createdAt = createdAt,
+                condition = condition
             )
         } catch (e: Exception) {
             Log.e(tag, "Error parsing product in comparison", e)

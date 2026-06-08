@@ -272,15 +272,11 @@ class CheckoutViewModel(
             return
         }
 
-        if (currentState.paymentMethod == "Cash On Delivery") {
-            placeCodOrder()
-        } else {
-            initiateEWalletPayment()
-        }
+        placeCodOrder()
     }
 
     private fun placeCodOrder() {
-        _state.update { it.copy(isLoading = true, progressMessage = "Placing COD order...") }
+        _state.update { it.copy(isLoading = true, progressMessage = "Creating order... / جاري إنشاء طلبك وتأكيده المباشر...") }
         viewModelScope.launch {
             try {
                 val session = ServiceLocator.authRepository.getCurrentUserSession() ?: return@launch
@@ -324,13 +320,17 @@ class CheckoutViewModel(
                         customerName = _state.value.customerName,
                         customerPhone = _state.value.customerPhone,
                         shippingAddress = _state.value.shippingAddress,
-                        paymentMethod = "Cash On Delivery",
-                        paymentStatus = "Pending",
+                        paymentMethod = "Marketplace Coordination",
+                        paymentStatus = "Payment Arrangement Pending",
                         subtotal = storeSubtotal,
                         vatAmount = storeVatAmount,
                         shippingFee = storeShippingFee,
                         grandTotal = storeGrandTotal,
-                        selectedDeliveryArea = _state.value.selectedDeliveryArea
+                        selectedDeliveryArea = _state.value.selectedDeliveryArea,
+                        latitude = _state.value.latitude,
+                        longitude = _state.value.longitude,
+                        city = _state.value.locationCity,
+                        district = _state.value.locationDistrict
                     )
 
                     ServiceLocator.orderRepository.createOrder(order)
@@ -352,17 +352,17 @@ class CheckoutViewModel(
         val originalMethod = _state.value.paymentMethod
         val methodLabel = if (originalMethod.contains("Syriatel", ignoreCase = true)) "Syriatel Cash" else "MTN Cash"
         
-        _state.update { it.copy(isLoading = true, progressMessage = "Opening secure link with $methodLabel... / جاري فتح الاتصال الآمن مع $methodLabel...") }
+        _state.update { it.copy(isLoading = true, progressMessage = "Opening demo coordination link with $methodLabel... / جاري فتح رابط التنسيق التجريبي مع $methodLabel...") }
         viewModelScope.launch {
             try {
                 // Progressive step 1: Port-handshake
                 delay(1000)
                 val totalAmount = _state.value.grandTotal
-                _state.update { it.copy(progressMessage = "Authenticating Wallet Session +${_state.value.customerPhone}... / جاري التحقق من حساب المحفظة +${_state.value.customerPhone}...") }
+                _state.update { it.copy(progressMessage = "Simulating Wallet Connection +${_state.value.customerPhone}... / جاري محاكاة الاتصال بحساب المحفظة +${_state.value.customerPhone}...") }
                 
                 // Progressive step 2: Generate token
                 delay(1200)
-                _state.update { it.copy(progressMessage = "Requesting secure 6-digit OTP code... / جاري طلب رمز التحقق OTP الآمن لـ $methodLabel...") }
+                _state.update { it.copy(progressMessage = "Requesting demo 6-digit OTP code... / جاري طلب رمز التحقق التجريبي OTP لـ $methodLabel...") }
                 
                 delay(1000)
                 val session = ServiceLocator.authRepository.getCurrentUserSession() ?: return@launch
@@ -471,15 +471,15 @@ class CheckoutViewModel(
             return
         }
 
-        _state.update { it.copy(isLoading = true, progressMessage = "Verifying security handshake... / جاري التحقق من الهوية الرقمية والرمز...") }
+        _state.update { it.copy(isLoading = true, progressMessage = "Simulating arrangement verification... / جاري التحقق تجريبياً من كود التنسيق والرمز البصري...") }
         viewModelScope.launch {
             // Processing step 1: Handshake validation
             delay(1200)
-            _state.update { it.copy(progressMessage = "Connecting secure ledger API... / جاري الاتصال بدفتر الحسابات المؤمن للشبكة...") }
+            _state.update { it.copy(progressMessage = "Simulating seller-buyer coordination channel... / جاري جلب وتجهيز قناة التنسيق بين البائع والمشتري...") }
             
             // Processing step 2: Transaction submission
             delay(1200)
-            _state.update { it.copy(progressMessage = "Authorizing checkout settlement... / جاري تفويض وتطهير تسوية المعاملة المالية...") }
+            _state.update { it.copy(progressMessage = "Creating placeholder transaction receipt... / جاري تثبيت كود المحاكاة وإيداعه في مستندات الطلب...") }
             
             delay(800)
             val result = verifyPaymentOtpUseCase(currentTxn.transactionId, currentState.verificationOtp)
@@ -551,7 +551,7 @@ class CheckoutViewModel(
                         customerPhone = _state.value.customerPhone,
                         shippingAddress = _state.value.shippingAddress,
                         paymentMethod = txn.paymentMethod,
-                        paymentStatus = "Paid",
+                        paymentStatus = "Awaiting Buyer Confirmation",
                         subtotal = storeSubtotal,
                         vatAmount = storeVatAmount,
                         shippingFee = storeShippingFee,

@@ -92,6 +92,8 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
     private fun mapFirestoreDocToStore(doc: com.google.firebase.firestore.DocumentSnapshot): Store? {
         if (!doc.exists()) return null
         return try {
+            val dbRate = (doc.get("exchangeRate") as? Number)?.toDouble() ?: (doc.get("usdExchangeRate") as? Number)?.toDouble() ?: 12500.0
+            val dbCurrency = doc.getString("storeCurrency") ?: doc.getString("defaultCurrency") ?: "USD"
             Store(
                 id = doc.id,
                 name = doc.getString("storeName") ?: doc.getString("name") ?: "",
@@ -105,11 +107,11 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 status = doc.getString("status") ?: "active",
                 rating = (doc.get("rating") as? Number)?.toFloat() ?: 5.0f,
                 isVerified = doc.getBoolean("isVerified") ?: false,
-                usdExchangeRate = (doc.get("usdExchangeRate") as? Number)?.toDouble() ?: 13500.0,
+                usdExchangeRate = dbRate,
                 subscriptionTier = doc.getString("subscriptionTier") ?: "Starter",
                 verificationStatus = doc.getString("verificationStatus") ?: "Pending",
                 sellerBadge = doc.getString("sellerBadge") ?: "None",
-                defaultCurrency = doc.getString("defaultCurrency") ?: "USD",
+                defaultCurrency = dbCurrency,
                 deliveryAreas = doc.get("deliveryAreas") as? List<String> ?: emptyList(),
                 shippingCosts = (doc.get("shippingCosts") as? Map<String, Any>)?.mapValues { (it.value as? Number)?.toDouble() ?: 0.0 } ?: emptyMap(),
                 workingHours = doc.getString("workingHours") ?: "9:00 AM - 9:00 PM",
@@ -124,7 +126,11 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                         ?: System.currentTimeMillis()
                 } catch (e: Exception) {
                     doc.getLong("createdAt") ?: System.currentTimeMillis()
-                }
+                },
+                exchangeRate = dbRate,
+                storeCurrency = dbCurrency,
+                exchangeRateUpdatedAt = doc.getTimestamp("exchangeRateUpdatedAt"),
+                usingGlobalRate = doc.getBoolean("usingGlobalRate") ?: true
             )
         } catch (e: Exception) {
             Log.e(tag, "mapFirestoreDocToStore failed for document: ${doc.id}", e)
@@ -185,11 +191,15 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "rating" to store.rating,
                 "isVerified" to store.isVerified,
                 "status" to "active",
-                "usdExchangeRate" to store.usdExchangeRate,
+                "usdExchangeRate" to store.exchangeRate,
+                "exchangeRate" to store.exchangeRate,
+                "storeCurrency" to store.storeCurrency,
+                "defaultCurrency" to store.storeCurrency,
+                "exchangeRateUpdatedAt" to store.exchangeRateUpdatedAt,
+                "usingGlobalRate" to store.usingGlobalRate,
                 "subscriptionTier" to store.subscriptionTier,
                 "verificationStatus" to store.verificationStatus,
                 "sellerBadge" to store.sellerBadge,
-                "defaultCurrency" to store.defaultCurrency,
                 "deliveryAreas" to store.deliveryAreas,
                 "shippingCosts" to store.shippingCosts,
                 "workingHours" to store.workingHours,
@@ -235,11 +245,15 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "logoUrl" to store.logoUrl,
                 "bannerUrl" to store.bannerUrl,
                 "status" to store.status,
-                "usdExchangeRate" to store.usdExchangeRate,
+                "usdExchangeRate" to store.exchangeRate,
+                "exchangeRate" to store.exchangeRate,
+                "storeCurrency" to store.storeCurrency,
+                "defaultCurrency" to store.storeCurrency,
+                "exchangeRateUpdatedAt" to store.exchangeRateUpdatedAt,
+                "usingGlobalRate" to store.usingGlobalRate,
                 "subscriptionTier" to store.subscriptionTier,
                 "verificationStatus" to store.verificationStatus,
                 "sellerBadge" to store.sellerBadge,
-                "defaultCurrency" to store.defaultCurrency,
                 "deliveryAreas" to store.deliveryAreas,
                 "shippingCosts" to store.shippingCosts,
                 "workingHours" to store.workingHours,
@@ -321,8 +335,12 @@ class FirebaseStoreRepositoryImpl : StoreRepository {
                 "subscriptionTier" to "Starter",
                 "verificationStatus" to "Pending",
                 "sellerBadge" to "None",
-                "usdExchangeRate" to 13500.0,
+                "usdExchangeRate" to 12500.0,
+                "exchangeRate" to 12500.0,
+                "storeCurrency" to "USD",
                 "defaultCurrency" to "USD",
+                "exchangeRateUpdatedAt" to com.google.firebase.Timestamp.now(),
+                "usingGlobalRate" to true,
                 "latitude" to latitude,
                 "longitude" to longitude,
                 "city" to city,

@@ -53,6 +53,15 @@ class FirebaseProductRepositoryImpl : ProductRepository {
             val isApproved = getBoolean("isApproved") ?: true
             val isFlagged = getBoolean("isFlagged") ?: false
             val flagReason = getString("flagReason") ?: ""
+            val condition = getString("condition") ?: "new"
+            
+            val sellerType = getString("sellerType") ?: if (storeId == "direct_ad") "DIRECT_SELLER" else "STORE"
+            val sellerId = getString("sellerId") ?: getString("ownerUid") ?: storeId // fallback to storeId or ownerUid if not explicitly provided
+            
+            val priceUSD = (get("priceUSD") as? Number)?.toDouble() ?: 0.0
+            val priceSYP = (get("priceSYP") as? Number)?.toDouble() ?: 0.0
+            val storeCurrency = getString("storeCurrency") ?: "USD"
+            val exchangeRateUsed = (get("exchangeRateUsed") as? Number)?.toDouble() ?: 12500.0
             
             Product(
                 id = id,
@@ -62,6 +71,8 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 imageUrls = imageUrls,
                 categoryId = categoryId,
                 storeId = storeId,
+                sellerType = sellerType,
+                sellerId = sellerId,
                 rating = rating,
                 reviewCount = reviewCount,
                 isAvailable = isAvailable,
@@ -70,7 +81,12 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 isApproved = isApproved,
                 isFlagged = isFlagged,
                 flagReason = flagReason,
-                createdAt = getCreatedAt(this)
+                createdAt = getCreatedAt(this),
+                condition = condition,
+                priceUSD = priceUSD,
+                priceSYP = priceSYP,
+                storeCurrency = storeCurrency,
+                exchangeRateUsed = exchangeRateUsed
             )
         } catch (e: Exception) {
             Log.e("FirebaseProduct", "Error parsing product $id", e)
@@ -263,10 +279,54 @@ class FirebaseProductRepositoryImpl : ProductRepository {
             if (doc.exists()) {
                 doc.toProduct()
             } else {
-                null
+                val adDoc = db.collection("direct_ads").document(productId).get().await()
+                if (adDoc.exists()) {
+                    adDoc.toProductFromAd()
+                } else {
+                    null
+                }
             }
         } catch (e: Exception) {
             Log.e(tag, "Failed fetching details for product $productId", e)
+            null
+        }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toProductFromAd(): Product? {
+        return try {
+            val id = id
+            val title = getString("title") ?: getString("name") ?: ""
+            val description = getString("description") ?: ""
+            val price = (get("price") as? Number)?.toDouble() ?: 0.0
+            val imageUrls = (get("images") as? List<String>)
+                ?: (get("imageUrls") as? List<String>)
+                ?: (get("coverImage") as? String)?.let { listOf(it) }
+                ?: emptyList()
+            val categoryId = getString("categoryId") ?: ""
+            
+            val ownerUid = getString("ownerUid") ?: ""
+
+            Product(
+                id = id,
+                title = title,
+                description = description,
+                price = price,
+                imageUrls = imageUrls,
+                categoryId = categoryId,
+                storeId = "direct_ad",
+                sellerType = "DIRECT_SELLER",
+                sellerId = ownerUid,
+                rating = 5.0f,
+                reviewCount = 0,
+                isAvailable = true,
+                stockCount = 1,
+                currency = "USD",
+                isApproved = true,
+                isFlagged = false,
+                createdAt = System.currentTimeMillis()
+            )
+        } catch (e: Exception) {
+            Log.e("FirebaseProduct", "Error parsing direct ad $id", e)
             null
         }
     }
@@ -285,6 +345,8 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 "categoryId" to product.categoryId,
                 "category" to product.categoryId,
                 "storeId" to product.storeId,
+                "sellerType" to product.sellerType,
+                "sellerId" to product.sellerId,
                 "rating" to product.rating,
                 "reviewCount" to product.reviewCount,
                 "isAvailable" to product.isAvailable,
@@ -293,6 +355,11 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 "isApproved" to product.isApproved,
                 "isFlagged" to product.isFlagged,
                 "flagReason" to product.flagReason,
+                "condition" to product.condition,
+                "priceUSD" to product.priceUSD,
+                "priceSYP" to product.priceSYP,
+                "storeCurrency" to product.storeCurrency,
+                "exchangeRateUsed" to product.exchangeRateUsed,
                 "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
             )
             db.collection("products").add(productMap).await()
@@ -317,6 +384,8 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 "categoryId" to product.categoryId,
                 "category" to product.categoryId,
                 "storeId" to product.storeId,
+                "sellerType" to product.sellerType,
+                "sellerId" to product.sellerId,
                 "rating" to product.rating,
                 "reviewCount" to product.reviewCount,
                 "isAvailable" to product.isAvailable,
@@ -324,7 +393,12 @@ class FirebaseProductRepositoryImpl : ProductRepository {
                 "currency" to product.currency,
                 "isApproved" to product.isApproved,
                 "isFlagged" to product.isFlagged,
-                "flagReason" to product.flagReason
+                "flagReason" to product.flagReason,
+                "condition" to product.condition,
+                "priceUSD" to product.priceUSD,
+                "priceSYP" to product.priceSYP,
+                "storeCurrency" to product.storeCurrency,
+                "exchangeRateUsed" to product.exchangeRateUsed
             )
             db.collection("products").document(product.id).update(productMap as Map<String, Any>).await()
             Result.success(Unit)

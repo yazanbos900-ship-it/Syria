@@ -10,6 +10,9 @@ sealed class Screen(val route: String) {
     object StoreDetail : Screen("store_detail/{storeId}") {
         fun createRoute(storeId: String) = "store_detail/$storeId"
     }
+    object SellerProfile : Screen("seller_profile/{sellerId}") {
+        fun createRoute(sellerId: String) = "seller_profile/$sellerId"
+    }
     object CategoryProducts : Screen("category_products/{categoryId}/{categoryName}") {
         fun createRoute(categoryId: String, categoryName: String) = "category_products/$categoryId/$categoryName"
     }
@@ -22,5 +25,10 @@ sealed class Screen(val route: String) {
     object CreateStore : Screen("create_store")
     object StoreManagement : Screen("store_management")
     object AddProduct : Screen("add_product")
+    object PostDirectAd : Screen("postDirectAd")
     object AdminDashboard : Screen("admin_dashboard")
+    object ChatList : Screen("chatList")
+    object ChatDetail : Screen("chat/{chatId}") {
+        fun createRoute(chatId: String) = "chat/$chatId"
+    }
 }

@@ -139,6 +139,7 @@ object SharedFilterState {
     val deliveryFilterSameDayOnlyState = mutableStateOf(false)
     val selectedSortOptionState = mutableStateOf(SortOption.Newest)
     val categoriesListState = mutableStateOf(listOf(Category(id = "All", nameAr = "الكل", nameEn = "All")))
+    val selectedConditionFilterState = mutableStateOf("All")
 
     var selectedCategoryFilter by selectedCategoryFilterState
     var maxPriceRange by maxPriceRangeState
@@ -146,12 +147,14 @@ object SharedFilterState {
     var deliveryFilterSameDayOnly by deliveryFilterSameDayOnlyState
     var selectedSortOption by selectedSortOptionState
     var categoriesList by categoriesListState
+    var selectedConditionFilter by selectedConditionFilterState
 
     val isActive: Boolean
         get() = selectedCategoryFilter != "All" ||
                 maxPriceRange < 300f ||
                 minRatingFilter > 0.0 ||
-                deliveryFilterSameDayOnly
+                deliveryFilterSameDayOnly ||
+                selectedConditionFilter != "All"
 
     fun init(productRepository: ProductRepository, scope: CoroutineScope) {
         scope.launch {
@@ -167,6 +170,7 @@ object SharedFilterState {
         minRatingFilter = 0.0
         deliveryFilterSameDayOnly = false
         selectedSortOption = SortOption.Newest
+        selectedConditionFilter = "All"
     }
 }
 
@@ -179,6 +183,7 @@ fun FilterBottomSheetContent(
     var maxPriceRange by SharedFilterState.maxPriceRangeState
     var minRatingFilter by SharedFilterState.minRatingFilterState
     var deliveryFilterSameDayOnly by SharedFilterState.deliveryFilterSameDayOnlyState
+    var selectedConditionFilter by SharedFilterState.selectedConditionFilterState
     val filterCategories = SharedFilterState.categoriesList
 
     val ratingOptions = listOf(0.0, 4.0, 4.5, 4.8)
@@ -227,6 +232,54 @@ fun FilterBottomSheetContent(
                 ) {
                     Text(
                         text = catDisplayName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) Color.White else BrandTextPrimary
+                    )
+                }
+            }
+        }
+
+        // Horizontal Condition Selector row in filter drawer
+        val isArabic = com.example.core.utils.LanguageManager.isArabic(androidx.compose.ui.platform.LocalContext.current)
+        Text(
+            text = if (isArabic) "تصفية حسب حالة السلعة" else "Filter by Condition",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = BrandTextPrimary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        val conditionFilters = listOf(
+            "All" to (if (isArabic) "الكل" else "All"),
+            "new" to (if (isArabic) "جديد" else "New"),
+            "open_box" to (if (isArabic) "مفتوح العلبة" else "Open Box"),
+            "like_new" to (if (isArabic) "شبه جديد" else "Like New"),
+            "excellent" to (if (isArabic) "ممتاز" else "Excellent"),
+            "good" to (if (isArabic) "جيد" else "Good"),
+            "fair" to (if (isArabic) "مقبول" else "Fair"),
+            "used" to (if (isArabic) "مستعمل" else "Used"),
+            "for_parts" to (if (isArabic) "للقطع" else "For Parts")
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            conditionFilters.forEach { conditionPair ->
+                val condValue = conditionPair.first
+                val condLabel = conditionPair.second
+                val isSelected = selectedConditionFilter == condValue
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) BrandPrimary else BrandBackground)
+                        .clickable { selectedConditionFilter = condValue }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = condLabel,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isSelected) Color.White else BrandTextPrimary
@@ -378,5 +431,39 @@ fun FilterBottomSheetContent(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun ConditionBadge(
+    condition: String,
+    isAr: Boolean = com.example.core.utils.LanguageManager.isArabic(androidx.compose.ui.platform.LocalContext.current),
+    modifier: Modifier = Modifier
+) {
+    val (text, color) = when (condition.lowercase()) {
+        "new" -> (if (isAr) "جديد" else "NEW") to Color(0xFF4CAF50)
+        "open_box" -> (if (isAr) "مفتوح العلبة" else "OPEN BOX") to Color(0xFF00BCD4)
+        "like_new" -> (if (isAr) "شبه جديد" else "LIKE NEW") to Color(0xFF9C27B0)
+        "excellent" -> (if (isAr) "ممتاز" else "EXCELLENT") to Color(0xFF3F51B5)
+        "good" -> (if (isAr) "جيد" else "GOOD") to Color(0xFF4CAF50)
+        "fair" -> (if (isAr) "مقبول" else "FAIR") to Color(0xFFFF9800)
+        "used" -> (if (isAr) "مستعمل" else "USED") to Color(0xFF9E9E9E)
+        "for_parts" -> (if (isAr) "للقطع" else "FOR PARTS") to Color(0xFFE91E63)
+        else -> (if (isAr) "جديد" else "NEW") to Color(0xFF4CAF50)
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
     }
 }

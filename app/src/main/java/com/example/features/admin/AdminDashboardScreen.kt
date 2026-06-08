@@ -29,6 +29,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -123,6 +126,15 @@ sealed class AdminModule(
         icon = Icons.Default.Analytics,
         descriptionAr = "مخططات والمنتجات الأكثر تفاعلاً وزيارات المتاجر والإيرادات",
         descriptionEn = "Interactive products views, favorites, visits, and revenue analysis"
+    )
+
+    object ExchangeRate : AdminModule(
+        id = "exchange_rate",
+        titleAr = "أسعار الصرف والعملات",
+        titleEn = "Exchange Rate Manager",
+        icon = Icons.Default.SwapHoriz,
+        descriptionAr = "تعديل وإدارة سعر الصرف الموحد وتتبع فروقات الأسعار للمتاجر",
+        descriptionEn = "Manage standard exchange rates and track store-level differences"
     )
 }
 
@@ -415,6 +427,74 @@ class AdminViewModel : ViewModel() {
             onComplete(res.isSuccess)
         }
     }
+
+    // --- GLOBAL EXCHANGE RATE ACTIONS ---
+    fun updateGlobalExchangeRate(rate: Double, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            try {
+                db.collection("admin_settings").document("exchange_rate").set(mapOf("rate" to rate)).await()
+                val current = com.example.core.utils.MarketplaceSettingsManager.settings.value
+                com.example.core.utils.MarketplaceSettingsManager.saveSettings(current.copy(defaultExchangeRate = rate))
+                val storesSnapshot = db.collection("stores").get().await()
+                val batch = db.batch()
+                var hasUpdates = false
+                for (doc in storesSnapshot.documents) {
+                    val usingGlobal = doc.getBoolean("usingGlobalRate") ?: true
+                    if (usingGlobal) {
+                        batch.update(doc.reference, mapOf(
+                            "usdExchangeRate" to rate,
+                            "exchangeRate" to rate,
+                            "exchangeRateUpdatedAt" to com.google.firebase.Timestamp.now(),
+                            "usingGlobalRate" to true
+                        ))
+                        hasUpdates = true
+                    }
+                }
+                if (hasUpdates) {
+                    batch.commit().await()
+                }
+                onComplete(true)
+            } catch (e: Exception) {
+                Log.e("AdminViewModel", "updateGlobalExchangeRate failed", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun applyGlobalRateStore(storeId: String, globalRate: Double, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            try {
+                db.collection("stores").document(storeId).update(mapOf(
+                    "usingGlobalRate" to true,
+                    "usdExchangeRate" to globalRate,
+                    "exchangeRate" to globalRate,
+                    "exchangeRateUpdatedAt" to com.google.firebase.Timestamp.now()
+                )).await()
+                onComplete(true)
+            } catch (e: Exception) {
+                onComplete(false)
+            }
+        }
+    }
+
+    fun applyCustomRateStore(storeId: String, customRate: Double, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            try {
+                db.collection("stores").document(storeId).update(mapOf(
+                    "usingGlobalRate" to false,
+                    "usdExchangeRate" to customRate,
+                    "exchangeRate" to customRate,
+                    "exchangeRateUpdatedAt" to com.google.firebase.Timestamp.now()
+                )).await()
+                onComplete(true)
+            } catch (e: Exception) {
+                onComplete(false)
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -507,7 +587,8 @@ fun AdminDashboardScreen(
                             AdminModule.Orders,
                             AdminModule.Subscriptions,
                             AdminModule.Settings,
-                            AdminModule.Analytics
+                            AdminModule.Analytics,
+                            AdminModule.ExchangeRate
                         ),
                         state = state,
                         isArabic = isArabic,
@@ -569,6 +650,12 @@ fun AdminDashboardScreen(
                             stores = state.stores,
                             interactions = state.interactions,
                             isArabic = isArabic
+                        )
+                        is AdminModule.ExchangeRate -> AdminExchangeRateManager(
+                            stores = state.stores,
+                            products = state.products,
+                            isArabic = isArabic,
+                            viewModel = viewModel
                         )
                         else -> Unit
                     }
@@ -2080,7 +2167,7 @@ fun AdminSettingsManager(
         
         item {
             Text(
-                text = if (isArabic) "طرق الدفع والتحصيل المعتمدة" else "Allowed Payment Transfer Channels",
+                text = if (isArabic) "خيارات التنسيق المالي المعتمدة (تنسيق بائع ومشتري فقط)" else "Allowed Payment Channels (Marketplace Coordination Only)",
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
                 color = BrandPrimary
@@ -2296,7 +2383,34 @@ fun AdminAnalyticsManager(
                 val vatSyp = activeOrders.filter { it.currency == "SYP" }.sumOf { it.vatAmount }
                 
                 item {
-                    Text(if (isArabic) "الإيرادات الإجمالية والعمولات الكلية" else "Finance, Revenue & System Commissions", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 15.sp)
+                    Text(if (isArabic) "مؤشرات التنسيق المالي المتبادل" else "Finance, Revenue & System Commissions", fontWeight = FontWeight.Bold, color = BrandPrimary, fontSize = 15.sp)
+                }
+                
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = BrandPrimary.copy(alpha = 0.08f)),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, BrandPrimary.copy(alpha = 0.2f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Info, null, tint = BrandPrimary, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = if (isArabic) {
+                                    "تنسيق مبيعات خارجي فقط - Marketplace Coordination Only"
+                                } else {
+                                    "Marketplace Coordination Only - Not Real Financial Processing"
+                                },
+                                fontWeight = FontWeight.Bold,
+                                color = BrandPrimary,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
                 }
                 
                 item {
@@ -2324,5 +2438,548 @@ fun AdminAnalyticsManager(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminExchangeRateManager(
+    stores: List<Store>,
+    products: List<Product>,
+    isArabic: Boolean,
+    viewModel: AdminViewModel
+) {
+    val context = LocalContext.current
+    val state by viewModel.state.collectAsState()
+    val globalRate = state.settings.defaultExchangeRate
+    
+    var globalRateInput by remember(globalRate) { mutableStateOf(globalRate.toInt().toString()) }
+    var isSavingGlobal by remember { mutableStateOf(false) }
+    
+    // Dialog states for custom store rate edit
+    var storeToEditRate by remember { mutableStateOf<Store?>(null) }
+    var customStoreRateInput by remember { mutableStateOf("") }
+    var isSavingStoreRate by remember { mutableStateOf(false) }
+
+    // Count statistics
+    val storesUsingGlobal = stores.filter { it.usingGlobalRate }.size
+    val storesUsingCustom = stores.filter { !it.usingGlobalRate }.size
+    
+    val customStores = stores.filter { !it.usingGlobalRate }
+    val averageCustomRate = if (customStores.isNotEmpty()) {
+        customStores.map { it.exchangeRate }.average()
+    } else {
+        0.0
+    }
+    
+    val averageAllRate = if (stores.isNotEmpty()) {
+        stores.map { it.exchangeRate }.average()
+    } else {
+        0.0
+    }
+    
+    val minRate = if (stores.isNotEmpty()) {
+        stores.minOfOrNull { it.exchangeRate } ?: 0.0
+    } else {
+        0.0
+    }
+    
+    val maxRate = if (stores.isNotEmpty()) {
+        stores.maxOfOrNull { it.exchangeRate } ?: 0.0
+    } else {
+        0.0
+    }
+
+    val maxCustomRateDistance = if (customStores.isNotEmpty()) {
+        customStores.maxOfOrNull { kotlin.math.abs(it.exchangeRate - globalRate) } ?: 0.0
+    } else {
+        0.0
+    }
+
+    androidx.compose.runtime.LaunchedEffect(stores) {
+        if (stores.isEmpty()) {
+            Log.e("ExchangeRateAnalytics", "Aggregation empty: Layer 'Firestore write' or 'Repository mapping' returned 0 stores")
+        } else {
+            Log.d("ExchangeRateAnalytics", "Loaded ${stores.size} stores successfully in UI State collection.")
+            val zeroRates = stores.filter { it.exchangeRate <= 0.0 }
+            if (zeroRates.isNotEmpty()) {
+                Log.e("ExchangeRateAnalytics", "Aggregation failure: ${zeroRates.size} stores have 0.0 exchange rate. Source: Firestore/Repository mapping layer error.")
+            } else {
+                Log.d("ExchangeRateAnalytics", "Analytics recomputation triggered. Averages and range are success: AvgAll = $averageAllRate, AvgCustom = $averageCustomRate, Min = $minRate, Max = $maxRate")
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Module Headline Title
+        item {
+            Text(
+                text = if (isArabic) "إدارة أسعار الصرف والعملات" else "Exchange Rate Manager",
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                color = BrandPrimary
+            )
+        }
+
+        // 1. GLOBAL RATE CARD
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                border = BorderStroke(1.dp, BrandSoftGray),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = if (isArabic) "سعر الصرف العالمي الموحد" else "Unified Global Exchange Rate",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isArabic) "السعر العالمي الحالي:" else "Current Global Rate:",
+                            fontSize = 13.sp,
+                            color = BrandTextMuted
+                        )
+                        Text(
+                            text = "1 USD = ${globalRate.toInt()} SYP",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 15.sp,
+                            color = BrandPrimary
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = globalRateInput,
+                        onValueChange = { globalRateInput = it },
+                        label = { Text(if (isArabic) "سعر الصرف الجديد (ل.س)" else "New Exchange Rate (SYP)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedContainerColor = BrandBackground,
+                            unfocusedContainerColor = BrandBackground,
+                            focusedBorderColor = BrandPrimary,
+                            unfocusedBorderColor = BrandSoftGray
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("admin_global_exchange_rate_input")
+                    )
+
+                    Button(
+                        onClick = {
+                            val rateVal = globalRateInput.toDoubleOrNull()
+                            if (rateVal == null || rateVal <= 0) {
+                                Toast.makeText(context, if (isArabic) "الرجاء إدخال سعر صرف صحيح" else "Please enter a valid exchange rate", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            isSavingGlobal = true
+                            viewModel.updateGlobalExchangeRate(rateVal) { success ->
+                                isSavingGlobal = false
+                                if (success) {
+                                    Toast.makeText(context, if (isArabic) "تم تحديث سعر الصرف العالمي وتطبيقه بالكامل!" else "Global exchange rate updated & applied!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, if (isArabic) "حدث خطأ أثناء حفظ الإعدادات" else "Error updating settings", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().height(44.dp).testTag("save_global_rate_btn")
+                    ) {
+                        if (isSavingGlobal) {
+                            CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(18.dp))
+                        } else {
+                            Text(
+                                text = if (isArabic) "تطبيق على كافة المتاجر" else "Apply on All Stores",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. ANALYTICS CARDS (Grid layout: 2 cards in each row, 3 rows total)
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = if (isArabic) "إحصائيات وتحليلات أسعار الصرف" else "Exchange Rates Analytics",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = BrandTextMuted
+                )
+                
+                // Row 1: Global vs Custom counts
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Card 1: Stores Using Global Rate
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        border = BorderStroke(1.dp, BrandSoftGray)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = if (isArabic) "متاجر السعر العالمي" else "Using Global Rate",
+                                fontSize = 11.sp,
+                                color = BrandTextMuted,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = storesUsingGlobal.toString(),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = BrandPrimary
+                            )
+                        }
+                    }
+                    // Card 2: Stores Using Custom Rate
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        border = BorderStroke(1.dp, BrandSoftGray)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = if (isArabic) "متاجر السعر المخصص" else "Using Custom Rate",
+                                fontSize = 11.sp,
+                                color = BrandTextMuted,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = storesUsingCustom.toString(),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFFFFB74D)
+                            )
+                        }
+                    }
+                }
+
+                // Row 2: Average rates (all vs custom)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Card 3: Average Exchange Rate (All)
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        border = BorderStroke(1.dp, BrandSoftGray)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = if (isArabic) "متوسط أسعار الصرف" else "Avg Exchange Rate",
+                                fontSize = 11.sp,
+                                color = BrandTextMuted,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = String.format("%,d ل.س", averageAllRate.toInt()),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    // Card 4: Average Custom Rate
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        border = BorderStroke(1.dp, BrandSoftGray)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = if (isArabic) "متوسط الأسعار المخصصة" else "Avg Custom Rate",
+                                fontSize = 11.sp,
+                                color = BrandTextMuted,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = String.format("%,d ل.س", averageCustomRate.toInt()),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF81C784)
+                            )
+                        }
+                    }
+                }
+
+                // Row 3: Min vs Max rates across all stores
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Card 5: Minimum Exchange Rate
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        border = BorderStroke(1.dp, BrandSoftGray)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = if (isArabic) "أدنى سعر صرف مسجل" else "Min Exchange Rate",
+                                fontSize = 11.sp,
+                                color = BrandTextMuted,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = String.format("%,d ل.س", minRate.toInt()),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF64B5F6)
+                            )
+                        }
+                    }
+                    // Card 6: Maximum Exchange Rate
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        border = BorderStroke(1.dp, BrandSoftGray)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = if (isArabic) "أعلى سعر صرف مسجل" else "Max Exchange Rate",
+                                fontSize = 11.sp,
+                                color = BrandTextMuted,
+                                maxLines = 1
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = String.format("%,d ل.س", maxRate.toInt()),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFFE57373)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. STORES EXCHANGE RATE TABLE
+        item {
+            Text(
+                text = if (isArabic) "سجل المتاجر ومعدلات الصرف" else "Sellers Currency Directory",
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = BrandTextMuted
+            )
+        }
+
+        if (stores.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isArabic) "لا توجد متاجر مسجلة حالياً" else "No registered stores in system registry",
+                        color = BrandTextMuted,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        } else {
+            items(stores) { store ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                    border = BorderStroke(1.dp, BrandSoftGray),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = store.name,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "1 USD = ${store.exchangeRate.toInt()} SYP",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = BrandPrimary
+                                )
+                            }
+
+                            // Rate status badge
+                            val usingGlobal = store.usingGlobalRate
+                            val badgeText = if (usingGlobal) {
+                                if (isArabic) "سعر عالمي" else "Global Rate"
+                            } else {
+                                if (isArabic) "سعر مخصص" else "Custom Rate"
+                            }
+                            val badgeColor = if (usingGlobal) BrandPrimary.copy(alpha = 0.15f) else Color(0xFFFFB74D).copy(alpha = 0.15f)
+                            val badgeBorder = if (usingGlobal) BrandPrimary else Color(0xFFFFB74D)
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(badgeColor)
+                                    .border(1.dp, badgeBorder, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = badgeText,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (usingGlobal) BrandPrimary else Color(0xFFFFB74D)
+                                )
+                            }
+                        }
+
+                        // Actions buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (!store.usingGlobalRate) {
+                                Button(
+                                    onClick = {
+                                        viewModel.applyGlobalRateStore(store.id, globalRate) { success ->
+                                            if (success) {
+                                                Toast.makeText(context, if (isArabic) "تطبيق السعر العالمي بنجاح" else "Applied global rate successfully", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f).height(36.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary.copy(alpha = 0.2f)),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = if (isArabic) "تطبيق السعر العالمي" else "Apply Global Rate",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BrandPrimary
+                                    )
+                                }
+                            }
+                            
+                            Button(
+                                onClick = {
+                                    storeToEditRate = store
+                                    customStoreRateInput = store.exchangeRate.toInt().toString()
+                                },
+                                modifier = Modifier.weight(1f).height(36.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandSoftGray),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = if (isArabic) "تعديل السعر" else "Edit Rate",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Dialog for setting exact custom store exchange rate
+    if (storeToEditRate != null) {
+        AlertDialog(
+            onDismissRequest = { storeToEditRate = null },
+            title = {
+                Text(
+                    text = if (isArabic) "تعديل سعر الصرف لـ ${storeToEditRate!!.name}" else "Set Rate for ${storeToEditRate!!.name}",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = if (isArabic) "قم بتعيين سعر الصرف مقابل 1 دولار أمريكي:" else "Set the conversion rate per 1 USD:",
+                        fontSize = 12.sp,
+                        color = BrandTextMuted
+                    )
+                    OutlinedTextField(
+                        value = customStoreRateInput,
+                        onValueChange = { customStoreRateInput = it },
+                        label = { Text(if (isArabic) "سعر الصرف (ل.س)" else "Exchange Rate (SYP)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = BrandPrimary,
+                            unfocusedBorderColor = BrandSoftGray,
+                            focusedContainerColor = BrandBackground,
+                            unfocusedContainerColor = BrandBackground
+                        ),
+                        modifier = Modifier.fillMaxWidth().testTag("custom_store_rate_dialog_input")
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val storeVal = customStoreRateInput.toDoubleOrNull()
+                        if (storeVal == null || storeVal <= 0.0) {
+                            Toast.makeText(context, if (isArabic) "أدخل سعر صرف صحيح" else "Enter a correct rate", Toast.LENGTH_SHORT).show()
+                            return@TextButton
+                        }
+                        isSavingStoreRate = true
+                        viewModel.applyCustomRateStore(storeToEditRate!!.id, storeVal) { success ->
+                            isSavingStoreRate = false
+                            if (success) {
+                                storeToEditRate = null
+                                Toast.makeText(context, if (isArabic) "تم تعيين سعر الصرف بنجاح" else "Store rate configured successfully", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = BrandPrimary)
+                ) {
+                    if (isSavingStoreRate) {
+                        CircularProgressIndicator(color = BrandPrimary, modifier = Modifier.size(16.dp))
+                    } else {
+                        Text(if (isArabic) "تفعيل السعر المخصص" else "Verify custom rate")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { storeToEditRate = null }, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+                    Text(if (isArabic) "تراجع" else "Back")
+                }
+            },
+            containerColor = BrandSurface
+        )
     }
 }
