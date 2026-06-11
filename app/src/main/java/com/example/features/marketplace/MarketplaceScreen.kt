@@ -56,6 +56,7 @@ import com.example.domain.usecase.GetSubscriptionRequestsByStoreUseCase
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.ui.platform.testTag
 
 import androidx.compose.foundation.lazy.LazyRow
@@ -99,7 +100,8 @@ fun MarketplaceScreen(
     onWishlistSelected: () -> Unit,
     onCreateStoreSelected: () -> Unit,
     onManageStoreSelected: (String) -> Unit,
-    onAdminSelected: () -> Unit = {}
+    onAdminSelected: () -> Unit = {},
+    onJobsSelected: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -788,6 +790,44 @@ fun MarketplaceScreen(
                     }
                 }
             }
+
+            // Jobs Section Highlight Banner
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(BrandPrimary.copy(alpha = 0.1f))
+                    .clickable { onJobsSelected() }
+                    .padding(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(BrandPrimary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(androidx.compose.material.icons.Icons.Filled.Work, contentDescription = "Jobs", tint = Color.White)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = if (com.example.core.utils.LanguageManager.isArabic(context)) "الوظائف المتاحة" else "Jobs Marketplace",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = BrandPrimary
+                        )
+                        Text(
+                            text = if (com.example.core.utils.LanguageManager.isArabic(context)) "اكتشف فرص عمل جديدة أو قدم لشركات موثوقة" else "Discover jobs or hire talents from verified stores",
+                            fontSize = 12.sp,
+                            color = BrandTextMuted
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             SubscriptionPlansSection(
                 state = mainState,

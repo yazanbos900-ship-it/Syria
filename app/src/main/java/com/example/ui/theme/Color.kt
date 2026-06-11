@@ -32,4 +32,6 @@ val BrandOnSurface: Color
     get() = if (ThemeManager.isDark) Color(0xFFECECEC) else Color(0xFF111111)
 
 val BrandError = Color(0xFFD32F2F)
+val BrandSuccess = Color(0xFF1DB954)
+val BrandGoldenYellow = Color(0xFFFFC107)
 

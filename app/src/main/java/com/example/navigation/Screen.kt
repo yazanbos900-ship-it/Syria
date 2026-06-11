@@ -31,4 +31,16 @@ sealed class Screen(val route: String) {
     object ChatDetail : Screen("chat/{chatId}") {
         fun createRoute(chatId: String) = "chat/$chatId"
     }
+
+    // Job Section Routes
+    object JobsMarketplace : Screen("jobs_marketplace")
+    object JobDetails : Screen("job_details/{jobId}") {
+        fun createRoute(jobId: String) = "job_details/$jobId"
+    }
+    object ManageJobs : Screen("manage_jobs")
+    object CreateEditJob : Screen("create_edit_job/{jobId}") {
+        fun createRoute(jobId: String) = "create_edit_job/$jobId"
+        fun createNewRoute() = "create_edit_job/new"
+    }
+    object UserApplications : Screen("user_applications")
 }

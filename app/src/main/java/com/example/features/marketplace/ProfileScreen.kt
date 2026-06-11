@@ -51,6 +51,7 @@ fun ProfileScreen(
     onNavigateToAdmin: () -> Unit = {},
     onNavigateToOrders: () -> Unit = {},
     onNavigateToSellerProfile: (String) -> Unit = {},
+    onNavigateToUserApplications: () -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -231,6 +232,16 @@ fun ProfileScreen(
                             isArabic = isArabic,
                             onClick = onNavigateToOrders,
                             testTag = "profile_orders_row"
+                        )
+                        HorizontalDivider(color = BrandSoftGray, modifier = Modifier.padding(horizontal = 16.dp))
+
+                        ProfileMenuRow(
+                            icon = Icons.Default.Work,
+                            title = if (isArabic) "طلبات التوظيف" else "My Applications",
+                            subtitle = if (isArabic) "إدارة وعرض الوظائف التي قدمت عليها" else "Manage jobs you applied for",
+                            isArabic = isArabic,
+                            onClick = onNavigateToUserApplications,
+                            testTag = "profile_applications_row"
                         )
                     }
                 }

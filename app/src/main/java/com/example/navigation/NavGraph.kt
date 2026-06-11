@@ -88,6 +88,9 @@ fun NavigationGraph(
                 },
                 onAdminSelected = {
                     navController.navigate(Screen.AdminDashboard.route)
+                },
+                onJobsSelected = {
+                    navController.navigate(Screen.JobsMarketplace.route)
                 }
             )
         }
@@ -212,6 +215,9 @@ fun NavigationGraph(
                 onNavigateToSellerProfile = { sellerId ->
                     navController.navigate(Screen.SellerProfile.createRoute(sellerId))
                 },
+                onNavigateToUserApplications = {
+                    navController.navigate(Screen.UserApplications.route)
+                },
                 onSignOut = {
                     navController.navigate(Screen.Authentication.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
@@ -254,6 +260,9 @@ fun NavigationGraph(
                 onEditProduct = { product ->
                     // For now, we can just log or show a toast as real editing requires a complex dialog/screen
                     // But I'll implement a basic add/edit logic in the screen itself
+                },
+                onNavigateToManageJobs = {
+                    navController.navigate(Screen.ManageJobs.route)
                 }
             )
         }
@@ -282,6 +291,63 @@ fun NavigationGraph(
             ChatScreen(
                 chatId = chatId,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(route = Screen.JobsMarketplace.route) {
+            com.example.features.marketplace.JobsMarketplaceScreen(
+                onNavigateToJobDetails = { jobId ->
+                    navController.navigate(Screen.JobDetails.createRoute(jobId))
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.JobDetails.route,
+            arguments = listOf(
+                navArgument("jobId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val jobId = backStackEntry.arguments?.getString("jobId") ?: ""
+            com.example.features.marketplace.JobDetailsScreen(
+                jobId = jobId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(route = Screen.ManageJobs.route) {
+            com.example.features.marketplace.ManageJobsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToCreateJob = {
+                    navController.navigate(Screen.CreateEditJob.createNewRoute())
+                },
+                onNavigateToEditJob = { jobId ->
+                    navController.navigate(Screen.CreateEditJob.createRoute(jobId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.CreateEditJob.route,
+            arguments = listOf(
+                navArgument("jobId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val jobId = backStackEntry.arguments?.getString("jobId")
+            val idToPass = if (jobId == "new") null else jobId
+            com.example.features.marketplace.CreateEditJobScreen(
+                jobId = idToPass,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(route = Screen.UserApplications.route) {
+            com.example.features.marketplace.UserApplicationsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToJobDetails = { jobId ->
+                    navController.navigate(Screen.JobDetails.createRoute(jobId))
+                }
             )
         }
     }

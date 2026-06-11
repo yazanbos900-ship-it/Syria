@@ -77,7 +77,8 @@ enum class SellerTab(
 @Composable
 fun StoreManagementScreen(
     onBack: () -> Unit,
-    onEditProduct: (Product) -> Unit = {}
+    onEditProduct: (Product) -> Unit = {},
+    onNavigateToManageJobs: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val isArabic = LanguageManager.isArabic(context)
@@ -124,6 +125,13 @@ fun StoreManagementScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToManageJobs) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Work,
+                            contentDescription = "Manage Jobs",
+                            tint = TextGray
+                        )
+                    }
                     // Quick Action Link Switching to Settings Tab
                     IconButton(onClick = { selectedTab = SellerTab.SETTINGS }) {
                         Icon(

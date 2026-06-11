@@ -74,6 +74,10 @@ object ServiceLocator {
         FirebasePaymentRepositoryImpl()
     }
 
+    val jobRepository: com.example.domain.repository.JobRepository by lazy {
+        com.example.data.repository.FirebaseJobRepositoryImpl()
+    }
+
     /**
      * Call this inside Application class or MainActivity's onCreate to set up base clients safely.
      */
