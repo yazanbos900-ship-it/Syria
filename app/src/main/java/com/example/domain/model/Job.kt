@@ -10,6 +10,8 @@ data class Job(
     val responsibilities: String = "",
     val location: String = "",
     val employmentType: String = "",
+    val category: String = "",
+    val experienceLevel: String = "",
     val salary: String = "", // Make it a string so they can specify "Negotiable" or range
     val status: String = "active", // active, paused, closed
     val createdAt: Long = System.currentTimeMillis(),

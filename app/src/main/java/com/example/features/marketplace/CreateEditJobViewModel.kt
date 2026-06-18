@@ -45,6 +45,8 @@ class CreateEditJobViewModel : ViewModel() {
         responsibilities: String,
         location: String,
         employmentType: String,
+        category: String,
+        experienceLevel: String,
         salary: String
     ) {
         viewModelScope.launch {
@@ -64,6 +66,8 @@ class CreateEditJobViewModel : ViewModel() {
                     responsibilities = responsibilities,
                     location = location,
                     employmentType = employmentType,
+                    category = category,
+                    experienceLevel = experienceLevel,
                     salary = salary,
                     status = existingJob?.status ?: "active",
                     createdAt = existingJob?.createdAt ?: System.currentTimeMillis(),

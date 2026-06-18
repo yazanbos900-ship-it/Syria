@@ -11,8 +11,9 @@ interface JobRepository {
     suspend fun getJobById(jobId: String): Job?
     
     fun getActiveJobs(): Flow<List<Job>>
+    fun getAllJobs(): Flow<List<Job>>
     fun getJobsByStoreId(storeId: String): Flow<List<Job>>
-    fun searchJobs(query: String, category: String? = null, location: String? = null, employmentType: String? = null): Flow<List<Job>>
+    fun searchJobs(query: String, category: String? = null, location: String? = null, employmentType: String? = null, experienceLevel: String? = null): Flow<List<Job>>
     
     suspend fun applyForJob(application: JobApplication): Result<String>
     suspend fun updateApplicationStatus(applicationId: String, status: String): Result<Unit>
@@ -20,4 +21,5 @@ interface JobRepository {
     fun getApplicationsForJob(jobId: String): Flow<List<JobApplication>>
     fun getApplicationsByStoreId(storeId: String): Flow<List<JobApplication>>
     fun getApplicationsByUserId(userId: String): Flow<List<JobApplication>>
+    fun getAllApplications(): Flow<List<JobApplication>>
 }

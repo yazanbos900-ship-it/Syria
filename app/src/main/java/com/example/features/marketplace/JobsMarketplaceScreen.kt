@@ -27,6 +27,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.domain.model.Job
 import com.example.ui.theme.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.Close
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +44,14 @@ fun JobsMarketplaceScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val selectedLocation by viewModel.selectedLocation.collectAsState()
+    val selectedEmploymentType by viewModel.selectedEmploymentType.collectAsState()
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val selectedExperienceLevel by viewModel.selectedExperienceLevel.collectAsState()
+    val availableLocations = viewModel.availableLocations
+    val availableEmploymentTypes = viewModel.availableEmploymentTypes
+    val availableCategories = viewModel.availableCategories
+    val availableExperienceLevels = viewModel.availableExperienceLevels
 
     val isArabic = java.util.Locale.getDefault().language == "ar"
 
@@ -72,7 +85,7 @@ fun JobsMarketplaceScreen(
                 placeholder = { Text(if (isArabic) "ابحث عن وظائف..." else "Search jobs...") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
                 shape = RoundedCornerShape(12.dp),
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null, tint = BrandTextMuted)
@@ -84,6 +97,67 @@ fun JobsMarketplaceScreen(
                     unfocusedContainerColor = BrandSurface
                 )
             )
+
+            // Filters Layer
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                    if (selectedLocation != null || selectedEmploymentType != null || selectedCategory != null || selectedExperienceLevel != null) {
+                        Surface(
+                            shape = CircleShape,
+                            color = BrandSoftGray,
+                            modifier = Modifier.clickable { viewModel.clearFilters() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    androidx.compose.material.icons.Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = BrandTextPrimary
+                                )
+                                Text(if (isArabic) "مسح" else "Clear", fontSize = 14.sp)
+                            }
+                        }
+                    }
+
+                    FilterDropdown(
+                        label = if (isArabic) "الاختصاص" else "Category",
+                        options = availableCategories,
+                        selectedOption = selectedCategory,
+                        onOptionSelected = { viewModel.setCategoryFilter(it) }
+                    )
+
+                    FilterDropdown(
+                        label = if (isArabic) "الخبرة" else "Experience",
+                        options = availableExperienceLevels,
+                        selectedOption = selectedExperienceLevel,
+                        onOptionSelected = { viewModel.setExperienceLevelFilter(it) }
+                    )
+
+                    FilterDropdown(
+                        label = if (isArabic) "الموقع" else "Location",
+                        options = availableLocations,
+                        selectedOption = selectedLocation,
+                        onOptionSelected = { viewModel.setLocationFilter(it) }
+                    )
+
+                    FilterDropdown(
+                        label = if (isArabic) "نوع الوظيفة" else "Employment Type",
+                        options = availableEmploymentTypes,
+                        selectedOption = selectedEmploymentType,
+                        onOptionSelected = { viewModel.setEmploymentTypeFilter(it) }
+                    )
+                }
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -221,3 +295,64 @@ fun JobCard(job: Job, isArabic: Boolean, onClick: () -> Unit) {
         }
     }
 }
+
+@Composable
+fun FilterDropdown(
+    label: String,
+    options: List<String>,
+    selectedOption: String?,
+    onOptionSelected: (String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = if (selectedOption != null) BrandPrimary.copy(alpha = 0.1f) else BrandSurface,
+            border = BorderStroke(1.dp, if (selectedOption != null) BrandPrimary else BrandSoftGray),
+            modifier = Modifier.clickable { expanded = true }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = selectedOption ?: label,
+                    color = if (selectedOption != null) BrandPrimary else BrandTextPrimary,
+                    fontSize = 14.sp
+                )
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = if (selectedOption != null) BrandPrimary else BrandTextMuted,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = BrandSurface
+        ) {
+            DropdownMenuItem(
+                text = { Text(if (java.util.Locale.getDefault().language == "ar") "الكل" else "All", color = BrandTextPrimary) },
+                onClick = {
+                    onOptionSelected(null)
+                    expanded = false
+                }
+            )
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option, color = BrandTextPrimary) },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+

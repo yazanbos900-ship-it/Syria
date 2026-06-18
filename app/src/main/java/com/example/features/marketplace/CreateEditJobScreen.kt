@@ -32,11 +32,17 @@ fun CreateEditJobScreen(
     var requirements by remember { mutableStateOf("") }
     var responsibilities by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var employmentType by remember { mutableStateOf("Full Time") }
+    var employmentType by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("") }
+    var experienceLevel by remember { mutableStateOf("") }
     var salary by remember { mutableStateOf("") }
 
-    val employmentTypes = listOf("Full Time", "Part Time", "Contract", "Freelance", "Internship")
-    var expanded by remember { mutableStateOf(false) }
+    val employmentTypes = listOf("دوام كامل", "دوام جزئي", "عن بعد", "عقد", "تطوع", "تدريب", "مستقل")
+    val categories = listOf("إدارة أعمال", "تقنية المعلومات", "إدخال بيانات", "لوجستيات", "مبيعات", "تسويق", "هندسة", "طب وصيدلة", "موارد بشرية", "محاسبة", "خدمة عملاء", "تصميم", "أخرى")
+    val experienceLevels = listOf("حديث التخرج", "مبتدئ (جونيور)", "متوسط", "خبير (سينيور)", "مدير")
+    var expandedEmp by remember { mutableStateOf(false) }
+    var expandedCat by remember { mutableStateOf(false) }
+    var expandedExp by remember { mutableStateOf(false) }
 
     LaunchedEffect(jobId) {
         if (jobId != null) {
@@ -52,6 +58,8 @@ fun CreateEditJobScreen(
             responsibilities = job!!.responsibilities
             location = job!!.location
             employmentType = job!!.employmentType
+            category = job!!.category
+            experienceLevel = job!!.experienceLevel
             salary = job!!.salary
         }
     }
@@ -137,27 +145,83 @@ fun CreateEditJobScreen(
             )
 
             ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded }
+                expanded = expandedEmp,
+                onExpandedChange = { expandedEmp = !expandedEmp }
             ) {
                 OutlinedTextField(
                     value = employmentType,
                     onValueChange = { },
                     readOnly = true,
                     label = { Text(if (isArabic) "نوع التوظيف" else "Employment Type") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedEmp) },
                     modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
                 ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    expanded = expandedEmp,
+                    onDismissRequest = { expandedEmp = false }
                 ) {
                     employmentTypes.forEach { type ->
                         DropdownMenuItem(
                             text = { Text(type) },
                             onClick = {
                                 employmentType = type
-                                expanded = false
+                                expandedEmp = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            ExposedDropdownMenuBox(
+                expanded = expandedCat,
+                onExpandedChange = { expandedCat = !expandedCat }
+            ) {
+                OutlinedTextField(
+                    value = category,
+                    onValueChange = { },
+                    readOnly = true,
+                    label = { Text(if (isArabic) "الاختصاص" else "Category") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCat) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expandedCat,
+                    onDismissRequest = { expandedCat = false }
+                ) {
+                    categories.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text(cat) },
+                            onClick = {
+                                category = cat
+                                expandedCat = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            ExposedDropdownMenuBox(
+                expanded = expandedExp,
+                onExpandedChange = { expandedExp = !expandedExp }
+            ) {
+                OutlinedTextField(
+                    value = experienceLevel,
+                    onValueChange = { },
+                    readOnly = true,
+                    label = { Text(if (isArabic) "الخبرة" else "Experience Level") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedExp) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expandedExp,
+                    onDismissRequest = { expandedExp = false }
+                ) {
+                    experienceLevels.forEach { exp ->
+                        DropdownMenuItem(
+                            text = { Text(exp) },
+                            onClick = {
+                                experienceLevel = exp
+                                expandedExp = false
                             }
                         )
                     }
@@ -189,6 +253,8 @@ fun CreateEditJobScreen(
                                     responsibilities = responsibilities,
                                     location = location,
                                     employmentType = employmentType,
+                                    category = category,
+                                    experienceLevel = experienceLevel,
                                     salary = salary
                                 )
                             }

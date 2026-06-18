@@ -50,6 +50,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -72,6 +73,15 @@ sealed class AdminModule(
         icon = Icons.Default.Storefront,
         descriptionAr = "مراجعة، تعديل، تعطيل، وحذف المتاجر المسجلة",
         descriptionEn = "Review, edit, disable, or delete registered stores"
+    )
+
+    object Jobs : AdminModule(
+        id = "jobs",
+        titleAr = "إدارة الوظائف",
+        titleEn = "Manage Jobs",
+        icon = Icons.Default.Work,
+        descriptionAr = "مراجعة وحذف وإدارة إعلانات الوظائف والمتقدمين",
+        descriptionEn = "Review, delete, and manage job postings and applications"
     )
 
     object Products : AdminModule(
@@ -143,6 +153,8 @@ data class AdminUiState(
     val products: List<Product> = emptyList(),
     val users: List<User> = emptyList(),
     val orders: List<Order> = emptyList(),
+    val jobs: List<com.example.domain.model.Job> = emptyList(),
+    val applications: List<com.example.domain.model.JobApplication> = emptyList(),
     val subscriptionRequests: List<SubscriptionRequest> = emptyList(),
     val interactions: List<Map<String, Any>> = emptyList(),
     val settings: com.example.core.utils.MarketplaceSettingsManager.MarketplaceSettings = com.example.core.utils.MarketplaceSettingsManager.settings.value,
@@ -229,6 +241,32 @@ class AdminViewModel : ViewModel() {
                         _state.update { it.copy(subscriptionRequests = reqs) }
                     }
                 }
+        }
+
+        // Collect Jobs dynamically
+        viewModelScope.launch {
+            try {
+                ServiceLocator.jobRepository.getAllJobs()
+                    .catch { e -> Log.e("AdminVM", "Error collecting jobs", e) }
+                    .collect { jobList ->
+                        _state.update { it.copy(jobs = jobList) }
+                    }
+            } catch (e: Exception) {
+                Log.e("AdminVM", "Crash avoided on jobs", e)
+            }
+        }
+
+        // Collect Applications dynamically
+        viewModelScope.launch {
+            try {
+                ServiceLocator.jobRepository.getAllApplications()
+                    .catch { e -> Log.e("AdminVM", "Error collecting applications", e) }
+                    .collect { appList ->
+                        _state.update { it.copy(applications = appList) }
+                    }
+            } catch (e: Exception) {
+                Log.e("AdminVM", "Crash avoided on applications", e)
+            }
         }
 
         // Load Interactions dynamically
@@ -428,6 +466,51 @@ class AdminViewModel : ViewModel() {
         }
     }
 
+    fun logAdminAction(action: String) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            val adminId = authRepo.getCurrentUserSession()?.id ?: "unknown"
+            val map = mapOf(
+                "adminId" to adminId,
+                "action" to action,
+                "timestamp" to System.currentTimeMillis()
+            )
+            db.collection("audit_logs").add(map)
+        }
+    }
+
+    fun updateJobStatusAdmin(jobId: String, newStatus: String, onResult: (Boolean) -> Unit) {
+        val db = firestore
+        if (db == null) {
+            onResult(false)
+            return
+        }
+        db.collection("jobs").document(jobId).update("status", newStatus)
+            .addOnSuccessListener {
+                logAdminAction("Updated job $jobId status to $newStatus")
+                onResult(true)
+            }
+            .addOnFailureListener {
+                onResult(false)
+            }
+    }
+
+    fun deleteJobAdmin(jobId: String, onResult: (Boolean) -> Unit) {
+        val db = firestore
+        if (db == null) {
+            onResult(false)
+            return
+        }
+        db.collection("jobs").document(jobId).delete()
+            .addOnSuccessListener {
+                logAdminAction("Deleted job $jobId")
+                onResult(true)
+            }
+            .addOnFailureListener {
+                onResult(false)
+            }
+    }
+
     // --- GLOBAL EXCHANGE RATE ACTIONS ---
     fun updateGlobalExchangeRate(rate: Double, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
@@ -582,6 +665,7 @@ fun AdminDashboardScreen(
                     AdminDashboardModulesListing(
                         modules = listOf(
                             AdminModule.Stores,
+                            AdminModule.Jobs,
                             AdminModule.Products,
                             AdminModule.Users,
                             AdminModule.Orders,
@@ -614,6 +698,12 @@ fun AdminDashboardScreen(
                     when (state.selectedModule) {
                         is AdminModule.Stores -> AdminStoresManager(
                             stores = state.stores,
+                            isArabic = isArabic,
+                            viewModel = viewModel
+                        )
+                        is AdminModule.Jobs -> AdminJobsManager(
+                            jobs = state.jobs,
+                            applications = state.applications,
                             isArabic = isArabic,
                             viewModel = viewModel
                         )
@@ -924,6 +1014,21 @@ fun AdminStoresManager(
                         Spacer(modifier = Modifier.height(12.dp))
                         HorizontalDivider(color = BrandSoftGray, thickness = 1.dp)
                         Spacer(modifier = Modifier.height(8.dp))
+
+                        // --- Store Job Inspection ---
+                        val storeJobs = viewModel.state.collectAsState().value.jobs.filter { it.storeId == store.id }
+                        if (storeJobs.isNotEmpty()) {
+                            val storeApps = viewModel.state.value.applications.filter { app -> storeJobs.any { it.id == app.jobId } }
+                            val sActiveJobsCount = storeJobs.count { it.status == "active" }
+                            val sClosedJobsCount = storeJobs.count { it.status == "closed" }
+                            Text(
+                                text = "Jobs: ${storeJobs.size} | Active: $sActiveJobsCount | Closed: $sClosedJobsCount | Applicants: ${storeApps.size}",
+                                fontSize = 11.sp,
+                                color = BrandPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(bottom = 8.dp).background(BrandPrimary.copy(alpha = 0.1f), RoundedCornerShape(4.dp)).padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -2981,5 +3086,227 @@ fun AdminExchangeRateManager(
             },
             containerColor = BrandSurface
         )
+    }
+}
+
+@Composable
+fun AdminStatCard(title: String, value: String, icon: ImageVector) {
+    Card(
+        modifier = Modifier.width(140.dp),
+        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(imageVector = icon, contentDescription = title, tint = BrandPrimary, modifier = Modifier.size(24.dp))
+            Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = BrandTextPrimary)
+            Text(text = title, fontSize = 12.sp, color = BrandTextMuted)
+        }
+    }
+}
+
+@Composable
+fun AdminJobsManager(
+    jobs: List<com.example.domain.model.Job>,
+    applications: List<com.example.domain.model.JobApplication>,
+    isArabic: Boolean,
+    viewModel: AdminViewModel
+) {
+    val activeJobsCount = jobs.count { it.status == "active" }
+    val pausedJobsCount = jobs.count { it.status == "paused" }
+    val closedJobsCount = jobs.count { it.status == "closed" }
+
+    val todayMillis = System.currentTimeMillis() - 24 * 60 * 60 * 1000
+    val monthMillis = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
+    val jobsToday = jobs.count { it.createdAt >= todayMillis }
+    val jobsMonth = jobs.count { it.createdAt >= monthMillis }
+    val avgApps = if (jobs.isNotEmpty()) applications.size / jobs.size.toFloat() else 0f
+    
+    val storeJobsMap = jobs.groupBy { it.storeId }
+    val mostActiveStoreId = storeJobsMap.maxByOrNull { it.value.size }?.key ?: ""
+    val mostActiveStoreName = jobs.find { it.storeId == mostActiveStoreId }?.storeName ?: "N/A"
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Stats Row
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AdminStatCard(title = if (isArabic) "إجمالي الوظائف" else "Total Jobs", value = jobs.size.toString(), icon = Icons.Default.Work)
+            AdminStatCard(title = if (isArabic) "نشط" else "Active", value = activeJobsCount.toString(), icon = Icons.Default.CheckCircle)
+            AdminStatCard(title = if (isArabic) "مغلق" else "Closed", value = closedJobsCount.toString(), icon = Icons.Default.Close)
+            AdminStatCard(title = if (isArabic) "اليوم" else "Today", value = jobsToday.toString(), icon = Icons.Default.Today)
+            AdminStatCard(title = if (isArabic) "هذا الشهر" else "This Month", value = jobsMonth.toString(), icon = Icons.Default.DateRange)
+            AdminStatCard(title = if (isArabic) "إجمالي الطلبات" else "Total Apps", value = applications.size.toString(), icon = Icons.Default.People)
+            AdminStatCard(title = if (isArabic) "متوسط الطلب/العرض" else "Avg Apps/Job", value = String.format("%.1f", avgApps), icon = Icons.Default.Equalizer)
+            AdminStatCard(title = if (isArabic) "المتجر الأنشط" else "Top Store", value = mostActiveStoreName.take(10), icon = Icons.Default.Storefront)
+        }
+
+        Text(
+            text = if (isArabic) "إعلانات الوظائف" else "Job Postings",
+            color = BrandTextPrimary,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp
+        )
+
+        val context = LocalContext.current
+        jobs.forEach { job ->
+            val jobApps = applications.filter { it.jobId == job.id }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(job.title, fontWeight = FontWeight.Bold, color = BrandTextPrimary, fontSize = 16.sp)
+                        val statusColor = when (job.status) {
+                            "active" -> BrandSuccess
+                            "paused" -> BrandGoldenYellow
+                            else -> BrandError
+                        }
+                        Text(
+                            text = job.status.uppercase(),
+                            color = statusColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+
+                    Text("${if (isArabic) "المتجر:" else "Store:"} ${job.storeName}", color = BrandTextMuted, fontSize = 14.sp)
+                    Text("${if (isArabic) "الطلبات:" else "Applications:"} ${jobApps.size}", color = BrandPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        if (job.status == "active") {
+                            Button(
+                                onClick = {
+                                    viewModel.updateJobStatusAdmin(job.id, "paused") { success ->
+                                        if (success) Toast.makeText(context, if (isArabic) "تم الإيقاف" else "Paused", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandGoldenYellow),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (isArabic) "إيقاف مؤقت" else "Pause")
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    viewModel.updateJobStatusAdmin(job.id, "active") { success ->
+                                        if (success) Toast.makeText(context, if (isArabic) "تم التفعيل" else "Activated", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandSuccess),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (isArabic) "تنشيط" else "Activate")
+                            }
+                        }
+
+                        if (job.status != "closed") {
+                            Button(
+                                onClick = {
+                                    viewModel.updateJobStatusAdmin(job.id, "closed") { success ->
+                                        if (success) Toast.makeText(context, if (isArabic) "تم الإغلاق" else "Closed", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandError.copy(alpha = 0.8f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(if (isArabic) "إغلاق النهائى" else "Close")
+                            }
+                        }
+
+                        IconButton(onClick = {
+                            viewModel.deleteJobAdmin(job.id) { success ->
+                                if (success) Toast.makeText(context, if (isArabic) "تم الحذف" else "Deleted", Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = BrandError)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (jobs.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                Text(if (isArabic) "لا يوجد وظائف" else "No jobs found", color = BrandTextMuted)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = BrandSoftGray, thickness = 1.dp)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = if (isArabic) "سجل الطلبات" else "Applications Ledger",
+            color = BrandTextPrimary,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp
+        )
+
+        applications.forEach { app ->
+            val jobTitle = jobs.find { it.id == app.jobId }?.title ?: "Unknown Job"
+            val storeName = jobs.find { it.id == app.jobId }?.storeName ?: "Unknown Store"
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = app.applicantName,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary,
+                        fontSize = 15.sp
+                    )
+                    Text(
+                        text = "${if (isArabic) "الوظيفة:" else "Job:"} $jobTitle | ${if (isArabic) "المتجر:" else "Store:"} $storeName",
+                        color = BrandTextMuted,
+                        fontSize = 13.sp
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = java.text.DateFormat.getDateTimeInstance().format(java.util.Date(app.createdAt)),
+                            fontSize = 11.sp,
+                            color = BrandTextMuted
+                        )
+                        
+                        val statusColor = when (app.status) {
+                            "accepted" -> BrandSuccess
+                            "rejected" -> BrandError
+                            "reviewed" -> BrandGoldenYellow
+                            else -> BrandTextMuted
+                        }
+                        Text(
+                            text = app.status.uppercase(),
+                            color = statusColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .background(statusColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (applications.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                Text(if (isArabic) "لا يوجد طلبات" else "No applications found", color = BrandTextMuted)
+            }
+        }
     }
 }

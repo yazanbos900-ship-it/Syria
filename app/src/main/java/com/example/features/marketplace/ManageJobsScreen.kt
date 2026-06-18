@@ -104,7 +104,7 @@ fun ManageJobsScreen(
                         val jobApps = applications.filter { it.jobId == job.id }
                         ManageJobCard(
                             job = job,
-                            applicantCount = jobApps.size,
+                            applications = jobApps,
                             isArabic = isArabic,
                             onEdit = { onNavigateToEditJob(job.id) },
                             onDelete = { viewModel.deleteJob(job.id) },
@@ -145,13 +145,18 @@ fun ManageJobsScreen(
 @Composable
 fun ManageJobCard(
     job: Job,
-    applicantCount: Int,
+    applications: List<JobApplication>,
     isArabic: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onToggleStatus: () -> Unit,
     onViewApplicants: () -> Unit
 ) {
+    val pendingCount = applications.count { it.status == "pending" }
+    val reviewedCount = applications.count { it.status == "reviewed" }
+    val acceptedCount = applications.count { it.status == "accepted" }
+    val rejectedCount = applications.count { it.status == "rejected" }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = BrandSurface),
@@ -175,12 +180,26 @@ fun ManageJobCard(
             }
             
             Text(job.employmentType, color = BrandTextMuted, fontSize = 14.sp)
+
+            // Status Breakdown
+            if (applications.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StatusPill("Pending: $pendingCount", BrandTextMuted)
+                    StatusPill("Reviewed: $reviewedCount", BrandGoldenYellow)
+                    StatusPill("Accepted: $acceptedCount", BrandSuccess)
+                    StatusPill("Rejected: $rejectedCount", BrandError)
+                }
+            }
             
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onViewApplicants, colors = ButtonDefaults.textButtonColors(contentColor = BrandPrimary)) {
                     Icon(Icons.Default.People, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "$applicantCount ${if (isArabic) "متقدمين" else "Applicants"}")
+                    Text(text = "${applications.size} ${if (isArabic) "متقدمين" else "Applications"}")
                 }
                 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -197,7 +216,21 @@ fun ManageJobCard(
 }
 
 @Composable
+fun StatusPill(text: String, color: androidx.compose.ui.graphics.Color) {
+    Text(
+        text = text,
+        color = color,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    )
+}
+
+@Composable
 fun ApplicantCard(application: JobApplication, isArabic: Boolean, onUpdateStatus: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = BrandBackground)) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(application.applicantName, fontWeight = FontWeight.Bold, color = BrandTextPrimary)
@@ -205,6 +238,25 @@ fun ApplicantCard(application: JobApplication, isArabic: Boolean, onUpdateStatus
             Text(application.phone, color = BrandTextMuted, fontSize = 12.sp)
             if (application.message.isNotBlank()) {
                 Text(application.message, color = BrandTextPrimary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+            }
+            if (!application.cvUrl.isNullOrBlank()) {
+                TextButton(
+                    onClick = {
+                        try {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
+                            intent.data = android.net.Uri.parse(application.cvUrl)
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // ignore open error
+                        }
+                    },
+                    modifier = Modifier.padding(top = 4.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Default.People, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (isArabic) "يوجد سيرة ذاتية مرفقة (CV)" else "View CV", fontSize = 14.sp)
+                }
             }
             
             val statusColor = when (application.status) {
@@ -224,6 +276,9 @@ fun ApplicantCard(application: JobApplication, isArabic: Boolean, onUpdateStatus
                 )
                 
                 Row {
+                    if (application.status == "pending") {
+                        TextButton(onClick = { onUpdateStatus("reviewed") }) { Text(if (isArabic) "مراجعة" else "Reviewed", color = BrandGoldenYellow) }
+                    }
                     TextButton(onClick = { onUpdateStatus("accepted") }) { Text(if (isArabic) "قبول" else "Accept", color = BrandSuccess) }
                     TextButton(onClick = { onUpdateStatus("rejected") }) { Text(if (isArabic) "رفض" else "Reject", color = BrandError) }
                 }

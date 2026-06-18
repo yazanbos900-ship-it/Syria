@@ -1,5 +1,7 @@
 package com.example
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.unit.dp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,6 +25,9 @@ import android.content.Context
 import com.example.core.utils.LanguageManager
 import com.example.ui.theme.ThemeManager
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+
 class MainActivity : ComponentActivity() {
 
   override fun attachBaseContext(newBase: Context) {
@@ -32,6 +37,13 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    
+    val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+    Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
+        val sharedPrefs = getSharedPreferences("waset_crash", Context.MODE_PRIVATE)
+        sharedPrefs.edit().putString("last_crash", ex.stackTraceToString()).commit()
+        defaultHandler?.uncaughtException(thread, ex)
+    }
     
     // Initialize ThemeManager to load user's theme mode selection
     ThemeManager.init(applicationContext)
@@ -67,28 +79,43 @@ class MainActivity : ComponentActivity() {
             else -> com.example.navigation.Screen.Onboarding.route
         }
 
-        // Live track current route for showing/hiding BottomNavigationBar
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = navBackStackEntry?.destination?.route
+        val crashPrefs = getSharedPreferences("waset_crash", Context.MODE_PRIVATE)
+        val lastCrash = crashPrefs.getString("last_crash", null)
 
-        val showBottomBar = currentRoute in listOf(
-            com.example.navigation.Screen.Home.route,
-            com.example.navigation.Screen.Search.route,
-            com.example.navigation.Screen.Cart.route,
-            com.example.navigation.Screen.Profile.route,
-            com.example.navigation.Screen.AddProduct.route
-        )
-
-        Scaffold(
-            bottomBar = {
-                if (showBottomBar) {
-                    com.example.components.BottomNavigationBar(navController = navController)
+        if (lastCrash != null) {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
+            ) {
+                androidx.compose.material3.Text("CRASH DETECTED", color = androidx.compose.ui.graphics.Color.Red, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                androidx.compose.material3.Text(lastCrash, color = androidx.compose.ui.graphics.Color.White)
+                androidx.compose.material3.Button(onClick = { crashPrefs.edit().remove("last_crash").apply() }) {
+                    androidx.compose.material3.Text("Clear Crash & Reload")
                 }
-            },
-            containerColor = com.example.ui.theme.BrandBackground
-        ) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
-                NavigationGraph(navController = navController, startDestination = startRoute)
+            }
+        } else {
+            // Live track current route for showing/hiding BottomNavigationBar
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
+
+            val showBottomBar = currentRoute in listOf(
+                com.example.navigation.Screen.Home.route,
+                com.example.navigation.Screen.Search.route,
+                com.example.navigation.Screen.Cart.route,
+                com.example.navigation.Screen.Profile.route,
+                com.example.navigation.Screen.AddProduct.route
+            )
+
+            Scaffold(
+                bottomBar = {
+                    if (showBottomBar) {
+                        com.example.components.BottomNavigationBar(navController = navController)
+                    }
+                },
+                containerColor = com.example.ui.theme.BrandBackground
+            ) { innerPadding ->
+                Box(modifier = Modifier.padding(innerPadding)) {
+                    NavigationGraph(navController = navController, startDestination = startRoute)
+                }
             }
         }
       }
