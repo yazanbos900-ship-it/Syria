@@ -140,6 +140,8 @@ object SharedFilterState {
     val selectedSortOptionState = mutableStateOf(SortOption.Newest)
     val categoriesListState = mutableStateOf(listOf(Category(id = "All", nameAr = "الكل", nameEn = "All")))
     val selectedConditionFilterState = mutableStateOf("All")
+    val verifiedStoresOnlyState = mutableStateOf(false)
+    val selectedStoreSubscriptionFilterState = mutableStateOf("All")
 
     var selectedCategoryFilter by selectedCategoryFilterState
     var maxPriceRange by maxPriceRangeState
@@ -148,13 +150,17 @@ object SharedFilterState {
     var selectedSortOption by selectedSortOptionState
     var categoriesList by categoriesListState
     var selectedConditionFilter by selectedConditionFilterState
+    var verifiedStoresOnly by verifiedStoresOnlyState
+    var selectedStoreSubscriptionFilter by selectedStoreSubscriptionFilterState
 
     val isActive: Boolean
         get() = selectedCategoryFilter != "All" ||
                 maxPriceRange < 300f ||
                 minRatingFilter > 0.0 ||
                 deliveryFilterSameDayOnly ||
-                selectedConditionFilter != "All"
+                selectedConditionFilter != "All" ||
+                verifiedStoresOnly ||
+                selectedStoreSubscriptionFilter != "All"
 
     fun init(productRepository: ProductRepository, scope: CoroutineScope) {
         scope.launch {
@@ -171,6 +177,8 @@ object SharedFilterState {
         deliveryFilterSameDayOnly = false
         selectedSortOption = SortOption.Newest
         selectedConditionFilter = "All"
+        verifiedStoresOnly = false
+        selectedStoreSubscriptionFilter = "All"
     }
 }
 
@@ -184,6 +192,8 @@ fun FilterBottomSheetContent(
     var minRatingFilter by SharedFilterState.minRatingFilterState
     var deliveryFilterSameDayOnly by SharedFilterState.deliveryFilterSameDayOnlyState
     var selectedConditionFilter by SharedFilterState.selectedConditionFilterState
+    var verifiedStoresOnly by SharedFilterState.verifiedStoresOnlyState
+    var selectedStoreSubscriptionFilter by SharedFilterState.selectedStoreSubscriptionFilterState
     val filterCategories = SharedFilterState.categoriesList
 
     val ratingOptions = listOf(0.0, 4.0, 4.5, 4.8)
@@ -204,6 +214,7 @@ fun FilterBottomSheetContent(
         )
 
         // 1. Horizontal Category Selector row in filter drawer
+        val isArabic = com.example.core.utils.LanguageManager.isArabic(androidx.compose.ui.platform.LocalContext.current)
         Text(
             text = androidx.compose.ui.res.stringResource(R.string.filter_by_category),
             fontSize = 13.sp,
@@ -218,7 +229,6 @@ fun FilterBottomSheetContent(
                 .padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val isArabic = com.example.core.utils.LanguageManager.isArabic(androidx.compose.ui.platform.LocalContext.current)
             filterCategories.forEach { category ->
                 val catId = category.id
                 val catDisplayName = category.getName(isArabic)
@@ -240,8 +250,63 @@ fun FilterBottomSheetContent(
             }
         }
 
+        // Store Specific Filters Row
+        Text(
+            text = if (isArabic) "تصفية المتاجر" else "Store Filters",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = BrandTextPrimary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Verified Stores Only
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (verifiedStoresOnly) BrandPrimary else BrandBackground)
+                    .clickable { verifiedStoresOnly = !verifiedStoresOnly }
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = if (isArabic) "متاجر موثقة فقط" else "Verified Stores Only",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (verifiedStoresOnly) Color.White else BrandTextPrimary
+                )
+            }
+            
+            val subscriptionOptions = listOf(
+                "All" to (if (isArabic) "حسب الاشتراك (الكل)" else "Subscription (All)"),
+                "Growth" to (if (isArabic) "باقة النمو" else "Growth Tier"),
+                "Pro" to (if (isArabic) "باقة المحترفين" else "Pro Tier")
+            )
+            
+            subscriptionOptions.forEach { subOpt ->
+                val isSelected = selectedStoreSubscriptionFilter == subOpt.first
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) BrandPrimary else BrandBackground)
+                        .clickable { selectedStoreSubscriptionFilter = subOpt.first }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = subOpt.second,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) Color.White else BrandTextPrimary
+                    )
+                }
+            }
+        }
+
         // Horizontal Condition Selector row in filter drawer
-        val isArabic = com.example.core.utils.LanguageManager.isArabic(androidx.compose.ui.platform.LocalContext.current)
         Text(
             text = if (isArabic) "تصفية حسب حالة السلعة" else "Filter by Condition",
             fontSize = 13.sp,

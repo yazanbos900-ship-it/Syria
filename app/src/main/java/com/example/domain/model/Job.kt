@@ -20,5 +20,8 @@ data class Job(
     // Store inherited data
     val storeName: String = "",
     val storeLogoUrl: String? = null,
-    val isStoreVerified: Boolean = false
+    val isStoreVerified: Boolean = false,
+    val isFeatured: Boolean = false,
+    
+    val contactWhatsApp: String = ""
 )

@@ -91,6 +91,18 @@ fun NavigationGraph(
                 },
                 onJobsSelected = {
                     navController.navigate(Screen.JobsMarketplace.route)
+                },
+                onAllStoresSelected = {
+                    navController.navigate(Screen.AllStores.route)
+                }
+            )
+        }
+
+        composable(route = Screen.AllStores.route) {
+            com.example.features.marketplace.AllStoresScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onStoreSelected = { storeId ->
+                    navController.navigate(Screen.StoreDetail.createRoute(storeId))
                 }
             )
         }
@@ -218,11 +230,21 @@ fun NavigationGraph(
                 onNavigateToUserApplications = {
                     navController.navigate(Screen.UserApplications.route)
                 },
+                onNavigateToSubscriptionPlans = {
+                    navController.navigate(Screen.SubscriptionPlans.route)
+                },
                 onSignOut = {
                     navController.navigate(Screen.Authentication.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(route = Screen.SubscriptionPlans.route) {
+            com.example.features.marketplace.SubscriptionPlansScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCreateStore = { navController.navigate(Screen.CreateStore.route) }
             )
         }
 

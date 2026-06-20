@@ -31,7 +31,7 @@ class HomeStoresViewModel(private val repository: StoreRepository) : ViewModel()
 
     fun loadStores() {
         viewModelScope.launch {
-            repository.getActiveStores().collectLatest { result ->
+            repository.getAllStores().collectLatest { result ->
                 result.onSuccess { stores ->
                     _state.update { it.copy(stores = stores, isLoading = false, error = null) }
                 }.onFailure { e ->

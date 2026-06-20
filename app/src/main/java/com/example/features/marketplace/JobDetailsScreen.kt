@@ -36,11 +36,9 @@ fun JobDetailsScreen(
     val job by viewModel.job.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
-    val applyState by viewModel.applyState.collectAsState()
     
-    var showApplyDialog by remember { mutableStateOf(false) }
-
     val isArabic = java.util.Locale.getDefault().language == "ar"
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
 
     LaunchedEffect(jobId) {
         viewModel.loadJob(jobId)
@@ -64,16 +62,39 @@ fun JobDetailsScreen(
         },
         bottomBar = {
             if (job != null && job?.status == "active") {
+                val j = job!!
                 BottomAppBar(
                     containerColor = BrandSurface,
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
+                    val hasWhatsApp = j.contactWhatsApp.isNotBlank()
                     Button(
-                        onClick = { showApplyDialog = true },
+                        onClick = { 
+                            if (hasWhatsApp) {
+                                val message = if (isArabic) {
+                                    "مرحباً، أرغب بالتقدم على وظيفة:\n${j.title}\nمن خلال تطبيق WasetPlus."
+                                } else {
+                                    "Hello,\nI would like to apply for:\n${j.title}\nthrough WasetPlus."
+                                }
+                                val encodedMessage = java.net.URLEncoder.encode(message, "UTF-8")
+                                // If stored as +963930111157, remove the + for the wa.me link
+                                val pureNumber = j.contactWhatsApp.removePrefix("+")
+                                uriHandler.openUri("https://wa.me/$pureNumber?text=$encodedMessage")
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                        enabled = hasWhatsApp,
+                        colors = ButtonDefaults.buttonColors(containerColor = if (hasWhatsApp) BrandPrimary else BrandSoftGray)
                     ) {
-                        Text(if (isArabic) "تقديم طلب" else "Apply Now", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(
+                            if (!hasWhatsApp) {
+                                if (isArabic) "رقم التواصل غير متوفر" else "Contact number unavailable"
+                            } else {
+                                if (isArabic) "تقديم طلب" else "Apply Now"
+                            }, 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 16.sp
+                        )
                     }
                 }
             }
@@ -225,15 +246,6 @@ fun JobDetailsScreen(
             }
         }
     }
-
-    if (showApplyDialog && job != null) {
-        ApplyForJobDialog(
-            job = job!!,
-            viewModel = viewModel,
-            isArabic = isArabic,
-            onDismiss = { showApplyDialog = false }
-        )
-    }
 }
 
 @Composable
@@ -250,97 +262,3 @@ fun BadgeInfo(icon: androidx.compose.ui.graphics.vector.ImageVector, text: Strin
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ApplyForJobDialog(
-    job: Job,
-    viewModel: JobDetailsViewModel,
-    isArabic: Boolean,
-    onDismiss: () -> Unit
-) {
-    val applyState by viewModel.applyState.collectAsState()
-    val currentUser by viewModel.currentUser.collectAsState()
-
-    var name by remember { mutableStateOf(currentUser?.name ?: "") }
-    var phone by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf(currentUser?.email ?: "") }
-    var message by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = {
-            if (applyState !is JobDetailsViewModel.UiState.Loading) {
-                viewModel.resetApplyState()
-                onDismiss()
-            }
-        },
-        containerColor = BrandSurface,
-        title = { Text(if (isArabic) "تقديم طلب للوظيفة" else "Apply for Job") },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                if (applyState is JobDetailsViewModel.UiState.Error) {
-                    Text((applyState as JobDetailsViewModel.UiState.Error).message, color = MaterialTheme.colorScheme.error)
-                } else if (applyState is JobDetailsViewModel.UiState.Success) {
-                    Text((applyState as JobDetailsViewModel.UiState.Success).message, color = BrandPrimary)
-                } else {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text(if (isArabic) "الاسم الكامل" else "Full Name") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it },
-                        label = { Text(if (isArabic) "رقم الهاتف" else "Phone Number") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text(if (isArabic) "البريد الإلكتروني" else "Email") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = message,
-                        onValueChange = { message = it },
-                        label = { Text(if (isArabic) "رسالة التقديم (اختياري)" else "Cover Letter/Message") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
-                    )
-                    // CV URL could be added here if we had an upload flow in this dialog.
-                }
-            }
-        },
-        confirmButton = {
-            if (applyState !is JobDetailsViewModel.UiState.Success) {
-                Button(
-                    onClick = { viewModel.applyForJob(job, name, phone, email, message, null) },
-                    enabled = applyState !is JobDetailsViewModel.UiState.Loading && name.isNotBlank() && phone.isNotBlank() && email.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
-                ) {
-                    if (applyState is JobDetailsViewModel.UiState.Loading) {
-                        CircularProgressIndicator(color = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text(if (isArabic) "إرسال" else "Submit")
-                    }
-                }
-            } else {
-                Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)) {
-                    Text(if (isArabic) "إغلاق" else "Close")
-                }
-            }
-        },
-        dismissButton = {
-            if (applyState !is JobDetailsViewModel.UiState.Loading && applyState !is JobDetailsViewModel.UiState.Success) {
-                TextButton(onClick = onDismiss) {
-                    Text(if (isArabic) "إلغاء" else "Cancel")
-                }
-            }
-        }
-    )
-}

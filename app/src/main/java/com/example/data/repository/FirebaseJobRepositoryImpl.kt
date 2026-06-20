@@ -46,10 +46,16 @@ class FirebaseJobRepositoryImpl : JobRepository {
         }
     }
 
+    private fun mapJobWithMockNumber(doc: com.google.firebase.firestore.DocumentSnapshot): Job? {
+        return doc.toObject(Job::class.java)?.let { job ->
+            if (job.contactWhatsApp.isBlank()) job.copy(contactWhatsApp = "+963930111157") else job
+        }
+    }
+
     override suspend fun getJobById(jobId: String): Job? {
         return try {
             val document = jobsCollection.document(jobId).get().await()
-            document.toObject(Job::class.java)
+            mapJobWithMockNumber(document)
         } catch (e: Exception) {
             null
         }
@@ -63,7 +69,7 @@ class FirebaseJobRepositoryImpl : JobRepository {
                     return@addSnapshotListener
                 }
                 
-                val jobs = snapshot?.documents?.mapNotNull { it.toObject(Job::class.java) } ?: emptyList()
+                val jobs = snapshot?.documents?.mapNotNull { mapJobWithMockNumber(it) } ?: emptyList()
                 trySend(jobs.sortedByDescending { it.createdAt })
             }
             
@@ -91,7 +97,7 @@ class FirebaseJobRepositoryImpl : JobRepository {
                     return@addSnapshotListener
                 }
                 
-                val jobs = snapshot?.documents?.mapNotNull { it.toObject(Job::class.java) }?.filter { it.status == "active" } ?: emptyList()
+                val jobs = snapshot?.documents?.mapNotNull { mapJobWithMockNumber(it) }?.filter { it.status == "active" } ?: emptyList()
                 trySend(jobs)
             }
             
@@ -106,7 +112,7 @@ class FirebaseJobRepositoryImpl : JobRepository {
                     close(error)
                     return@addSnapshotListener
                 }
-                val jobs = snapshot?.documents?.mapNotNull { it.toObject(Job::class.java) } ?: emptyList()
+                val jobs = snapshot?.documents?.mapNotNull { mapJobWithMockNumber(it) } ?: emptyList()
                 trySend(jobs.sortedByDescending { it.createdAt })
             }
         awaitClose { listener.remove() }
@@ -127,7 +133,7 @@ class FirebaseJobRepositoryImpl : JobRepository {
                 return@addSnapshotListener
             }
             
-            var jobs = snapshot?.documents?.mapNotNull { it.toObject(Job::class.java) } ?: emptyList()
+            var jobs = snapshot?.documents?.mapNotNull { mapJobWithMockNumber(it) } ?: emptyList()
             jobs = jobs.filter { it.status == "active" }.sortedByDescending { it.createdAt }
             
             if (category != null && category.isNotBlank()) {

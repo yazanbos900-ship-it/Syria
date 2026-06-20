@@ -47,7 +47,8 @@ class CreateEditJobViewModel : ViewModel() {
         employmentType: String,
         category: String,
         experienceLevel: String,
-        salary: String
+        salary: String,
+        contactWhatsApp: String
     ) {
         viewModelScope.launch {
             _uiState.value = UiState.Loading
@@ -69,6 +70,7 @@ class CreateEditJobViewModel : ViewModel() {
                     category = category,
                     experienceLevel = experienceLevel,
                     salary = salary,
+                    contactWhatsApp = contactWhatsApp,
                     status = existingJob?.status ?: "active",
                     createdAt = existingJob?.createdAt ?: System.currentTimeMillis(),
                     storeName = store.name,

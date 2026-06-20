@@ -36,6 +36,8 @@ fun CreateEditJobScreen(
     var category by remember { mutableStateOf("") }
     var experienceLevel by remember { mutableStateOf("") }
     var salary by remember { mutableStateOf("") }
+    var contactWhatsApp by remember { mutableStateOf("") }
+    var whatsappError by remember { mutableStateOf(false) }
 
     val employmentTypes = listOf("دوام كامل", "دوام جزئي", "عن بعد", "عقد", "تطوع", "تدريب", "مستقل")
     val categories = listOf("إدارة أعمال", "تقنية المعلومات", "إدخال بيانات", "لوجستيات", "مبيعات", "تسويق", "هندسة", "طب وصيدلة", "موارد بشرية", "محاسبة", "خدمة عملاء", "تصميم", "أخرى")
@@ -61,6 +63,8 @@ fun CreateEditJobScreen(
             category = job!!.category
             experienceLevel = job!!.experienceLevel
             salary = job!!.salary
+            val contact = job!!.contactWhatsApp
+            contactWhatsApp = if (contact.startsWith("+963")) contact.removePrefix("+963") else contact
         }
     }
 
@@ -235,9 +239,34 @@ fun CreateEditJobScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            OutlinedTextField(
+                value = contactWhatsApp,
+                onValueChange = { input -> 
+                    contactWhatsApp = input.filter { it.isDigit() }
+                    whatsappError = contactWhatsApp.startsWith("0") || contactWhatsApp.startsWith("963") || contactWhatsApp.isEmpty()
+                },
+                label = { Text(if (isArabic) "رقم واتساب الوظيفة" else "WhatsApp Number") },
+                prefix = { Text("+963", fontWeight = FontWeight.Bold, color = BrandTextPrimary, modifier = Modifier.padding(end = 4.dp)) },
+                placeholder = { Text("930111157") },
+                isError = whatsappError,
+                supportingText = {
+                    if (whatsappError) {
+                        Text(if (isArabic) "يرجى إدخال الرقم بدون 0 وبدون +963 (مثال: 930111157)" else "Please enter without 0 and without +963 (e.g. 930111157)")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             val coroutineScope = rememberCoroutineScope()
             Button(
                 onClick = {
+                    val isContactValid = contactWhatsApp.isNotEmpty() && !contactWhatsApp.startsWith("0") && !contactWhatsApp.startsWith("963")
+                    if (!isContactValid) {
+                        whatsappError = true
+                        return@Button
+                    }
+                    val fullWhatsApp = "+963$contactWhatsApp"
+
                     coroutineScope.launch {
                         val session = ServiceLocator.authRepository.getCurrentUserSession()
                         if (session != null) {
@@ -255,7 +284,8 @@ fun CreateEditJobScreen(
                                     employmentType = employmentType,
                                     category = category,
                                     experienceLevel = experienceLevel,
-                                    salary = salary
+                                    salary = salary,
+                                    contactWhatsApp = fullWhatsApp
                                 )
                             }
                         }
