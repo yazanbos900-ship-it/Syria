@@ -786,6 +786,17 @@ fun MarketplaceScreen(
                 }
             }
 
+            // Direct Ads Section
+            ProductHorizontalSection(
+                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "الإعلانات المباشرة" else "Direct Ads",
+                products = directAdsList,
+                isLoading = isLoadingDirectAds,
+                error = directAdsError,
+                stores = storeState.stores,
+                onProductClick = onProductSelected,
+                context = context
+            )
+
             StoresSection(
                 stores = filteredTopStores,
                 isLoading = storeState.isLoadingTopStores,
@@ -818,16 +829,6 @@ fun MarketplaceScreen(
                 context = context
             )
 
-            // Direct Ads Section
-            ProductHorizontalSection(
-                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "الإعلانات المباشرة" else "Direct Ads",
-                products = directAdsList,
-                isLoading = isLoadingDirectAds,
-                error = directAdsError,
-                stores = storeState.stores,
-                onProductClick = onProductSelected,
-                context = context
-            )
 
             // 1. New Arrivals Section
             ProductHorizontalSection(
