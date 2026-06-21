@@ -101,8 +101,7 @@ fun MarketplaceScreen(
     onCreateStoreSelected: () -> Unit,
     onManageStoreSelected: (String) -> Unit,
     onAdminSelected: () -> Unit = {},
-    onJobsSelected: () -> Unit = {},
-    onAllStoresSelected: () -> Unit = {}
+    onJobsSelected: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -145,8 +144,6 @@ fun MarketplaceScreen(
     val trendingState by productViewModel.trendingState.collectAsStateWithLifecycle()
     val recommendationsState by productViewModel.recommendationsState.collectAsStateWithLifecycle()
     val bestRatedState by productViewModel.bestRatedState.collectAsStateWithLifecycle()
-    val featuredJobsState by productViewModel.featuredJobsState.collectAsStateWithLifecycle()
-    val latestJobsState by productViewModel.latestJobsState.collectAsStateWithLifecycle()
     
     var directAdsList by remember { mutableStateOf<List<com.example.domain.model.Product>>(emptyList()) }
     var isLoadingDirectAds by remember { mutableStateOf(false) }
@@ -720,6 +717,14 @@ fun MarketplaceScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Top
         ) {
+            StoresSection(
+                stores = filteredTopStores,
+                isLoading = storeState.isLoadingTopStores,
+                error = storeState.errorTopStores,
+                onStoreClick = onStoreSelected,
+                onViewAllClick = { /* TODO: navigation to all stores */ }
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -786,36 +791,48 @@ fun MarketplaceScreen(
                 }
             }
 
-            StoresSection(
-                stores = filteredTopStores,
-                isLoading = storeState.isLoadingTopStores,
-                error = storeState.errorTopStores,
-                onStoreClick = onStoreSelected,
-                onViewAllClick = onAllStoresSelected
-            )
+            // Jobs Section Highlight Banner
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(BrandPrimary.copy(alpha = 0.1f))
+                    .clickable { onJobsSelected() }
+                    .padding(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(BrandPrimary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(androidx.compose.material.icons.Icons.Filled.Work, contentDescription = "Jobs", tint = Color.White)
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = if (com.example.core.utils.LanguageManager.isArabic(context)) "الوظائف المتاحة" else "Jobs Marketplace",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = BrandPrimary
+                        )
+                        Text(
+                            text = if (com.example.core.utils.LanguageManager.isArabic(context)) "اكتشف فرص عمل جديدة أو قدم لشركات موثوقة" else "Discover jobs or hire talents from verified stores",
+                            fontSize = 12.sp,
+                            color = BrandTextMuted
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
-
-
-            // Featured Jobs Section
-            JobHorizontalSection(
-                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "الوظائف المميزة" else "Featured Jobs",
-                jobs = featuredJobsState.jobs,
-                isLoading = featuredJobsState.isLoading,
-                error = featuredJobsState.error,
-                onJobClick = { onJobsSelected() },
-                onViewAllClick = { onJobsSelected() },
-                context = context
-            )
-
-            // Latest Jobs Section
-            JobHorizontalSection(
-                title = if (com.example.core.utils.LanguageManager.isArabic(context)) "أحدث الوظائف" else "Latest Jobs",
-                jobs = latestJobsState.jobs,
-                isLoading = latestJobsState.isLoading,
-                error = latestJobsState.error,
-                onJobClick = { onJobsSelected() },
-                onViewAllClick = { onJobsSelected() },
-                context = context
+            SubscriptionPlansSection(
+                state = mainState,
+                onRequestPlan = { tier -> mainViewModel.requestSubscription(tier) },
+                isAr = com.example.core.utils.LanguageManager.isArabic(context)
             )
 
             // Direct Ads Section
@@ -1054,6 +1071,64 @@ fun MarketplaceScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                BrandCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(BrandBackground),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "☁️",
+                                fontSize = 28.sp
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(R.string.cloud_connected_title),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandTextPrimary,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(6.dp))
+                        
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(R.string.cloud_connected_desc),
+                            fontSize = 14.sp,
+                            color = BrandTextMuted,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 20.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
+                        
+                        BrandButton(
+                            text = if (mainState.hasStore) androidx.compose.ui.res.stringResource(R.string.manage_my_store) else androidx.compose.ui.res.stringResource(R.string.launch_new_store),
+                            onClick = {
+                                if (mainState.hasStore) {
+                                    onManageStoreSelected(mainState.userStoreId!!)
+                                } else {
+                                    onCreateStoreSelected()
+                                }
+                            }
+                        )
+                    }
+                }
+                
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
@@ -1080,9 +1155,8 @@ fun StoresSection(
                 fontWeight = FontWeight.Bold,
                 color = BrandTextPrimary
             )
-            val context = LocalContext.current
             TextButton(onClick = onViewAllClick) {
-                Text(if (com.example.core.utils.LanguageManager.isArabic(context)) "جميع المتاجر" else "All Stores", color = BrandPrimary)
+                Text(androidx.compose.ui.res.stringResource(R.string.go_to_home_button), color = BrandPrimary)
             }
         }
         
@@ -1844,97 +1918,4 @@ fun ProductSkeletonCard() {
         )
     }
 }
-
-@Composable
-fun JobHorizontalSection(
-    title: String,
-    jobs: List<com.example.domain.model.Job>,
-    isLoading: Boolean,
-    error: String?,
-    onJobClick: (String) -> Unit,
-    onViewAllClick: () -> Unit,
-    context: android.content.Context
-) {
-    val isAr = com.example.core.utils.LanguageManager.isArabic(context)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = BrandTextPrimary
-            )
-            
-            Text(
-                text = if (isAr) "عرض جميع الوظائف" else "View All Jobs",
-                fontSize = 13.sp,
-                color = BrandPrimary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { onViewAllClick() }
-            )
-        }
-
-        if (isLoading) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(3) {
-                    Box(
-                        modifier = Modifier
-                            .width(260.dp)
-                            .height(130.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(BrandSoftGray.copy(alpha = 0.5f))
-                    )
-                }
-            }
-        } else if (error != null) {
-            Text(
-                text = error,
-                color = BrandError,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-            )
-        } else if (jobs.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (isAr) "لا توجد وظائف شاغرة حالياً" else "No jobs found",
-                    color = BrandTextMuted,
-                    fontSize = 14.sp
-                )
-            }
-        } else {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(jobs, key = { it.id }) { job ->
-                    JobCardCompact(
-                        job = job,
-                        onClick = { onJobClick(job.id) }
-                    )
-                }
-            }
-        }
-    }
-}
-
 

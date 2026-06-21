@@ -24,7 +24,6 @@ sealed class Screen(val route: String) {
     object Wishlist : Screen("wishlist")
     object CreateStore : Screen("create_store")
     object StoreManagement : Screen("store_management")
-    object AllStores : Screen("all_stores")
     object AddProduct : Screen("add_product")
     object PostDirectAd : Screen("postDirectAd")
     object AdminDashboard : Screen("admin_dashboard")
@@ -44,5 +43,4 @@ sealed class Screen(val route: String) {
         fun createNewRoute() = "create_edit_job/new"
     }
     object UserApplications : Screen("user_applications")
-    object SubscriptionPlans : Screen("subscription_plans")
 }

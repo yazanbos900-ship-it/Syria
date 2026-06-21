@@ -66,27 +66,7 @@ secrets {
   defaultPropertiesFileName = ".env.example"
 }
 
-tasks.register("copyApkToWorkspace") {
-    val buildDir = layout.buildDirectory.map { it.asFile.absolutePath }
-    val rootDir = project.rootDir.absolutePath
-    doLast {
-        val src = File("${buildDir.get()}/outputs/apk/debug/app-debug.apk")
-        val dest = File("$rootDir/debug.apk")
-        if (src.exists()) {
-            src.copyTo(dest, overwrite = true)
-            println("APK successfully copied to: ${dest.absolutePath}")
-            println("File size: ${dest.length()} bytes")
-        } else {
-            println("APK not found at expected location.")
-        }
-    }
-}
-
-afterEvaluate {
-    tasks.named("assembleDebug") {
-        finalizedBy("copyApkToWorkspace")
-    }
-}
+// Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
@@ -142,10 +122,3 @@ dependencies {
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
 }
-
-
-
-
-
-
-

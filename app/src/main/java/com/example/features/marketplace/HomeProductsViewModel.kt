@@ -3,8 +3,6 @@ package com.example.features.marketplace
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.model.Product
-import com.example.domain.model.Job
-import com.example.core.di.ServiceLocator
 import com.example.domain.model.RecommendationCriteria
 import com.example.domain.repository.ProductRepository
 import com.example.domain.repository.RecommendationRepository
@@ -15,12 +13,6 @@ import kotlinx.coroutines.launch
 data class ProductListUiState(
     val isLoading: Boolean = false,
     val products: List<Product> = emptyList(),
-    val error: String? = null
-)
-
-data class JobListUiState(
-    val isLoading: Boolean = false,
-    val jobs: List<Job> = emptyList(),
     val error: String? = null
 )
 
@@ -50,14 +42,6 @@ class HomeProductsViewModel(
     private val _bestRatedState = MutableStateFlow(ProductListUiState(isLoading = true))
     val bestRatedState: StateFlow<ProductListUiState> = _bestRatedState.asStateFlow()
 
-    // 6. Featured Jobs
-    private val _featuredJobsState = MutableStateFlow(JobListUiState(isLoading = true))
-    val featuredJobsState: StateFlow<JobListUiState> = _featuredJobsState.asStateFlow()
-
-    // 7. Latest Jobs
-    private val _latestJobsState = MutableStateFlow(JobListUiState(isLoading = true))
-    val latestJobsState: StateFlow<JobListUiState> = _latestJobsState.asStateFlow()
-
     init {
         loadAllSections()
     }
@@ -68,8 +52,6 @@ class HomeProductsViewModel(
         loadTrending()
         loadRecommendations()
         loadBestRated()
-        loadFeaturedJobs()
-        loadLatestJobs()
     }
 
     private fun loadFeatured() {
@@ -143,35 +125,6 @@ class HomeProductsViewModel(
                 }
                 .collect { products ->
                     _bestRatedState.update { it.copy(isLoading = false, products = products) }
-                }
-        }
-    }
-
-    private fun loadFeaturedJobs() {
-        viewModelScope.launch {
-            _featuredJobsState.update { it.copy(isLoading = true, error = null) }
-            ServiceLocator.jobRepository.getActiveJobs()
-                .catch { e ->
-                    _featuredJobsState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل الوظائف المميزة") }
-                }
-                .collect { activeJobs ->
-                    val featured = activeJobs.filter { it.isFeatured }
-                    val finalJobs = if (featured.isNotEmpty()) featured else activeJobs.filter { it.isStoreVerified }
-                    _featuredJobsState.update { it.copy(isLoading = false, jobs = finalJobs.take(5)) }
-                }
-        }
-    }
-
-    private fun loadLatestJobs() {
-        viewModelScope.launch {
-            _latestJobsState.update { it.copy(isLoading = true, error = null) }
-            ServiceLocator.jobRepository.getActiveJobs()
-                .catch { e ->
-                    _latestJobsState.update { it.copy(isLoading = false, error = e.message ?: "حدث خطأ أثناء تحميل أحدث الوظائف") }
-                }
-                .collect { activeJobs ->
-                    val sorted = activeJobs.sortedByDescending { it.createdAt }
-                    _latestJobsState.update { it.copy(isLoading = false, jobs = sorted.take(5)) }
                 }
         }
     }

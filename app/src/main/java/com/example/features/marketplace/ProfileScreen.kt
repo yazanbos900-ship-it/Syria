@@ -52,7 +52,6 @@ fun ProfileScreen(
     onNavigateToOrders: () -> Unit = {},
     onNavigateToSellerProfile: (String) -> Unit = {},
     onNavigateToUserApplications: () -> Unit = {},
-    onNavigateToSubscriptionPlans: () -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -243,16 +242,6 @@ fun ProfileScreen(
                             isArabic = isArabic,
                             onClick = onNavigateToUserApplications,
                             testTag = "profile_applications_row"
-                        )
-                        HorizontalDivider(color = BrandSoftGray, modifier = Modifier.padding(horizontal = 16.dp))
-
-                        ProfileMenuRow(
-                            icon = Icons.Default.CardMembership,
-                            title = if (isArabic) "خطط اشتراك البائعين" else "Seller Subscription Plans",
-                            subtitle = if (isArabic) "ترقية الباقة لزيادة الظهور والأولوية" else "Upgrade your tier for massive visibility",
-                            isArabic = isArabic,
-                            onClick = onNavigateToSubscriptionPlans,
-                            testTag = "profile_subscriptions_row"
                         )
                     }
                 }
