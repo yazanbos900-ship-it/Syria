@@ -21,6 +21,7 @@ data class Job(
     val storeName: String = "",
     val storeLogoUrl: String? = null,
     val isStoreVerified: Boolean = false,
+    val isFeatured: Boolean = false,
     
     val contactWhatsApp: String = ""
 )

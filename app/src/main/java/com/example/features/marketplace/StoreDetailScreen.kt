@@ -10,6 +10,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.ShoppingBasket
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.ui.res.stringResource
@@ -37,6 +43,8 @@ import com.example.core.di.ServiceLocator
 import com.example.domain.model.Product
 import com.example.domain.model.Store
 import com.example.ui.theme.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,6 +117,16 @@ fun StoreContent(
     val context = LocalContext.current
     // Get Category Info
     val category = SharedFilterState.categoriesList.find { it.id == store.categoryId }
+    val isArabic = LanguageManager.isArabic(context)
+
+    var activeJobsCount by remember(store.id) { mutableIntStateOf(0) }
+    LaunchedEffect(store.id) {
+        try {
+            com.example.core.di.ServiceLocator.jobRepository.getJobsByStoreId(store.id).collect { jobs ->
+                activeJobsCount = jobs.count { it.status == "active" }
+            }
+        } catch (e: Exception) {}
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -119,21 +137,31 @@ fun StoreContent(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
             ) {
                 // Banner
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    AsyncImage(
-                        model = store.bannerUrl,
-                        contentDescription = "Store Banner",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    if (store.bannerUrl != null) {
+                        AsyncImage(
+                            model = store.bannerUrl,
+                            contentDescription = "Store Banner",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)
+                                )
+                            )
+                        )
+                    }
 
                     // Overlay to ensure back button readability
                     Box(
@@ -153,32 +181,35 @@ fun StoreContent(
                     ) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = androidx.compose.ui.res.stringResource(R.string.back_button),
+                            contentDescription = stringResource(R.string.back_button),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                // Logo Overlay (Circular, bottom-center)
+                // Logo Overlay (Circular, overlapping banner)
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 0.dp)
-                        .size(90.dp)
-                        .offset(y = (-10).dp),
+                        .size(100.dp)
+                        .offset(y = 50.dp),
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(3.dp, MaterialTheme.colorScheme.background)
+                    border = BorderStroke(4.dp, MaterialTheme.colorScheme.background)
                 ) {
                     AsyncImage(
                         model = store.logoUrl,
                         contentDescription = store.name,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize().clip(CircleShape)
                     )
                 }
             }
+            
+            // Spacer to accommodate the overlapping logo
+            Spacer(modifier = Modifier.height(60.dp))
         }
 
         // 2) Header Information Section
@@ -186,16 +217,27 @@ fun StoreContent(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = store.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = store.name,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+                    if (store.isVerified) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Verified",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
@@ -207,85 +249,133 @@ fun StoreContent(
                 )
 
                 if (category != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = category.getName(LanguageManager.isArabic(context)),
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                            text = category.getName(isArabic),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                StoreBadgesContainer(
-                    store = store,
-                    horizontalArrangement = Arrangement.Center
-                )
+                if (store.subscriptionTier != "free" && store.subscriptionTier != "Starter") {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    StoreSubscriptionBadge(tier = store.subscriptionTier)
+                } else {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
 
         // 3) Stats Row
         item {
-            Row(
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                maxItemsInEachRow = 4
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "${products.size}", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(text = androidx.compose.ui.res.stringResource(R.string.products_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                }
-                
-                VerticalDivider(
-                    modifier = Modifier
-                        .padding(horizontal = 32.dp)
-                        .height(24.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                StoreStatChip(
+                    icon = Icons.Default.Star,
+                    value = String.format("%.1f", store.rating),
+                    label = if (isArabic) "التقييم" else "Rating",
+                    tint = Color(0xFFFFC107)
                 )
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "${store.followersCount}", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text(text = androidx.compose.ui.res.stringResource(R.string.follower_label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                StoreStatChip(
+                    icon = Icons.Default.ShoppingCart,
+                    value = products.size.toString(),
+                    label = if (isArabic) "منتجات" else "Products",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                StoreStatChip(
+                    icon = Icons.Default.Person,
+                    value = store.followersCount.toString(),
+                    label = if (isArabic) "متابع" else "Followers",
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+                if (activeJobsCount > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    StoreStatChip(
+                        icon = Icons.Default.Work,
+                        value = activeJobsCount.toString(),
+                        label = if (isArabic) "وظائف" else "Jobs",
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
                 }
             }
         }
         
-        // 4) Main Action Button
+        // 4) Action Row
         item {
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isOwner) {
                     Button(
                         onClick = onManageClick,
-                        modifier = Modifier.fillMaxWidth(0.9f),
+                        modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(androidx.compose.ui.res.stringResource(R.string.manage_store_label), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.ExtraBold)
+                        Text(if (isArabic) "إدارة المتجر" else "Manage Store", fontWeight = FontWeight.Bold)
                     }
                 } else {
-                    OutlinedButton(
+                    Button(
                         onClick = { /* Follow Logic */ },
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
-                        shape = RoundedCornerShape(14.dp)
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Text(if (isArabic) "متابعة" else "Follow", fontWeight = FontWeight.Bold)
+                    }
+                    OutlinedButton(
+                        onClick = { /* Contact Logic */ },
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(if (isArabic) "تواصل" else "Contact", color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+                
+                IconButton(
+                    onClick = { /* Share Logic */ },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            
+            if (!isOwner && activeJobsCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 4.dp)
+                ) {
+                    Button(
+                        onClick = { /* View Jobs Logic */ },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Work, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(androidx.compose.ui.res.stringResource(R.string.follow_label), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                        Text(if (isArabic) "عرض الوظائف الشاغرة ($activeJobsCount)" else "View Active Jobs ($activeJobsCount)", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -387,6 +477,46 @@ fun StoreContent(
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun StoreStatChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    label: String,
+    tint: Color
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = tint,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp
+                )
             }
         }
     }

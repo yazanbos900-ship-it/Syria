@@ -495,6 +495,25 @@ class AdminViewModel : ViewModel() {
             }
     }
 
+    fun updateJobFeaturedAdmin(jobId: String, isFeatured: Boolean, onResult: (Boolean) -> Unit) {
+        val db = firestore
+        if (db == null) {
+            onResult(false)
+            return
+        }
+        db.collection("jobs").document(jobId).update(
+            "featured", isFeatured,
+            "isFeatured", isFeatured
+        )
+            .addOnSuccessListener {
+                logAdminAction("Updated job $jobId featured to $isFeatured")
+                onResult(true)
+            }
+            .addOnFailureListener {
+                onResult(false)
+            }
+    }
+
     fun deleteJobAdmin(jobId: String, onResult: (Boolean) -> Unit) {
         val db = firestore
         if (db == null) {
@@ -3161,7 +3180,36 @@ fun AdminJobsManager(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(job.title, fontWeight = FontWeight.Bold, color = BrandTextPrimary, fontSize = 16.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Text(job.title, fontWeight = FontWeight.Bold, color = BrandTextPrimary, fontSize = 16.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            val isFeatured = job.isFeatured
+                            IconButton(
+                                onClick = {
+                                    viewModel.updateJobFeaturedAdmin(job.id, !isFeatured) { success ->
+                                        if (success) {
+                                            Toast.makeText(
+                                                context,
+                                                if (isArabic) {
+                                                    if (!isFeatured) "تم تمييز الإعلان بنجاح" else "تم إزالة تميز الإعلان"
+                                                } else {
+                                                    if (!isFeatured) "Job featured successfully" else "Job feature removed"
+                                                },
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isFeatured) Icons.Default.Star else Icons.Default.StarBorder,
+                                    contentDescription = "Feature Job",
+                                    tint = if (isFeatured) BrandGoldenYellow else BrandTextMuted,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                         val statusColor = when (job.status) {
                             "active" -> BrandSuccess
                             "paused" -> BrandGoldenYellow
