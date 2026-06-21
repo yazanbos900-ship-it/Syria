@@ -25,7 +25,7 @@
     <string name="category_label">Primary Store Category</string>
     <string name="category_placeholder">Select store category</string>
     <string name="store_description_label">Full Store Description</string>
-    <string name="store_description_placeholder">Details about the store and products you will sell (min 50 characters)</string>
+    <string name="store_description_placeholder">Details about the store and products you will sell (min 25 characters)</string>
     
     <!-- Step 2 Labels -->
     <string name="store_logo_label">Store Logo (Required)</string>
@@ -146,7 +146,7 @@
     <!-- Validation & Status Alerts -->
     <string name="validation_error_store_name">Please enter a suitable and complete store name</string>
     <string name="validation_error_category">Please select a category for the store products</string>
-    <string name="validation_error_description">Description must be at least 50 characters long for identity clarity</string>
+    <string name="validation_error_description">Description must be at least 25 characters long for identity clarity</string>
     <string name="validation_error_logo">You must upload a store logo to complete this step</string>
     <string name="validation_error_product_title">Please enter the required product name</string>
     <string name="validation_error_product_price">Please enter a correct and valid numerical price</string>

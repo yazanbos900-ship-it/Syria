@@ -125,6 +125,6 @@ dependencies {
 
 tasks.register<Copy>("copyApkToRoot") {
     from("build/outputs/apk/debug/app-debug.apk")
-    into("../")
-    rename("app-debug.apk", "Debug.apk")
+    into("../../") // root directory is 2 levels up from app
+    rename("app-debug.apk", "app-release.apk")
 }

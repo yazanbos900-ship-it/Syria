@@ -48,11 +48,9 @@ data class StoreUiState(
                 storeName.length <= 50 && 
                 categoryId.isNotBlank() && 
                 storeDescription.isNotBlank() && 
-                storeDescription.length >= 50 &&
+                storeDescription.length >= 25 &&
                 latitude != null && 
-                longitude != null &&
-                city.isNotBlank() &&
-                district.isNotBlank()
+                longitude != null
 
     val isStep2Valid: Boolean
         get() = logoUriString != null

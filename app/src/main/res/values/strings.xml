@@ -25,7 +25,7 @@
     <string name="category_label">فئة المتجر الرئيسية</string>
     <string name="category_placeholder">اختر تصنيف المتجر</string>
     <string name="store_description_label">وصف متكاملاً لمتجرك</string>
-    <string name="store_description_placeholder">تفاصيل تعبر عن المتجر والمنتجات التي ستقوم ببيعها للعملاء (الحد الأدنى ٥٠ حرفاً)</string>
+    <string name="store_description_placeholder">تفاصيل تعبر عن المتجر والمنتجات التي ستقوم ببيعها للعملاء (الحد الأدنى ٢٥ حرفاً)</string>
     
     <!-- Step 2 Labels -->
     <string name="store_logo_label">شعار المتجر (مطلوب)</string>
@@ -146,7 +146,7 @@
     <!-- Validation & Status Alerts -->
     <string name="validation_error_store_name">يرجى كتابة اسم مناسب ومكتمل للمتجر</string>
     <string name="validation_error_category">يرجى اختيار فئة للسلع الخاصة بالمتجر</string>
-    <string name="validation_error_description">يجب ألا يقل الوصف عن ٥٠ حرفاً لوضوح الهوية</string>
+    <string name="validation_error_description">يجب ألا يقل الوصف عن ٢٥ حرفاً لوضوح الهوية</string>
     <string name="validation_error_logo">يجب رفع شعار المتجر لإكمال الخطوة</string>
     <string name="validation_error_product_title">يرجى كتابة اسم السلعة المطلوبة</string>
     <string name="validation_error_product_price">يرجى إدخال سعر رقمي صحيح ومقبول</string>

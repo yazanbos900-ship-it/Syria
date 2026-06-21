@@ -500,7 +500,7 @@ fun Step1StoreInfo(
                 )
                 Text(
                     text = "${state.storeDescription.length} / 500",
-                    color = if (state.storeDescription.length >= 50) PrimaryGreen else Color.Red,
+                    color = if (state.storeDescription.length >= 25) PrimaryGreen else Color.Red,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
