@@ -123,8 +123,26 @@ dependencies {
   "ksp"(libs.moshi.kotlin.codegen)
 }
 
-tasks.register<Copy>("copyApkToRoot") {
-    from("build/outputs/apk/debug/app-debug.apk")
-    into("../")
-    rename("app-debug.apk", "Debug.apk")
+tasks.register("copyApkToRoot") {
+    dependsOn("assembleDebug")
+    doLast {
+        val source = file("build/outputs/apk/debug/app-debug.apk")
+        val dest = file("../Debug.apk")
+        if (source.exists()) {
+            source.copyTo(dest, overwrite = true)
+            println("Copied successfully!")
+        } else {
+            println("Source APK not found.")
+        }
+    }
+}
+
+tasks.register("printApkSizes") {
+    doLast {
+        val appApk = file("build/outputs/apk/debug/app-debug.apk")
+        val rootApk = file("../Debug.apk")
+        println("=== APK SIZES ===")
+        println("app-debug.apk size: " + (if (appApk.exists()) appApk.length() else "MISSING"))
+        println("Debug.apk size: " + (if (rootApk.exists()) rootApk.length() else "MISSING"))
+    }
 }
