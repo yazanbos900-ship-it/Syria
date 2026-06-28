@@ -74,8 +74,8 @@ fun AllStoresScreen(
         
         when (SharedFilterState.selectedSortOption) {
             SortOption.Newest -> filtered.sortedByDescending { it.createdAt }
-            SortOption.BestRated -> filtered.sortedByDescending { it.rating }
-            else -> filtered.sortedByDescending { it.rating }
+            SortOption.BestRated -> filtered.sortedByDescending { state.reputationScores[it.id] ?: 0.0 }
+            else -> filtered.sortedByDescending { state.reputationScores[it.id] ?: 0.0 }
         }
     }
 
@@ -184,7 +184,8 @@ fun AllStoresScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(filteredStores, key = { it.id }) { store ->
-                    StoreCard(store = store, onClick = { onStoreSelected(store.id) })
+                    val score = state.reputationScores[store.id]
+                    StoreCard(store = store, reputationScore = score, onClick = { onStoreSelected(store.id) })
                 }
             }
         }
@@ -192,7 +193,7 @@ fun AllStoresScreen(
 }
 
 @Composable
-fun StoreCard(store: Store, onClick: () -> Unit) {
+fun StoreCard(store: Store, reputationScore: Double? = null, onClick: () -> Unit) {
     val context = LocalContext.current
     val category = SharedFilterState.categoriesList.find { it.id == store.categoryId }
     val isArabic = LanguageManager.isArabic(context)
@@ -354,6 +355,23 @@ fun StoreCard(store: Store, onClick: () -> Unit) {
                             text = "${store.followersCount}",
                             fontSize = 13.sp,
                             color = BrandTextMuted
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Reputation",
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        val displayScore = reputationScore ?: com.example.domain.utils.StoreReputationCalculator.calculateReputationScore(store)
+                        Text(
+                            text = if (isArabic) "السمعة: ${displayScore.toInt()}" else "Reputation: ${displayScore.toInt()}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BrandPrimary
                         )
                     }
                 }

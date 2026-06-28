@@ -183,7 +183,6 @@ fun CreateStoreScreen(
                             when (step) {
                                 1 -> Step1StoreInfo(viewModel = viewModel, state = state)
                                 2 -> Step2StoreIdentity(viewModel = viewModel, state = state)
-                                3 -> Step3FirstProduct(viewModel = viewModel, state = state)
                             }
                         }
 
@@ -195,7 +194,6 @@ fun CreateStoreScreen(
                             isLoading = state.isLoading,
                             isStep1Valid = state.isStep1Valid,
                             isStep2Valid = state.isStep2Valid && !state.isLogoUploading && !state.isBannerUploading,
-                            isStep3Valid = state.isStep3Valid,
                             onNext = { viewModel.nextStep() },
                             onBack = { viewModel.prevStep() },
                             onSubmit = { viewModel.submitStore() }
@@ -240,8 +238,7 @@ fun CreateStoreScreen(
 fun StepIndicatorsHeader(currentStep: Int) {
     val animatedProgress by animateFloatAsState(
         targetValue = when (currentStep) {
-            1 -> 0.33f
-            2 -> 0.66f
+            1 -> 0.5f
             else -> 1f
         },
         animationSpec = tween(400),
@@ -277,18 +274,6 @@ fun StepIndicatorsHeader(currentStep: Int) {
                 stepNum = 2,
                 label = stringResource(id = R.string.store_identity_step),
                 isActive = currentStep >= 2,
-                isCompleted = currentStep > 2
-            )
-            Text(
-                text = "←",
-                color = if (currentStep > 2) PrimaryGreen else BorderColor,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            StepHeaderItem(
-                stepNum = 3,
-                label = stringResource(id = R.string.first_product_step),
-                isActive = currentStep >= 3,
                 isCompleted = false
             )
         }
@@ -807,208 +792,6 @@ fun Step2StoreIdentity(
     }
 }
 
-@Composable
-fun Step3FirstProduct(
-    viewModel: CreateStoreViewModel,
-    state: StoreUiState
-) {
-    val photoGridPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) viewModel.onAddProductImage(uri.toString())
-    }
-
-    val androidContext = LocalContext.current
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Product Line 1: Title
-        StoreInputField(
-            label = stringResource(id = R.string.product_name_label),
-            value = state.productName,
-            onValueChange = { viewModel.onProductNameChange(it) },
-            placeholder = stringResource(id = R.string.product_name_placeholder),
-            testTag = "first_product_name",
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-        )
-
-        // Product Line 2: Price
-        StoreInputField(
-            label = stringResource(id = R.string.product_price_label),
-            value = state.productPrice,
-            onValueChange = { viewModel.onProductPriceChange(it) },
-            placeholder = stringResource(id = R.string.product_price_placeholder),
-            testTag = "first_product_price",
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
-
-        // Product Line 3: Description
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(id = R.string.product_description_label),
-                color = TextWhite,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 6.dp)
-            )
-            OutlinedTextField(
-                value = state.productDescription,
-                onValueChange = { viewModel.onProductDescriptionChange(it) },
-                placeholder = {
-                    Text(
-                        text = stringResource(id = R.string.product_description_placeholder),
-                        color = TextGray,
-                        fontSize = 13.sp
-                    )
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = TextWhite,
-                    unfocusedTextColor = TextWhite,
-                    focusedBorderColor = PrimaryGreen,
-                    unfocusedBorderColor = BorderColor,
-                    focusedContainerColor = DarkCard,
-                    unfocusedContainerColor = DarkCard
-                ),
-                shape = RoundedCornerShape(12.dp),
-                minLines = 3,
-                maxLines = 5,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("first_product_description")
-            )
-        }
-
-        // Product Line 4: Images grid (1 to 10 images)
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(id = R.string.product_images_label),
-                color = TextWhite,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            // 3-Column Product images preview grid
-            val selectBtnCount = if (state.productImageUris.size < 10) 1 else 0
-            val totalItems = state.productImageUris.size + selectBtnCount
-            val gridSpacing = 8.dp
-
-            Column(verticalArrangement = Arrangement.spacedBy(gridSpacing)) {
-                // Chunk into rows of 3
-                val chunks = (0 until totalItems).chunked(3)
-                chunks.forEach { rowIndices ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(gridSpacing)
-                    ) {
-                        for (i in 0 until 3) {
-                            val itemIndex = rowIndices.getOrNull(i)
-                            if (itemIndex != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                ) {
-                                    if (itemIndex < state.productImageUris.size) {
-                                        // Uploaded thumbnail selection
-                                        val imgUri = state.productImageUris[itemIndex]
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .border(2.dp, if (itemIndex == 0) PrimaryGreen else BorderColor, RoundedCornerShape(10.dp))
-                                        ) {
-                                            AsyncImage(
-                                                model = imgUri,
-                                                contentDescription = "Thumbnail $itemIndex",
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier.fillMaxSize()
-                                            )
-
-                                            // Main Image cover indicator
-                                            if (itemIndex == 0) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .align(Alignment.BottomStart)
-                                                        .fillMaxWidth()
-                                                        .background(PrimaryGreen.copy(alpha = 0.9f))
-                                                        .padding(vertical = 2.dp)
-                                                ) {
-                                                    Text(
-                                                        text = stringResource(id = R.string.cover_image_badge),
-                                                        color = DarkBg,
-                                                        fontSize = 8.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        textAlign = TextAlign.Center,
-                                                        modifier = Modifier.fillMaxWidth()
-                                                    )
-                                                }
-                                            }
-
-                                            // Delete icon
-                                            IconButton(
-                                                onClick = { viewModel.onRemoveProductImage(imgUri) },
-                                                modifier = Modifier
-                                                    .align(Alignment.TopEnd)
-                                                    .padding(2.dp)
-                                                    .size(20.dp)
-                                                    .clip(CircleShape)
-                                                    .background(Color.Black.copy(alpha = 0.6f))
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Close,
-                                                    contentDescription = "حذف الصورة",
-                                                    tint = Color.Red,
-                                                    modifier = Modifier.size(12.dp)
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        // "+ إضافة صورة" (Add Image) selection button
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .background(DarkCard)
-                                                .border(1.dp, BorderColor, RoundedCornerShape(10.dp))
-                                                .clickable { photoGridPicker.launch("image/*") }
-                                                .testTag("add_product_image_btn"),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Add,
-                                                    contentDescription = null,
-                                                    tint = PrimaryGreen,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = stringResource(id = R.string.add_image_button),
-                                                    color = TextGray,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                Spacer(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun StoreInputField(
@@ -1069,7 +852,6 @@ fun StepActionFooter(
     isLoading: Boolean,
     isStep1Valid: Boolean,
     isStep2Valid: Boolean,
-    isStep3Valid: Boolean,
     onNext: () -> Unit,
     onBack: () -> Unit,
     onSubmit: () -> Unit
@@ -1107,13 +889,12 @@ fun StepActionFooter(
         // Logic check to trigger Step transitions vs Final Firestore commits
         val isCurrentStepValid = when (currentStep) {
             1 -> isStep1Valid
-            2 -> isStep2Valid
-            else -> isStep3Valid
+            else -> isStep2Valid
         }
 
         Button(
             onClick = {
-                if (currentStep < 3) {
+                if (currentStep < 2) {
                     onNext()
                 } else {
                     onSubmit()
@@ -1131,7 +912,7 @@ fun StepActionFooter(
                 .testTag("step_action_main_btn")
         ) {
             Text(
-                text = if (currentStep < 3) stringResource(id = R.string.next_button) else stringResource(id = R.string.submit_button),
+                text = if (currentStep < 2) stringResource(id = R.string.next_button) else stringResource(id = R.string.submit_button),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.ExtraBold
             )

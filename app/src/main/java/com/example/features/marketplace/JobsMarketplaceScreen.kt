@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Close
 @Composable
 fun JobsMarketplaceScreen(
     onNavigateToJobDetails: (String) -> Unit,
+    onNavigateToStoreDetail: (String) -> Unit,
     onBack: () -> Unit,
     viewModel: JobsMarketplaceViewModel = viewModel()
 ) {
@@ -177,7 +178,12 @@ fun JobsMarketplaceScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(jobs) { job ->
-                        JobCard(job = job, isArabic = isArabic, onClick = { onNavigateToJobDetails(job.id) })
+                        JobCard(
+                            job = job,
+                            isArabic = isArabic,
+                            onClick = { onNavigateToJobDetails(job.id) },
+                            onNavigateToStoreDetail = onNavigateToStoreDetail
+                        )
                     }
                 }
             }
@@ -186,7 +192,27 @@ fun JobsMarketplaceScreen(
 }
 
 @Composable
-fun JobCard(job: Job, isArabic: Boolean, onClick: () -> Unit) {
+fun JobCard(job: Job, isArabic: Boolean, onClick: () -> Unit, onNavigateToStoreDetail: (String) -> Unit) {
+    var storeName by remember { mutableStateOf(job.storeName) }
+    var storeLogoUrl by remember { mutableStateOf(job.storeLogoUrl) }
+    var isStoreVerified by remember { mutableStateOf(job.isStoreVerified) }
+
+    LaunchedEffect(job.storeId) {
+        if (job.storeId.isNotBlank()) {
+            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            db.collection("stores").document(job.storeId).get()
+                .addOnSuccessListener { snap ->
+                    if (snap != null && snap.exists()) {
+                        snap.getString("storeName")?.let { storeName = it }
+                            ?: snap.getString("name")?.let { storeName = it }
+                        snap.getString("logoUrl")?.let { storeLogoUrl = it }
+                        val verified = snap.getBoolean("isVerified") ?: (snap.getString("verificationStatus") == "Verified")
+                        isStoreVerified = verified
+                    }
+                }
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -211,25 +237,33 @@ fun JobCard(job: Job, isArabic: Boolean, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    if (job.storeLogoUrl != null) {
-                        AsyncImage(
-                            model = job.storeLogoUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(BrandSoftGray),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(BrandSoftGray),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.BusinessCenter, contentDescription = null, tint = BrandTextMuted)
+                    Box(
+                        modifier = Modifier.clickable {
+                            if (job.storeId.isNotBlank()) {
+                                onNavigateToStoreDetail(job.storeId)
+                            }
+                        }
+                    ) {
+                        if (storeLogoUrl != null) {
+                            AsyncImage(
+                                model = storeLogoUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandSoftGray),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandSoftGray),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.BusinessCenter, contentDescription = null, tint = BrandTextMuted)
+                            }
                         }
                     }
                     
@@ -241,14 +275,25 @@ fun JobCard(job: Job, isArabic: Boolean, onClick: () -> Unit) {
                             color = BrandTextPrimary,
                             maxLines = 1
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable {
+                                if (job.storeId.isNotBlank()) {
+                                    onNavigateToStoreDetail(job.storeId)
+                                }
+                            }
+                        ) {
                             Text(
-                                text = job.storeName,
+                                text = storeName,
                                 fontSize = 14.sp,
-                                color = BrandTextMuted,
-                                maxLines = 1
+                                color = BrandPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                                )
                             )
-                            if (job.isStoreVerified) {
+                            if (isStoreVerified) {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Icon(
                                     Icons.Default.Verified,
@@ -276,14 +321,12 @@ fun JobCard(job: Job, isArabic: Boolean, onClick: () -> Unit) {
                 }
             }
 
-            if (job.salary.isNotBlank()) {
-                Text(
-                    text = job.salary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    color = BrandPrimary
-                )
-            }
+            Text(
+                text = if (job.salary.isNotBlank()) job.salary else (if (isArabic) "الراتب: قابل للتفاوض" else "Salary: Negotiable"),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                color = BrandPrimary
+            )
             
             val timeString = android.text.format.DateUtils.getRelativeTimeSpanString(job.createdAt)
             Text(

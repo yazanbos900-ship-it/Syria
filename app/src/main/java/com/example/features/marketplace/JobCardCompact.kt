@@ -26,6 +26,7 @@ fun JobCardCompact(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isArabic = java.util.Locale.getDefault().language == "ar"
     Card(
         modifier = modifier
             .width(260.dp)
@@ -126,16 +127,14 @@ fun JobCardCompact(
                     )
                 }
                 
-                if (job.salary.isNotBlank()) {
-                    Text(
-                        text = job.salary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF4CAF50), // Green for Salary
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = if (job.salary.isNotBlank()) job.salary else (if (isArabic) "قابل للتفاوض" else "Negotiable"),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF4CAF50), // Green for Salary
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

@@ -186,6 +186,9 @@ fun NavigationGraph(
                 },
                 onManageStore = {
                     navController.navigate(Screen.StoreManagement.route)
+                },
+                onContactSeller = { chatId ->
+                    navController.navigate(Screen.ChatDetail.createRoute(chatId))
                 }
             )
         }
@@ -321,6 +324,9 @@ fun NavigationGraph(
                 onNavigateToJobDetails = { jobId ->
                     navController.navigate(Screen.JobDetails.createRoute(jobId))
                 },
+                onNavigateToStoreDetail = { storeId ->
+                    navController.navigate(Screen.StoreDetail.createRoute(storeId))
+                },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -334,7 +340,10 @@ fun NavigationGraph(
             val jobId = backStackEntry.arguments?.getString("jobId") ?: ""
             com.example.features.marketplace.JobDetailsScreen(
                 jobId = jobId,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToStoreDetail = { storeId ->
+                    navController.navigate(Screen.StoreDetail.createRoute(storeId))
+                }
             )
         }
 

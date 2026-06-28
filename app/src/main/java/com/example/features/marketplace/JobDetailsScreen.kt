@@ -1,6 +1,7 @@
 package com.example.features.marketplace
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -12,6 +13,8 @@ import androidx.compose.material.icons.filled.BusinessCenter
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Work
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +34,7 @@ import com.example.ui.theme.*
 fun JobDetailsScreen(
     jobId: String,
     onBack: () -> Unit,
+    onNavigateToStoreDetail: (String) -> Unit,
     viewModel: JobDetailsViewModel = viewModel()
 ) {
     val job by viewModel.job.collectAsState()
@@ -51,6 +55,19 @@ fun JobDetailsScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    val isSaved by viewModel.isSaved.collectAsState()
+                    val currentUser by viewModel.currentUser.collectAsState()
+                    if (currentUser != null) {
+                        IconButton(onClick = { viewModel.toggleSaveJob() }) {
+                            Icon(
+                                imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = if (isSaved) "Unsave Job" else "Save Job",
+                                tint = if (isSaved) BrandPrimary else BrandTextPrimary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -124,25 +141,33 @@ fun JobDetailsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    if (j.storeLogoUrl != null) {
-                        AsyncImage(
-                            model = j.storeLogoUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(BrandSoftGray),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(BrandSoftGray),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.BusinessCenter, contentDescription = null, tint = BrandTextMuted, modifier = Modifier.size(36.dp))
+                    Box(
+                        modifier = Modifier.clickable {
+                            if (j.storeId.isNotBlank()) {
+                                onNavigateToStoreDetail(j.storeId)
+                            }
+                        }
+                    ) {
+                        if (j.storeLogoUrl != null) {
+                            AsyncImage(
+                                model = j.storeLogoUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandSoftGray),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(BrandSoftGray),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.BusinessCenter, contentDescription = null, tint = BrandTextMuted, modifier = Modifier.size(36.dp))
+                            }
                         }
                     }
                     
@@ -153,11 +178,24 @@ fun JobDetailsScreen(
                             fontSize = 24.sp,
                             color = BrandTextPrimary
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically, 
+                            modifier = Modifier
+                                .padding(top = 4.dp)
+                                .clickable {
+                                    if (j.storeId.isNotBlank()) {
+                                        onNavigateToStoreDetail(j.storeId)
+                                    }
+                                }
+                        ) {
                             Text(
                                 text = j.storeName,
                                 fontSize = 16.sp,
-                                color = BrandTextMuted
+                                color = BrandPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                                )
                             )
                             if (j.isStoreVerified) {
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -181,14 +219,17 @@ fun JobDetailsScreen(
                     BadgeInfo(icon = Icons.Default.Work, text = j.employmentType)
                 }
 
-                if (j.salary.isNotBlank()) {
-                    Text(
-                        text = "${if (isArabic) "الراتب:" else "Salary:"} ${j.salary}",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = BrandPrimary
-                    )
+                val salaryText = if (j.salary.isNotBlank()) {
+                    "${if (isArabic) "الراتب:" else "Salary:"} ${j.salary}"
+                } else {
+                    if (isArabic) "الراتب: قابل للتفاوض" else "Salary: Negotiable"
                 }
+                Text(
+                    text = salaryText,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = BrandPrimary
+                )
 
                 HorizontalDivider(color = BrandSoftGray)
 

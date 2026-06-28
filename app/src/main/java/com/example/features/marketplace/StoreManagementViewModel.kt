@@ -17,7 +17,8 @@ data class StoreManagementUiState(
     val store: Store? = null,
     val products: List<Product> = emptyList(),
     val error: String? = null,
-    val isSuccess: Boolean = false
+    val isSuccess: Boolean = false,
+    val purchaseIntents: List<com.example.domain.model.PurchaseIntent> = emptyList()
 )
 
 class StoreManagementViewModel(
@@ -46,6 +47,26 @@ class StoreManagementViewModel(
             }
 
             _state.update { it.copy(store = store) }
+
+            // Fetch purchase intents for this store
+            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            db.collection("purchase_intents")
+                .whereEqualTo("storeId", store.id)
+                .get()
+                .addOnSuccessListener { querySnapshot ->
+                    val intents = querySnapshot?.documents?.mapNotNull { doc ->
+                        com.example.domain.model.PurchaseIntent(
+                            id = doc.getString("id") ?: "",
+                            userId = doc.getString("userId") ?: "",
+                            productId = doc.getString("productId") ?: "",
+                            productTitle = doc.getString("productTitle") ?: "",
+                            storeId = doc.getString("storeId") ?: "",
+                            storeName = doc.getString("storeName") ?: "",
+                            timestamp = doc.getTimestamp("timestamp")
+                        )
+                    } ?: emptyList()
+                    _state.update { it.copy(purchaseIntents = intents) }
+                }
 
             // Real-time products flow
             productRepo.getProductsByStoreId(store.id)

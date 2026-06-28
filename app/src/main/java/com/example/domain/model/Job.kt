@@ -23,5 +23,9 @@ data class Job(
     val isStoreVerified: Boolean = false,
     val isFeatured: Boolean = false,
     
-    val contactWhatsApp: String = ""
+    val contactWhatsApp: String = "",
+    
+    val viewsCount: Int = 0,
+    val applicationsCount: Int = 0,
+    val savesCount: Int = 0
 )

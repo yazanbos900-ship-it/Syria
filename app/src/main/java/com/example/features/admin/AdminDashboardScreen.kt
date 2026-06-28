@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
@@ -160,7 +161,8 @@ data class AdminUiState(
     val settings: com.example.core.utils.MarketplaceSettingsManager.MarketplaceSettings = com.example.core.utils.MarketplaceSettingsManager.settings.value,
     val isLoading: Boolean = false,
     val selectedModule: AdminModule? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val purchaseIntents: List<com.example.domain.model.PurchaseIntent> = emptyList()
 )
 
 class AdminViewModel : ViewModel() {
@@ -289,6 +291,33 @@ class AdminViewModel : ViewModel() {
             com.example.core.utils.MarketplaceSettingsManager.settings.collect { currentSettings ->
                 _state.update { it.copy(settings = currentSettings) }
             }
+        }
+
+        // Collect Purchase Intents dynamically
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            db.collection("purchase_intents")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    if (snapshot != null) {
+                        val intents = snapshot.documents.mapNotNull { doc ->
+                            try {
+                                com.example.domain.model.PurchaseIntent(
+                                    id = doc.getString("id") ?: doc.id,
+                                    userId = doc.getString("userId") ?: "",
+                                    productId = doc.getString("productId") ?: "",
+                                    productTitle = doc.getString("productTitle") ?: "",
+                                    storeId = doc.getString("storeId") ?: "",
+                                    storeName = doc.getString("storeName") ?: "",
+                                    timestamp = doc.getTimestamp("timestamp")
+                                )
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                        _state.update { it.copy(purchaseIntents = intents) }
+                    }
+                }
         }
     }
 
@@ -758,6 +787,7 @@ fun AdminDashboardScreen(
                             products = state.products,
                             stores = state.stores,
                             interactions = state.interactions,
+                            purchaseIntents = state.purchaseIntents,
                             isArabic = isArabic
                         )
                         is AdminModule.ExchangeRate -> AdminExchangeRateManager(
@@ -2357,18 +2387,74 @@ fun AdminSettingsManager(
 }
 
 @Composable
+fun SimpleTrendChart(
+    data: List<Int>,
+    labels: List<String>,
+    color: Color,
+    isArabic: Boolean
+) {
+    val maxValue = (data.maxOrNull() ?: 1).coerceAtLeast(1)
+    
+    Card(
+        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, BrandSoftGray),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                data.forEachIndexed { index, value ->
+                    val ratio = value.toFloat() / maxValue
+                    val heightDp = (ratio * 80).coerceAtLeast(8f).dp
+                    
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = "$value",
+                            color = color,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(16.dp)
+                                .height(heightDp)
+                                .background(color, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                        )
+                        Text(
+                            text = labels.getOrElse(index) { "" },
+                            color = BrandTextMuted,
+                            fontSize = 10.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun AdminAnalyticsManager(
     orders: List<Order>,
     products: List<Product>,
     stores: List<Store>,
     interactions: List<Map<String, Any>>,
+    purchaseIntents: List<com.example.domain.model.PurchaseIntent>,
     isArabic: Boolean
 ) {
     var selectedTab by remember { mutableStateOf("interact") }
     
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         TabRow(
-            selectedTabIndex = if (selectedTab == "interact") 0 else if (selectedTab == "stores") 1 else 2,
+            selectedTabIndex = if (selectedTab == "interact") 0 else if (selectedTab == "stores") 1 else if (selectedTab == "finance") 2 else 3,
             containerColor = Color.Transparent,
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
@@ -2386,6 +2472,11 @@ fun AdminAnalyticsManager(
                 selected = selectedTab == "finance",
                 onClick = { selectedTab = "finance" },
                 text = { Text(if (isArabic) "الأداء المالي" else "Finance") }
+            )
+            Tab(
+                selected = selectedTab == "marketplace",
+                onClick = { selectedTab = "marketplace" },
+                text = { Text(if (isArabic) "طلبات الشراء" else "Purchase Intents") }
             )
         }
         
@@ -2556,6 +2647,212 @@ fun AdminAnalyticsManager(
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(if (isArabic) "إجمالي ضريبة VAT المستقطعة (SYP):" else "System Collected VAT (SYP):", fontSize = 12.sp, color = BrandTextMuted)
                                 Text(formatAdminPrice(vatSyp, "SYP", isArabic), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            } else if (selectedTab == "marketplace") {
+                val now = System.currentTimeMillis()
+                val dayMillis = 24 * 60 * 60 * 1000L
+                val monthMillis = 30 * dayMillis
+
+                val totalIntents = purchaseIntents.size
+
+                val topProducts = purchaseIntents.groupBy { it.productId }
+                    .mapValues { entry ->
+                        val title = entry.value.firstOrNull()?.productTitle ?: (if (isArabic) "منتج غير معروف" else "Unknown Product")
+                        title to entry.value.size
+                    }
+                    .values
+                    .sortedByDescending { it.second }
+                    .take(5)
+
+                val topStores = purchaseIntents.groupBy { it.storeId }
+                    .mapValues { entry ->
+                        val name = entry.value.firstOrNull()?.storeName ?: (if (isArabic) "متجر غير معروف" else "Unknown Store")
+                        name to entry.value.size
+                    }
+                    .values
+                    .sortedByDescending { it.second }
+                    .take(5)
+
+                val dailyCounts = (0..6).map { dayOffset ->
+                    val start = now - (dayOffset + 1) * dayMillis
+                    val end = now - dayOffset * dayMillis
+                    purchaseIntents.count { it.timestamp != null && it.timestamp.toDate().time in start..end }
+                }.reversed()
+
+                val dailyLabels = (0..6).map { dayOffset ->
+                    val time = now - dayOffset * dayMillis
+                    val sdf = java.text.SimpleDateFormat("E", if (isArabic) java.util.Locale("ar") else java.util.Locale.US)
+                    sdf.format(java.util.Date(time))
+                }.reversed()
+
+                val monthlyCounts = (0..5).map { monthOffset ->
+                    val start = now - (monthOffset + 1) * monthMillis
+                    val end = now - monthOffset * monthMillis
+                    purchaseIntents.count { it.timestamp != null && it.timestamp.toDate().time in start..end }
+                }.reversed()
+
+                val monthlyLabels = (0..5).map { monthOffset ->
+                    val time = now - monthOffset * monthMillis
+                    val sdf = java.text.SimpleDateFormat("MMM", if (isArabic) java.util.Locale("ar") else java.util.Locale.US)
+                    sdf.format(java.util.Date(time))
+                }.reversed()
+
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                        border = BorderStroke(1.dp, BrandSoftGray)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = if (isArabic) "إجمالي طلبات الشراء الكلي (نقرات شراء الآن)" else "Total Buy Now Clicks",
+                                color = BrandTextMuted,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "$totalIntents",
+                                color = BrandPrimary,
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isArabic) "مخطط الطلبات اليومي (آخر 7 أيام)" else "Daily Purchase Requests (Last 7 Days)",
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary,
+                        fontSize = 14.sp
+                    )
+                }
+
+                item {
+                    SimpleTrendChart(
+                        data = dailyCounts,
+                        labels = dailyLabels,
+                        color = BrandPrimary,
+                        isArabic = isArabic
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isArabic) "مخطط الطلبات الشهري (آخر 6 أشهر)" else "Monthly Purchase Requests (Last 6 Months)",
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary,
+                        fontSize = 14.sp
+                    )
+                }
+
+                item {
+                    SimpleTrendChart(
+                        data = monthlyCounts,
+                        labels = monthlyLabels,
+                        color = Color(0xFF00CED1),
+                        isArabic = isArabic
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isArabic) "المنتجات الأكثر طلباً" else "Most Requested Products",
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary,
+                        fontSize = 14.sp
+                    )
+                }
+
+                if (topProducts.isEmpty()) {
+                    item {
+                        Text(
+                            text = if (isArabic) "لا توجد نقرات مسجلة" else "No buy clicks recorded",
+                            color = BrandTextMuted,
+                            fontSize = 12.sp
+                        )
+                    }
+                } else {
+                    items(topProducts) { pair ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                            border = BorderStroke(1.dp, BrandSoftGray)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = pair.first,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = if (isArabic) "${pair.second} طلبات" else "${pair.second} requests",
+                                    color = BrandPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isArabic) "المتاجر الأكثر طلباً" else "Most Requested Stores",
+                        fontWeight = FontWeight.Bold,
+                        color = BrandPrimary,
+                        fontSize = 14.sp
+                    )
+                }
+
+                if (topStores.isEmpty()) {
+                    item {
+                        Text(
+                            text = if (isArabic) "لا توجد نقرات مسجلة" else "No buy clicks recorded",
+                            color = BrandTextMuted,
+                            fontSize = 12.sp
+                        )
+                    }
+                } else {
+                    items(topStores) { pair ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                            border = BorderStroke(1.dp, BrandSoftGray)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = pair.first,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp,
+                                    modifier = Modifier.weight(1f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = if (isArabic) "${pair.second} طلبات" else "${pair.second} requests",
+                                    color = Color(0xFFFF69B4),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
                             }
                         }
                     }

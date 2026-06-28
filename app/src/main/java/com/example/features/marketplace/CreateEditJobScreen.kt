@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,9 +40,32 @@ fun CreateEditJobScreen(
     var contactWhatsApp by remember { mutableStateOf("") }
     var whatsappError by remember { mutableStateOf(false) }
 
+    val locations = listOf("دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "السويداء", "درعا", "دير الزور", "الحسكة", "الرقة", "إدلب", "القنيطرة")
+    val locationMap = mapOf(
+        "دمشق" to "Damascus (دمشق)",
+        "ريف دمشق" to "Rif Dimashq (ريف دمشق)",
+        "حلب" to "Aleppo (حلب)",
+        "حمص" to "Homs (حمص)",
+        "حماة" to "Hama (حماة)",
+        "اللاذقية" to "Latakia (اللاذقية)",
+        "طرطوس" to "Tartus (طرطوس)",
+        "السويداء" to "As-Suwayda (السويداء)",
+        "درعا" to "Daraa (درعا)",
+        "دير الزور" to "Deir ez-Zor (دير الزور)",
+        "الحسكة" to "Al-Hasakah (الحسكة)",
+        "الرقة" to "Raqqa (الرقة)",
+        "إدلب" to "Idlib (إدلب)",
+        "القنيطرة" to "Quneitra (القنيطرة)"
+    )
+
+    var specifySalary by remember { mutableStateOf(false) }
+    var selectedCurrency by remember { mutableStateOf("SYP") } // "SYP" or "USD"
+    var salaryAmount by remember { mutableStateOf("") }
+
     val employmentTypes = listOf("دوام كامل", "دوام جزئي", "عن بعد", "عقد", "تطوع", "تدريب", "مستقل")
     val categories = listOf("إدارة أعمال", "تقنية المعلومات", "إدخال بيانات", "لوجستيات", "مبيعات", "تسويق", "هندسة", "طب وصيدلة", "موارد بشرية", "محاسبة", "خدمة عملاء", "تصميم", "أخرى")
     val experienceLevels = listOf("حديث التخرج", "مبتدئ (جونيور)", "متوسط", "خبير (سينيور)", "مدير")
+    var expandedLoc by remember { mutableStateOf(false) }
     var expandedEmp by remember { mutableStateOf(false) }
     var expandedCat by remember { mutableStateOf(false) }
     var expandedExp by remember { mutableStateOf(false) }
@@ -62,7 +86,23 @@ fun CreateEditJobScreen(
             employmentType = job!!.employmentType
             category = job!!.category
             experienceLevel = job!!.experienceLevel
-            salary = job!!.salary
+            
+            val rawSalary = job!!.salary
+            if (rawSalary.isBlank() || rawSalary.equals("Negotiable", ignoreCase = true) || rawSalary.contains("تفاوض")) {
+                specifySalary = false
+                salaryAmount = ""
+            } else {
+                specifySalary = true
+                if (rawSalary.startsWith("$")) {
+                    selectedCurrency = "USD"
+                    salaryAmount = rawSalary.replace("$", "").trim()
+                } else {
+                    selectedCurrency = "SYP"
+                    // Extract digits only for the amount
+                    salaryAmount = rawSalary.replace(Regex("[^0-9]"), "")
+                }
+            }
+            
             val contact = job!!.contactWhatsApp
             contactWhatsApp = if (contact.startsWith("+963")) contact.removePrefix("+963") else contact
         }
@@ -141,12 +181,33 @@ fun CreateEditJobScreen(
                 minLines = 3
             )
 
-            OutlinedTextField(
-                value = location,
-                onValueChange = { location = it },
-                label = { Text(if (isArabic) "الموقع" else "Location") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            ExposedDropdownMenuBox(
+                expanded = expandedLoc,
+                onExpandedChange = { expandedLoc = !expandedLoc }
+            ) {
+                OutlinedTextField(
+                    value = if (isArabic) location else (locationMap[location] ?: location),
+                    onValueChange = { },
+                    readOnly = true,
+                    label = { Text(if (isArabic) "المحافظة" else "Governorate / Location") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLoc) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expandedLoc,
+                    onDismissRequest = { expandedLoc = false }
+                ) {
+                    locations.forEach { loc ->
+                        DropdownMenuItem(
+                            text = { Text(if (isArabic) loc else (locationMap[loc] ?: loc)) },
+                            onClick = {
+                                location = loc
+                                expandedLoc = false
+                            }
+                        )
+                    }
+                }
+            }
 
             ExposedDropdownMenuBox(
                 expanded = expandedEmp,
@@ -232,12 +293,71 @@ fun CreateEditJobScreen(
                 }
             }
 
-            OutlinedTextField(
-                value = salary,
-                onValueChange = { salary = it },
-                label = { Text(if (isArabic) "الراتب (اختياري)" else "Salary (Optional)") },
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) {
+                Text(
+                    text = if (isArabic) "تحديد الراتب" else "Specify Salary",
+                    fontWeight = FontWeight.SemiBold,
+                    color = BrandTextPrimary
+                )
+                Switch(
+                    checked = specifySalary,
+                    onCheckedChange = { specifySalary = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = BrandPrimary,
+                        checkedTrackColor = BrandPrimary.copy(alpha = 0.5f)
+                    )
+                )
+            }
+
+            if (specifySalary) {
+                Text(
+                    text = if (isArabic) "اختر العملة" else "Select Currency",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = BrandTextMuted
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    FilterChip(
+                        selected = selectedCurrency == "SYP",
+                        onClick = { selectedCurrency = "SYP" },
+                        label = { Text(if (isArabic) "🇸🇾 ليرة سورية (SYP)" else "🇸🇾 Syrian Pound (SYP)") }
+                    )
+                    FilterChip(
+                        selected = selectedCurrency == "USD",
+                        onClick = { selectedCurrency = "USD" },
+                        label = { Text(if (isArabic) "🇺🇸 دولار أمريكي (USD)" else "🇺🇸 US Dollar (USD)") }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                if (selectedCurrency == "USD") {
+                    OutlinedTextField(
+                        value = salaryAmount,
+                        onValueChange = { input -> salaryAmount = input.filter { it.isDigit() } },
+                        label = { Text(if (isArabic) "الراتب بالدولار" else "Salary in USD") },
+                        prefix = { Text("$", fontWeight = FontWeight.Bold) },
+                        placeholder = { Text("600") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = salaryAmount,
+                        onValueChange = { input -> salaryAmount = input.filter { it.isDigit() } },
+                        label = { Text(if (isArabic) "الراتب بالليرة السورية" else "Salary in SYP") },
+                        suffix = { Text(if (isArabic) "ل.س" else "SYP", fontWeight = FontWeight.Bold) },
+                        placeholder = { Text("3,500,000") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
 
             OutlinedTextField(
                 value = contactWhatsApp,
@@ -273,6 +393,21 @@ fun CreateEditJobScreen(
                             // get store ID
                             val store = ServiceLocator.storeRepository.getStoreByOwnerId(session.id)
                             if (store != null) {
+                                val finalSalary = if (!specifySalary) {
+                                    ""
+                                } else {
+                                    if (selectedCurrency == "USD") {
+                                        "$${salaryAmount.trim()}"
+                                    } else {
+                                        val parsedAmount = salaryAmount.replace(Regex("[^0-9]"), "").toLongOrNull()
+                                        val formattedSyp = if (parsedAmount != null) {
+                                            java.text.NumberFormat.getNumberInstance(java.util.Locale.US).format(parsedAmount)
+                                        } else {
+                                            salaryAmount
+                                        }
+                                        if (formattedSyp.isBlank()) "" else "${formattedSyp} ل.س"
+                                    }
+                                }
                                 viewModel.saveJob(
                                     storeId = store.id,
                                     jobId = jobId,
@@ -284,7 +419,7 @@ fun CreateEditJobScreen(
                                     employmentType = employmentType,
                                     category = category,
                                     experienceLevel = experienceLevel,
-                                    salary = salary,
+                                    salary = finalSalary,
                                     contactWhatsApp = fullWhatsApp
                                 )
                             }

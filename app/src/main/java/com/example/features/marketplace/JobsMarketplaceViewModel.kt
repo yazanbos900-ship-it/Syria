@@ -38,7 +38,7 @@ class JobsMarketplaceViewModel : ViewModel() {
     private val _selectedExperienceLevel = MutableStateFlow<String?>(null)
     val selectedExperienceLevel: StateFlow<String?> = _selectedExperienceLevel.asStateFlow()
 
-    val availableLocations = listOf("دمشق", "حلب", "حمص", "اللاذقية", "حماة", "طرطوس", "الرقة", "دير الزور", "السويداء", "الحسكة", "درعا", "إدلب", "القنيطرة")
+    val availableLocations = listOf("دمشق", "ريف دمشق", "حلب", "حمص", "اللاذقية", "حماة", "طرطوس", "الرقة", "دير الزور", "السويداء", "الحسكة", "درعا", "إدلب", "القنيطرة")
     val availableEmploymentTypes = listOf("دوام كامل", "دوام جزئي", "عن بعد", "عقد", "تطوع", "تدريب", "مستقل")
     val availableCategories = listOf("إدارة أعمال", "تقنية المعلومات", "إدخال بيانات", "لوجستيات", "مبيعات", "تسويق", "هندسة", "طب وصيدلة", "موارد بشرية", "محاسبة", "خدمة عملاء", "تصميم", "أخرى")
     val availableExperienceLevels = listOf("حديث التخرج", "مبتدئ (جونيور)", "متوسط", "خبير (سينيور)", "مدير")

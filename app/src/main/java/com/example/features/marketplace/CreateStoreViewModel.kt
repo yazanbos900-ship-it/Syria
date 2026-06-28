@@ -126,39 +126,11 @@ class CreateStoreViewModel(
         }
     }
 
-    fun onProductNameChange(name: String) {
-        _state.update { it.copy(productName = name) }
-    }
-
-    fun onProductPriceChange(price: String) {
-        // Enforce numeric/decimal chars configuration
-        if (price.isEmpty() || price.toDoubleOrNull() != null || price.endsWith(".")) {
-            _state.update { it.copy(productPrice = price) }
-        }
-    }
-
-    fun onProductDescriptionChange(description: String) {
-        _state.update { it.copy(productDescription = description) }
-    }
-
-    fun onAddProductImage(uriString: String) {
-        val currentImages = _state.value.productImageUris
-        if (currentImages.size < 10 && !currentImages.contains(uriString)) {
-            _state.update { it.copy(productImageUris = currentImages + uriString) }
-        }
-    }
-
-    fun onRemoveProductImage(uriString: String) {
-        val currentImages = _state.value.productImageUris
-        _state.update { it.copy(productImageUris = currentImages - uriString) }
-    }
 
     fun nextStep() {
         val currentStep = _state.value.currentStep
         if (currentStep == 1 && _state.value.isStep1Valid) {
             _state.update { it.copy(currentStep = 2) }
-        } else if (currentStep == 2 && _state.value.isStep2Valid) {
-            _state.update { it.copy(currentStep = 3) }
         }
     }
 
@@ -187,7 +159,7 @@ class CreateStoreViewModel(
         val username = "@$cleanName"
         val storeId = UUID.randomUUID().toString()
 
-        if (!currentState.isStep1Valid || !currentState.isStep2Valid || !currentState.isStep3Valid) {
+        if (!currentState.isStep1Valid || !currentState.isStep2Valid) {
             _state.update { it.copy(error = "يرجى إكمال وتدقيق جميع الخيارات والبيانات المطلوبة قبل الإرسال.") }
             return
         }
@@ -208,37 +180,25 @@ class CreateStoreViewModel(
                 // 2. Store Banner is already uploaded if provided
                 val bannerUrl = currentState.bannerUriString
 
-                // 3. Upload First Product Images (Sequential for deterministic ordering)
-                val uploadedProductImages = mutableListOf<String>()
-                currentState.productImageUris.forEachIndexed { index, uriString ->
-                    val imageId = UUID.randomUUID().toString()
-                    val uploadResult = uploader.uploadFile(
-                        localUriString = uriString
-                    )
-                    uploadedProductImages.add(uploadResult.getOrThrow())
-                }
-
-                // 4. Save Store structure and Product subcollection entry to Firestore
-                val dbResult = storeRepository.createStoreAndFirstProduct(
-                    storeId = storeId,
+                // 3. Create Store object
+                val store = com.example.domain.model.Store(
+                    id = storeId,
+                    name = currentState.storeName,
                     ownerId = uid,
                     ownerUsername = username,
-                    storeName = currentState.storeName,
-                    categoryId = currentState.categoryId,
-                    categoryName = currentState.categoryName,
-                    description = currentState.storeDescription,
                     logoUrl = logoUrl,
                     bannerUrl = bannerUrl,
-                    productName = currentState.productName,
-                    productPrice = currentState.productPrice.toDoubleOrNull() ?: 0.0,
-                    productDescription = currentState.productDescription,
-                    productImages = uploadedProductImages,
+                    description = currentState.storeDescription,
+                    categoryId = currentState.categoryId,
                     latitude = currentState.latitude,
                     longitude = currentState.longitude,
                     city = currentState.city,
                     district = currentState.district,
                     fullAddress = currentState.fullAddress
                 )
+
+                // 4. Save Store to Firestore
+                val dbResult = storeRepository.createStore(store)
 
                 if (dbResult.isSuccess) {
                     _state.update { it.copy(isLoading = false, isSuccess = true) }

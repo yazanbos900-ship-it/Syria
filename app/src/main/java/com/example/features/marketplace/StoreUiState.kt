@@ -26,12 +26,6 @@ data class StoreUiState(
     val fullAddress: String = "",
     val mapVisible: Boolean = false,
     
-    // Step 3 - First Product
-    val productName: String = "",
-    val productPrice: String = "",
-    val productDescription: String = "",
-    val productImageUris: List<String> = emptyList(),
-    
     // Remote Data & User Sessions
     val categories: List<Category> = emptyList(),
     val isCategoriesLoading: Boolean = false,
@@ -52,12 +46,4 @@ data class StoreUiState(
 
     val isStep2Valid: Boolean
         get() = logoUriString != null
-
-    val isStep3Valid: Boolean
-        get() = productName.isNotBlank() && 
-                productPrice.isNotBlank() && 
-                productPrice.toDoubleOrNull() != null && 
-                productPrice.toDouble() > 0 &&
-                productDescription.isNotBlank() && 
-                productImageUris.isNotEmpty()
 }

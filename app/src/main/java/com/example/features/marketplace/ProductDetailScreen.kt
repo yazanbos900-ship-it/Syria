@@ -228,13 +228,18 @@ fun ProductDetailScreen(
                         val sellerUid = if (domainProduct.storeId == "direct_ad") adOwnerUid else state.store?.ownerId
                         val sellerName = if (domainProduct.storeId == "direct_ad") (adOwnerName ?: "Seller") else (state.store?.ownerUsername ?: state.store?.name ?: "Seller")
                         val isSellerMe = currentUserSession?.id != null && sellerUid != null && (currentUserSession?.id == sellerUid)
+                        val context = LocalContext.current
+                        var isCheckingChat by remember { mutableStateOf(false) }
 
-                        if (currentUserSession != null && sellerUid != null && !isSellerMe) {
-                            var isCheckingChat by remember { mutableStateOf(false) }
-
+                        if (sellerUid != null && !isSellerMe) {
+                            // Contact Seller Icon Button
                             OutlinedButton(
                                 onClick = {
-                                    val currentUid = currentUserSession?.id ?: return@OutlinedButton
+                                    val currentUid = currentUserSession?.id
+                                    if (currentUid == null) {
+                                        android.widget.Toast.makeText(context, if (isAr) "يرجى تسجيل الدخول أولاً للاتصال بالبائع" else "Please log in first to contact the seller", android.widget.Toast.LENGTH_SHORT).show()
+                                        return@OutlinedButton
+                                    }
                                     val targetSellerUid = sellerUid
                                     isCheckingChat = true
                                     val db = FirebaseFirestore.getInstance()
@@ -297,34 +302,135 @@ fun ProductDetailScreen(
                                     Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(20.dp))
                                 }
                             }
-                        }
 
-                        Button(
-                            onClick = { SharedCartState.addProductToCart(marketProduct) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(20.dp))
-                        }
-                        
-                        Button(
-                            onClick = { SharedCartState.addProductToCart(marketProduct) },
-                            modifier = Modifier
-                                .weight(2f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Text("Buy Now", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            // Redesigned "Buy Now" button: registers purchase intent & starts/opens chat with auto-message
+                            Button(
+                                onClick = {
+                                    val currentUid = currentUserSession?.id
+                                    if (currentUid == null) {
+                                        android.widget.Toast.makeText(context, if (isAr) "يرجى تسجيل الدخول أولاً لإتمام الشراء" else "Please log in first to proceed with purchase", android.widget.Toast.LENGTH_SHORT).show()
+                                        return@Button
+                                    }
+                                    val targetSellerUid = sellerUid
+                                    isCheckingChat = true
+                                    val db = FirebaseFirestore.getInstance()
+
+                                    // 1. Record purchase intent for marketplace analytics
+                                    val intentId = db.collection("purchase_intents").document().id
+                                    val intentData = hashMapOf(
+                                        "id" to intentId,
+                                        "userId" to currentUid,
+                                        "productId" to domainProduct.id,
+                                        "productTitle" to domainProduct.title,
+                                        "storeId" to (domainProduct.storeId ?: "direct_ad"),
+                                        "storeName" to (state.store?.name ?: "Store"),
+                                        "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                    )
+                                    db.collection("purchase_intents").document(intentId).set(intentData)
+
+                                    // 2. Open or create chat room
+                                    db.collection("chats")
+                                        .whereEqualTo("buyerUid", currentUid)
+                                        .whereEqualTo("productId", domainProduct.id)
+                                        .get()
+                                        .addOnSuccessListener { querySnapshot ->
+                                            if (querySnapshot != null && !querySnapshot.isEmpty) {
+                                                val existingChatId = querySnapshot.documents.first().id
+                                                isCheckingChat = false
+                                                onContactSeller(existingChatId)
+                                            } else {
+                                                val newChatId = db.collection("chats").document().id
+                                                val buyerNameStr = currentUserSession!!.name
+                                                val imageToUse = if (domainProduct.imageUrls.isNotEmpty()) domainProduct.imageUrls.first() else ""
+                                                val autoMessageText = "مرحباً، أنا مهتم بشراء هذا المنتج. هل ما زال متوفراً؟"
+
+                                                val chatData = hashMapOf(
+                                                    "chatId" to newChatId,
+                                                    "participants" to listOf(currentUid, targetSellerUid),
+                                                    "buyerUid" to currentUid,
+                                                    "sellerUid" to targetSellerUid,
+                                                    "buyerName" to buyerNameStr,
+                                                    "sellerName" to sellerName,
+                                                    "productId" to domainProduct.id,
+                                                    "productTitle" to domainProduct.title,
+                                                    "productImage" to imageToUse,
+                                                    "lastMessage" to autoMessageText,
+                                                    "lastMessageSenderId" to currentUid,
+                                                    "lastMessageTime" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                                                    "unreadCount_$currentUid" to 0,
+                                                    "unreadCount_$targetSellerUid" to 1,
+                                                    "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                                )
+
+                                                db.collection("chats").document(newChatId).set(chatData)
+                                                    .addOnSuccessListener {
+                                                        // Automatically send the first message in the message subcollection
+                                                        val messageRef = db.collection("chats").document(newChatId).collection("messages").document()
+                                                        val firstMessage = hashMapOf(
+                                                            "messageId" to messageRef.id,
+                                                            "senderId" to currentUid,
+                                                            "senderName" to buyerNameStr,
+                                                            "text" to autoMessageText,
+                                                            "imageUrl" to null,
+                                                            "type" to "text",
+                                                            "timestamp" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                                                            "isRead" to false
+                                                        )
+                                                        messageRef.set(firstMessage)
+                                                            .addOnSuccessListener {
+                                                                isCheckingChat = false
+                                                                onContactSeller(newChatId)
+                                                            }
+                                                            .addOnFailureListener {
+                                                                isCheckingChat = false
+                                                                onContactSeller(newChatId)
+                                                            }
+                                                    }
+                                                    .addOnFailureListener {
+                                                        isCheckingChat = false
+                                                    }
+                                            }
+                                        }
+                                        .addOnFailureListener {
+                                            isCheckingChat = false
+                                        }
+                                },
+                                modifier = Modifier
+                                    .weight(3f)
+                                    .height(56.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                enabled = !isCheckingChat
+                            ) {
+                                Text(
+                                    text = if (isAr) "شراء الآن (مراسلة)" else "Buy Now (Chat)",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        } else if (isSellerMe) {
+                            Button(
+                                onClick = {
+                                    android.widget.Toast.makeText(context, if (isAr) "هذا منتجك الخاص" else "This is your own product", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    contentColor = MaterialTheme.colorScheme.onSecondary
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text(
+                                    text = if (isAr) "منتجك الخاص" else "Your Product",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }

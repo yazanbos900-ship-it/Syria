@@ -216,6 +216,7 @@ fun StoreManagementScreen(
                                 store = store,
                                 productsCount = state.products.size,
                                 isArabic = isArabic,
+                                purchaseIntents = state.purchaseIntents,
                                 onNavigateToProducts = { selectedTab = SellerTab.PRODUCTS },
                                 onNavigateToPlans = { selectedTab = SellerTab.SUBSCRIPTIONS },
                                 onNavigateToOrders = { selectedTab = SellerTab.ORDERS }
@@ -310,6 +311,7 @@ fun DashboardSection(
     store: Store,
     productsCount: Int,
     isArabic: Boolean,
+    purchaseIntents: List<com.example.domain.model.PurchaseIntent>,
     onNavigateToProducts: () -> Unit,
     onNavigateToPlans: () -> Unit,
     onNavigateToOrders: () -> Unit
@@ -327,6 +329,11 @@ fun DashboardSection(
         // Tier and Level Status Pills Banner
         item {
             StoreProgressStatusBanner(store = store, isArabic = isArabic, onNavigateToPlans = onNavigateToPlans)
+        }
+
+        // Purchase Requests / Click Analytics Statistics Card
+        item {
+            PurchaseRequestsStatsCard(purchaseIntents = purchaseIntents, isArabic = isArabic)
         }
 
         // Analytical Metrics Grid
@@ -398,6 +405,200 @@ fun DashboardSection(
         // Custom drawn curve line chart representing store impressions
         item {
             DashboardAnalyticsChart(isArabic = isArabic)
+        }
+    }
+}
+
+@Composable
+fun PurchaseRequestsStatsCard(
+    purchaseIntents: List<com.example.domain.model.PurchaseIntent>,
+    isArabic: Boolean
+) {
+    val now = System.currentTimeMillis()
+    val dayMillis = 24 * 60 * 60 * 1000L
+    val weekMillis = 7 * dayMillis
+    val monthMillis = 30 * dayMillis
+
+    val dayRequests = purchaseIntents.count { it.timestamp != null && (now - it.timestamp.toDate().time) <= dayMillis }
+    val weekRequests = purchaseIntents.count { it.timestamp != null && (now - it.timestamp.toDate().time) <= weekMillis }
+    val monthRequests = purchaseIntents.count { it.timestamp != null && (now - it.timestamp.toDate().time) <= monthMillis }
+
+    val topProducts = purchaseIntents.groupBy { it.productId }
+        .mapValues { entry ->
+            val title = entry.value.firstOrNull()?.productTitle ?: (if (isArabic) "منتج غير معروف" else "Unknown Product")
+            title to entry.value.size
+        }
+        .values
+        .sortedByDescending { it.second }
+        .take(5)
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, BorderColor),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            // Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ShowChart,
+                    contentDescription = null,
+                    tint = PrimaryGreen,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = if (isArabic) "إحصائيات نقرات الشراء" else "Purchase Request Insights",
+                    color = TextWhite,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Total Click Indicator
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BorderColor.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = if (isArabic) "إجمالي طلبات الشراء" else "Total Purchase Requests",
+                        color = TextGray,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "${purchaseIntents.size}",
+                        color = PrimaryGreen,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ShoppingCart,
+                    contentDescription = null,
+                    tint = PrimaryGreen.copy(alpha = 0.8f),
+                    modifier = Modifier.size(40.dp)
+                )
+            }
+
+            // Day / Week / Month Breakdown Row
+            Text(
+                text = if (isArabic) "معدل الطلب عبر الوقت" else "Request Frequency Over Time",
+                color = TextWhite,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Day Box
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(BorderColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = if (isArabic) "اليوم" else "Today", color = TextGray, fontSize = 11.sp)
+                    Text(text = "$dayRequests", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                // Week Box
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(BorderColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = if (isArabic) "هذا الأسبوع" else "This Week", color = TextGray, fontSize = 11.sp)
+                    Text(text = "$weekRequests", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                // Month Box
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(BorderColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = if (isArabic) "هذا الشهر" else "This Month", color = TextGray, fontSize = 11.sp)
+                    Text(text = "$monthRequests", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // Most Requested Products List
+            if (topProducts.isNotEmpty()) {
+                Text(
+                    text = if (isArabic) "المنتجات الأكثر طلباً" else "Most Requested Products",
+                    color = TextWhite,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    topProducts.forEachIndexed { index, pair ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(BorderColor.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(PrimaryGreen.copy(alpha = 0.15f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${index + 1}",
+                                        color = PrimaryGreen,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Text(
+                                    text = pair.first,
+                                    color = TextWhite,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Text(
+                                text = if (isArabic) "${pair.second} طلبات" else "${pair.second} requests",
+                                color = PrimaryGreen,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    text = if (isArabic) "لا توجد طلبات شراء مسجلة بعد." else "No purchase requests recorded yet.",
+                    color = TextGray,
+                    fontSize = 11.sp,
+                    style = androidx.compose.ui.text.TextStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                )
+            }
         }
     }
 }

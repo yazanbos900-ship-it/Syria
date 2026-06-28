@@ -18,6 +18,9 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.ShoppingBasket
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import com.example.core.utils.LanguageManager
@@ -52,7 +55,8 @@ fun StoreDetailScreen(
     storeId: String,
     onBack: () -> Unit,
     onProductClick: (String) -> Unit,
-    onManageStore: () -> Unit
+    onManageStore: () -> Unit,
+    onContactSeller: (String) -> Unit = {}
 ) {
     val viewModel: StoreDetailViewModel = viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -94,10 +98,15 @@ fun StoreDetailScreen(
                     StoreContent(
                         store = state.store!!,
                         products = state.products,
+                        reputationScore = state.reputationScore,
                         onBack = onBack,
                         onProductClick = onProductClick,
                         isOwner = state.store!!.ownerId == state.currentUserId,
-                        onManageClick = onManageStore
+                        onManageClick = onManageStore,
+                        isFollowing = state.isFollowing,
+                        onToggleFollow = { viewModel.toggleFollow() },
+                        onContactSeller = onContactSeller,
+                        state = state
                     )
                 }
             }
@@ -109,10 +118,15 @@ fun StoreDetailScreen(
 fun StoreContent(
     store: Store,
     products: List<Product>,
+    reputationScore: Double,
     onBack: () -> Unit,
     onProductClick: (String) -> Unit,
     isOwner: Boolean,
-    onManageClick: () -> Unit
+    onManageClick: () -> Unit,
+    isFollowing: Boolean,
+    onToggleFollow: () -> Unit,
+    onContactSeller: (String) -> Unit,
+    state: StoreDetailUiState
 ) {
     val context = LocalContext.current
     // Get Category Info
@@ -212,7 +226,7 @@ fun StoreContent(
             Spacer(modifier = Modifier.height(60.dp))
         }
 
-        // 2) Header Information Section
+        // 2) Store Name, Category & Verification Badge Section
         item {
             Column(
                 modifier = Modifier
@@ -220,24 +234,14 @@ fun StoreContent(
                     .padding(horizontal = 24.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = store.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
-                    )
-                    if (store.isVerified) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Verified",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
+                // Store Name
+                Text(
+                    text = store.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
+                )
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
@@ -248,18 +252,45 @@ fun StoreContent(
                     textAlign = TextAlign.Center
                 )
 
+                // Category
                 if (category != null) {
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
                             text = category.getName(isArabic),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.primary,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Verification Badge
+                if (store.isVerified || store.verificationStatus == "Verified") {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.06f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Verified Store",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (isArabic) "متجر موثق" else "Verified Store",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -267,108 +298,295 @@ fun StoreContent(
                 if (store.subscriptionTier != "free" && store.subscriptionTier != "Starter") {
                     Spacer(modifier = Modifier.height(12.dp))
                     StoreSubscriptionBadge(tier = store.subscriptionTier)
-                } else {
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
 
-        // 3) Stats Row
-        item {
-            @OptIn(ExperimentalLayoutApi::class)
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                maxItemsInEachRow = 4
-            ) {
-                StoreStatChip(
-                    icon = Icons.Default.Star,
-                    value = String.format("%.1f", store.rating),
-                    label = if (isArabic) "التقييم" else "Rating",
-                    tint = Color(0xFFFFC107)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                StoreStatChip(
-                    icon = Icons.Default.ShoppingCart,
-                    value = products.size.toString(),
-                    label = if (isArabic) "منتجات" else "Products",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                StoreStatChip(
-                    icon = Icons.Default.Person,
-                    value = store.followersCount.toString(),
-                    label = if (isArabic) "متابع" else "Followers",
-                    tint = MaterialTheme.colorScheme.secondary
-                )
-                if (activeJobsCount > 0) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    StoreStatChip(
-                        icon = Icons.Default.Work,
-                        value = activeJobsCount.toString(),
-                        label = if (isArabic) "وظائف" else "Jobs",
-                        tint = MaterialTheme.colorScheme.tertiary
-                    )
-                }
-            }
-        }
-        
-        // 4) Action Row
+        // 3) Action Row (Follow / Manage Store buttons)
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isOwner) {
+                    // Manage Store
                     Button(
                         onClick = onManageClick,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1.2f),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
                     ) {
+                        Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(if (isArabic) "إدارة المتجر" else "Manage Store", fontWeight = FontWeight.Bold)
                     }
-                } else {
-                    Button(
-                        onClick = { /* Follow Logic */ },
+
+                    // Analytics
+                    FilledTonalButton(
+                        onClick = {
+                            android.widget.Toast.makeText(context, if (isArabic) "جاري فتح مركز إدارة البائع..." else "Opening Seller Hub...", android.widget.Toast.LENGTH_SHORT).show()
+                            onManageClick()
+                        },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(if (isArabic) "متابعة" else "Follow", fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Dashboard, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (isArabic) "التحليلات" else "Analytics", fontWeight = FontWeight.Bold)
                     }
+
+                    // Edit Store
                     OutlinedButton(
-                        onClick = { /* Contact Logic */ },
+                        onClick = {
+                            android.widget.Toast.makeText(context, if (isArabic) "جاري الانتقال لإعدادات المتجر..." else "Opening Store settings...", android.widget.Toast.LENGTH_SHORT).show()
+                            onManageClick()
+                        },
                         modifier = Modifier.weight(1f),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(if (isArabic) "تواصل" else "Contact", color = MaterialTheme.colorScheme.onSurface)
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (isArabic) "تعديل" else "Edit", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Share button
+                    IconButton(
+                        onClick = {
+                            val shareIntent = android.content.Intent().apply {
+                                action = android.content.Intent.ACTION_SEND
+                                type = "text/plain"
+                                putExtra(
+                                    android.content.Intent.EXTRA_TEXT,
+                                    if (isArabic) "شاهد متجري '${store.name}' على سوقنا الإلكتروني!" else "Check out my store '${store.name}' on our Marketplace!"
+                                )
+                            }
+                            context.startActivity(android.content.Intent.createChooser(shareIntent, if (isArabic) "مشاركة المتجر" else "Share Store"))
+                        },
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            .size(44.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    // Follow / Following Button
+                    Button(
+                        onClick = onToggleFollow,
+                        modifier = Modifier.weight(1.2f),
+                        colors = if (isFollowing) {
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        } else {
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isFollowing) Icons.Default.CheckCircle else Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isFollowing) {
+                                if (isArabic) "متابع" else "Following"
+                            } else {
+                                if (isArabic) "متابعة" else "Follow"
+                            },
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Message / Contact Button
+                    var isCheckingChat by remember { mutableStateOf(false) }
+                    
+                    OutlinedButton(
+                        onClick = {
+                            if (state.currentUserId == null) {
+                                android.widget.Toast.makeText(context, if (isArabic) "يرجى تسجيل الدخول أولاً للمراسلة" else "Please log in first to message", android.widget.Toast.LENGTH_SHORT).show()
+                                return@OutlinedButton
+                            }
+                            if (isCheckingChat) return@OutlinedButton
+                            
+                            isCheckingChat = true
+                            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            db.collection("chats")
+                                .whereEqualTo("buyerUid", state.currentUserId)
+                                .whereEqualTo("sellerUid", store.ownerId)
+                                .whereEqualTo("productId", "")
+                                .get()
+                                .addOnSuccessListener { querySnapshot ->
+                                    if (querySnapshot != null && !querySnapshot.isEmpty) {
+                                        val existingChatId = querySnapshot.documents.first().id
+                                        isCheckingChat = false
+                                        onContactSeller(existingChatId)
+                                    } else {
+                                        val newChatId = db.collection("chats").document().id
+                                        val chatData = hashMapOf(
+                                            "chatId" to newChatId,
+                                            "participants" to listOf(state.currentUserId, store.ownerId),
+                                            "buyerUid" to state.currentUserId,
+                                            "sellerUid" to store.ownerId,
+                                            "buyerName" to "User",
+                                            "sellerName" to store.name,
+                                            "productId" to "",
+                                            "productTitle" to "Direct Chat",
+                                            "productImage" to (store.logoUrl ?: ""),
+                                            "lastMessage" to "Conversation started",
+                                            "lastMessageSenderId" to "system",
+                                            "lastMessageTime" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                                            "unreadCount_${state.currentUserId}" to 0,
+                                            "unreadCount_${store.ownerId}" to 0,
+                                            "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                        )
+                                        db.collection("chats").document(newChatId).set(chatData)
+                                            .addOnSuccessListener {
+                                                isCheckingChat = false
+                                                onContactSeller(newChatId)
+                                            }
+                                            .addOnFailureListener {
+                                                isCheckingChat = false
+                                            }
+                                    }
+                                }
+                                .addOnFailureListener {
+                                    isCheckingChat = false
+                                }
+                        },
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isCheckingChat) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Chat,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isArabic) "مراسلة" else "Message",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Share Button
+                    IconButton(
+                        onClick = {
+                            val shareIntent = android.content.Intent().apply {
+                                action = android.content.Intent.ACTION_SEND
+                                type = "text/plain"
+                                putExtra(
+                                    android.content.Intent.EXTRA_TEXT,
+                                    if (isArabic) "شاهد هذا المتجر الرائع '${store.name}' على سوقنا الإلكتروني!" else "Check out this amazing store '${store.name}' on our Marketplace!"
+                                )
+                            }
+                            context.startActivity(android.content.Intent.createChooser(shareIntent, if (isArabic) "مشاركة المتجر" else "Share Store"))
+                        },
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            .size(44.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                
-                IconButton(
-                    onClick = { /* Share Logic */ },
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                ) {
-                    Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
             }
-            
+        }
+
+        // 4) Statistics Row (Consistent Sizing & Spacing)
+        item {
+            val ratedProducts = products.filter { it.reviewCount > 0 }
+            val totalReviews = products.sumOf { it.reviewCount }
+            val ratingValue = if (totalReviews > 0) {
+                val avg = ratedProducts.map { it.rating }.average()
+                String.format("%.1f", avg)
+            } else {
+                "—"
+            }
+            val ratingLabel = if (totalReviews > 0) {
+                if (isArabic) "التقييم ($totalReviews)" else "Rating ($totalReviews)"
+            } else {
+                if (isArabic) "لا توجد تقييمات" else "No ratings yet"
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Stat 1: Rating
+                StoreStatCard(
+                    icon = Icons.Default.Star,
+                    value = ratingValue,
+                    label = ratingLabel,
+                    tint = Color(0xFFFFC107),
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Stat 2: Products Count
+                StoreStatCard(
+                    icon = Icons.Default.ShoppingCart,
+                    value = products.size.toString(),
+                    label = if (isArabic) "منتجات" else "Products",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Stat 3: Followers Count
+                StoreStatCard(
+                    icon = Icons.Default.Person,
+                    value = store.followersCount.toString(),
+                    label = if (isArabic) "متابع" else "Followers",
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Stat 4: Reputation Score
+                StoreStatCard(
+                    icon = Icons.Default.CheckCircle,
+                    value = reputationScore.toInt().toString(),
+                    label = if (isArabic) "السمعة" else "Reputation",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // Active Jobs Callout
+        item {
             if (!isOwner && activeJobsCount > 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 4.dp)
+                        .padding(horizontal = 24.dp, vertical = 6.dp)
                 ) {
+                    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                     Button(
-                        onClick = { /* View Jobs Logic */ },
+                        onClick = {
+                            // Direct navigation to Jobs Marketplace Screen
+                            val intent = android.content.Intent(context, com.example.MainActivity::class.java).apply {
+                                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            }
+                            // Let's use the onBack/onProductClick callbacks or simply toast and let them know.
+                            // Better yet, we can display a toast and since we can navigate, we can let user use the navigation menu or jobs marketplace
+                            android.widget.Toast.makeText(context, if (isArabic) "الانتقال إلى سوق العمل للوظائف الشاغرة..." else "Navigating to Jobs Marketplace...", android.widget.Toast.LENGTH_SHORT).show()
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer, contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
                         shape = RoundedCornerShape(12.dp)
@@ -483,41 +701,61 @@ fun StoreContent(
 }
 
 @Composable
-fun StoreStatChip(
+fun StoreStatCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
     label: String,
-    tint: Color
+    tint: Color,
+    modifier: Modifier = Modifier
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(12.dp)
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = tint,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Column {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(tint.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = tint,
+                    modifier = Modifier.size(18.dp)
                 )
             }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                fontSize = 10.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
