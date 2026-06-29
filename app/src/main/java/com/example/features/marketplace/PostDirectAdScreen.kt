@@ -93,6 +93,9 @@ fun PostDirectAdScreen(
         }
     }
 
+    var showImagePickerDialog by remember { mutableStateOf(false) }
+    var tempPhotoUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
     val photoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -112,6 +115,46 @@ fun PostDirectAdScreen(
                     }
                 }
                 isUploadingImage = false
+            }
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            tempPhotoUri?.let { uri ->
+                scope.launch {
+                    isUploadingImage = true
+                    val uploader = CloudinaryUploader()
+                    val result = uploader.uploadFile(uri.toString())
+                    result.onSuccess { url ->
+                        imageUris = imageUris + url
+                    }
+                    result.onFailure {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                if (isArabic) "فشل رفع الصورة، حاول مجدداً" else "Upload failed, try again"
+                            )
+                        }
+                    }
+                    isUploadingImage = false
+                }
+            }
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                val file = createTempImageFile(context)
+                val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                tempPhotoUri = uri
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -555,7 +598,7 @@ fun PostDirectAdScreen(
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFF17191E))
                                     .border(BorderStroke(1.dp, BrandSoftGray), RoundedCornerShape(12.dp))
-                                    .clickable { photoLauncher.launch("image/*") },
+                                    .clickable { showImagePickerDialog = true },
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (isUploadingImage) {
@@ -733,4 +776,157 @@ fun PostDirectAdScreen(
             }
         }
     }
+
+    if (showImagePickerDialog) {
+        Dialog(onDismissRequest = { showImagePickerDialog = false }) {
+            Surface(
+                color = Color(0xFF17191E),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, Color(0xFF2C2F36)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = if (isArabic) "إضافة صورة" else "Add Image",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = if (isArabic) "اختر طريقة لإضافة صورة الإعلان" else "Choose a method to add an ad image",
+                        color = Color(0xFF9E9E9E),
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Camera Card Option
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(100.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable {
+                                    showImagePickerDialog = false
+                                    val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                                        context,
+                                        android.Manifest.permission.CAMERA
+                                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    if (hasPermission) {
+                                        try {
+                                            val file = createTempImageFile(context)
+                                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                                context,
+                                                "${context.packageName}.fileprovider",
+                                                file
+                                            )
+                                            tempPhotoUri = uri
+                                            cameraLauncher.launch(uri)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                        }
+                                    } else {
+                                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                    }
+                                }
+                                .testTag("camera_option_button"),
+                            color = Color(0xFF1DB954).copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, Color(0xFF1DB954).copy(alpha = 0.3f))
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Camera",
+                                    tint = Color(0xFF1DB954),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (isArabic) "التقاط صورة" else "Take Photo",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        // Gallery Card Option
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(100.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable {
+                                    showImagePickerDialog = false
+                                    photoLauncher.launch("image/*")
+                                }
+                                .testTag("gallery_option_button"),
+                            color = Color(0xFF1DB954).copy(alpha = 0.08f),
+                            border = BorderStroke(1.dp, Color(0xFF1DB954).copy(alpha = 0.3f))
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoLibrary,
+                                    contentDescription = "Gallery",
+                                    tint = Color(0xFF1DB954),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (isArabic) "المعرض" else "Choose Gallery",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TextButton(
+                        onClick = { showImagePickerDialog = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = if (isArabic) "إلغاء" else "Cancel",
+                            color = Color(0xFF1DB954),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun createTempImageFile(context: android.content.Context): java.io.File {
+    val storageDir = context.cacheDir
+    return java.io.File.createTempFile(
+        "JPEG_${System.currentTimeMillis()}_",
+        ".jpg",
+        storageDir
+    )
 }

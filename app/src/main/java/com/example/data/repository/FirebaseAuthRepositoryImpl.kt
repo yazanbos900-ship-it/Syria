@@ -179,6 +179,17 @@ class FirebaseAuthRepositoryImpl : AuthRepository {
                 fallbackJoinedAt = firebaseUser.metadata?.creationTimestamp ?: System.currentTimeMillis()
             )
             _currentUserFlow.value = user
+            
+            try {
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                    if (token != null) {
+                        com.example.core.utils.MyFirebaseMessagingService.updateTokenInFirestore(firebaseUser.uid, token)
+                    }
+                }
+            } catch (ex: Exception) {
+                Log.e(tag, "Failed to update token on sign in action", ex)
+            }
+
             Result.success(user)
         } catch (e: Exception) {
             Log.e(tag, "Sign in failed", e)
@@ -198,6 +209,17 @@ class FirebaseAuthRepositoryImpl : AuthRepository {
                 fallbackJoinedAt = firebaseUser.metadata?.creationTimestamp ?: System.currentTimeMillis()
             )
             _currentUserFlow.value = user
+
+            try {
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+                    if (token != null) {
+                        com.example.core.utils.MyFirebaseMessagingService.updateTokenInFirestore(firebaseUser.uid, token)
+                    }
+                }
+            } catch (ex: Exception) {
+                Log.e(tag, "Failed to update token on sign up action", ex)
+            }
+
             Result.success(user)
         } catch (e: Exception) {
             Log.e(tag, "Sign up failed", e)

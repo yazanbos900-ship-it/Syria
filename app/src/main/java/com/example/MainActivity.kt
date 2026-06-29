@@ -28,7 +28,26 @@ import com.example.ui.theme.ThemeManager
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 
+import android.content.Intent
+import android.media.RingtoneManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import android.os.Build
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.tasks.await
+
 class MainActivity : ComponentActivity() {
+
+  private val deepLinkFlow = MutableSharedFlow<String>(replay = 1)
+  private var broadcastListener: com.google.firebase.firestore.ListenerRegistration? = null
 
   override fun attachBaseContext(newBase: Context) {
     val language = LanguageManager.getLanguage(newBase)
@@ -61,9 +80,35 @@ class MainActivity : ComponentActivity() {
     }
 
     enableEdgeToEdge()
+    
+    initializeFcmAndPermissions()
+
+    val initialUser = try { com.google.firebase.auth.FirebaseAuth.getInstance().currentUser } catch(e: Exception) { null }
+    if (initialUser != null) {
+        startBroadcastNotificationsListener(initialUser.uid)
+    }
+
+    val initialDeepLink = intent.getStringExtra("deepLink")
+    if (!initialDeepLink.isNullOrBlank()) {
+        deepLinkFlow.tryEmit(initialDeepLink)
+    }
+
     setContent {
       WasetPlusTheme {
         val navController = rememberNavController()
+
+        val deepLinkRoute by deepLinkFlow.collectAsState(initial = null)
+        LaunchedEffect(deepLinkRoute) {
+            deepLinkRoute?.let { route ->
+                if (route.isNotBlank()) {
+                    try {
+                        navController.navigate(route)
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "DeepLink navigation failed for route $route", e)
+                    }
+                }
+            }
+        }
         
         val sharedPrefs = getSharedPreferences("waset_preferences", Context.MODE_PRIVATE)
         val onboardingCompleted = sharedPrefs.getBoolean("onboarding_completed", false)
@@ -119,6 +164,200 @@ class MainActivity : ComponentActivity() {
             }
         }
       }
+    }
+  }
+
+  private fun initializeFcmAndPermissions() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val hasPermission = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
+    }
+
+    try {
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                if (currentUser != null && token != null) {
+                    com.example.core.utils.MyFirebaseMessagingService.updateTokenInFirestore(currentUser.uid, token)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("MainActivity", "FCM setup failed: ${e.localizedMessage}")
+    }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+      super.onNewIntent(intent)
+      setIntent(intent)
+      val deepLink = intent.getStringExtra("deepLink")
+      if (!deepLink.isNullOrBlank()) {
+          deepLinkFlow.tryEmit(deepLink)
+          Log.d("MainActivity", "onNewIntent received deepLink: $deepLink")
+      }
+  }
+
+  override fun onDestroy() {
+      super.onDestroy()
+      broadcastListener?.remove()
+  }
+
+  private fun startBroadcastNotificationsListener(currentUserId: String) {
+    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+    val appStartTime = System.currentTimeMillis()
+    val seenNotificationIds = mutableSetOf<String>()
+
+    lifecycleScope.launch {
+        try {
+            val userDoc = db.collection("users").document(currentUserId).get().await()
+            val isStoreOwner = userDoc.getBoolean("isStoreOwner") ?: false
+            
+            var storeCity = ""
+            var storePlan = ""
+            var storeId = ""
+            
+            if (isStoreOwner) {
+                val storeSnap = db.collection("stores").whereEqualTo("ownerId", currentUserId).get().await()
+                if (!storeSnap.isEmpty) {
+                    val storeDoc = storeSnap.documents.first()
+                    storeId = storeDoc.id
+                    storeCity = storeDoc.getString("city") ?: ""
+                    storePlan = storeDoc.getString("subscriptionTier") ?: "Starter"
+                }
+            }
+
+            broadcastListener?.remove()
+            broadcastListener = db.collection("broadcast_notifications")
+                .addSnapshotListener { snapshots, error ->
+                    if (error != null) {
+                        Log.e("MainActivity", "Error listening to broadcasts", error)
+                        return@addSnapshotListener
+                    }
+                    if (snapshots == null) return@addSnapshotListener
+
+                    for (docChange in snapshots.documentChanges) {
+                        if (docChange.type == com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                            val doc = docChange.document
+                            val id = doc.id
+                            val sentAt = doc.getLong("sentAt") ?: 0L
+                            
+                            if (sentAt >= appStartTime && !seenNotificationIds.contains(id)) {
+                                seenNotificationIds.add(id)
+                                
+                                val title = doc.getString("title") ?: ""
+                                val body = doc.getString("body") ?: ""
+                                val imageUrl = doc.getString("imageUrl")
+                                val deepLink = doc.getString("deepLink")
+                                val audience = doc.getString("targetAudience") ?: "all_users"
+                                val sentBy = doc.getString("sentBy") ?: ""
+
+                                if (sentBy == currentUserId) continue
+
+                                val isMatch = when {
+                                    audience == "all_users_and_stores" || audience == "all_users" -> true
+                                    audience == "all_store_owners" && isStoreOwner -> true
+                                    audience == "specific_user" && doc.getString("targetUserId") == currentUserId -> true
+                                    audience == "specific_store" && doc.getString("targetStoreId") == storeId -> true
+                                    audience.startsWith("subscription_plan:") && isStoreOwner -> {
+                                        val plan = audience.substringAfter("subscription_plan:")
+                                        storePlan.equals(plan, ignoreCase = true)
+                                    }
+                                    audience.startsWith("location:") -> {
+                                        val loc = audience.substringAfter("location:")
+                                        storeCity.equals(loc, ignoreCase = true)
+                                    }
+                                    else -> false
+                                }
+
+                                if (isMatch) {
+                                    dispatchLocalHeadsUp(title, body, imageUrl, deepLink)
+                                }
+                            }
+                        }
+                    }
+                }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to setup broadcasts listener", e)
+        }
+    }
+  }
+
+  private fun dispatchLocalHeadsUp(title: String, body: String, imageUrl: String?, deepLink: String?) {
+    val channelId = "wasetplus_broadcast_notifications"
+    val channelName = "Broadcast Notifications"
+    val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channel = NotificationChannel(
+            channelId,
+            channelName,
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "General and administrative broadcast announcements"
+            enableLights(true)
+            enableVibration(true)
+            setShowBadge(true)
+            lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+        }
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    val intent = Intent(this, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        if (!deepLink.isNullOrBlank()) {
+            putExtra("deepLink", deepLink)
+        }
+    }
+
+    val pendingIntent = PendingIntent.getActivity(
+        this,
+        System.currentTimeMillis().toInt(),
+        intent,
+        PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+    val notificationBuilder = NotificationCompat.Builder(this, channelId)
+        .setSmallIcon(android.R.drawable.stat_sys_download_done)
+        .setContentTitle(title)
+        .setContentText(body)
+        .setAutoCancel(true)
+        .setSound(defaultSoundUri)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setDefaults(NotificationCompat.DEFAULT_ALL)
+        .setContentIntent(pendingIntent)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+
+    if (!imageUrl.isNullOrBlank()) {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val loader = coil.Coil.imageLoader(this@MainActivity)
+                val request = coil.request.ImageRequest.Builder(this@MainActivity)
+                    .data(imageUrl)
+                    .allowHardware(false)
+                    .build()
+                val result = (loader.execute(request) as? coil.request.SuccessResult)?.drawable
+                val bitmap = (result as? BitmapDrawable)?.bitmap
+                if (bitmap != null) {
+                    notificationBuilder.setLargeIcon(bitmap)
+                    notificationBuilder.setStyle(
+                        NotificationCompat.BigPictureStyle()
+                            .bigPicture(bitmap)
+                            .bigLargeIcon(null as Bitmap?)
+                    )
+                }
+                notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Failed to load notification image: ${e.localizedMessage}")
+                notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
+            }
+        }
+    } else {
+        notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
     }
   }
 }

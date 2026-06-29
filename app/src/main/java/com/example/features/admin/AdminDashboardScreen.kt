@@ -147,6 +147,15 @@ sealed class AdminModule(
         descriptionAr = "تعديل وإدارة سعر الصرف الموحد وتتبع فروقات الأسعار للمتاجر",
         descriptionEn = "Manage standard exchange rates and track store-level differences"
     )
+
+    object BroadcastNotifications : AdminModule(
+        id = "broadcast_notifications",
+        titleAr = "الإشعارات الجماعية",
+        titleEn = "Broadcast Notifications",
+        icon = Icons.Default.Notifications,
+        descriptionAr = "إرسال إشعارات فورية حقيقية للمستخدمين وأصحاب المتاجر عبر FCM",
+        descriptionEn = "Send real-time push notifications to users and store owners via FCM"
+    )
 }
 
 data class AdminUiState(
@@ -162,7 +171,8 @@ data class AdminUiState(
     val isLoading: Boolean = false,
     val selectedModule: AdminModule? = null,
     val errorMessage: String? = null,
-    val purchaseIntents: List<com.example.domain.model.PurchaseIntent> = emptyList()
+    val purchaseIntents: List<com.example.domain.model.PurchaseIntent> = emptyList(),
+    val broadcastHistory: List<Map<String, Any>> = emptyList()
 )
 
 class AdminViewModel : ViewModel() {
@@ -319,6 +329,26 @@ class AdminViewModel : ViewModel() {
                     }
                 }
         }
+
+        // Collect Broadcast Notifications History dynamically
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            db.collection("broadcast_notifications")
+                .orderBy("sentAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.e("AdminViewModel", "Error listening to broadcasts history", error)
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        val list = snapshot.documents.map { doc ->
+                            val map = doc.data ?: emptyMap()
+                            map + ("id" to doc.id)
+                        }
+                        _state.update { it.copy(broadcastHistory = list) }
+                    }
+                }
+        }
     }
 
     fun loadUsersDirectly() {
@@ -347,6 +377,143 @@ class AdminViewModel : ViewModel() {
 
     fun selectModule(module: AdminModule?) {
         _state.update { it.copy(selectedModule = module) }
+    }
+
+    fun saveFcmServerKey(key: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            try {
+                db.collection("admin_settings").document("fcm_config")
+                    .set(mapOf("serverKey" to key), com.google.firebase.firestore.SetOptions.merge())
+                    .await()
+                onComplete(true)
+            } catch (e: Exception) {
+                Log.e("AdminViewModel", "Failed to save FCM Server Key", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun sendBroadcastNotification(
+        title: String,
+        body: String,
+        imageUrl: String?,
+        audience: String,
+        targetUserId: String?,
+        targetStoreId: String?,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val db = firestore ?: return@launch
+            try {
+                val adminId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "unknown_admin"
+                
+                // Fetch Server Key
+                val settingsSnap = db.collection("admin_settings").document("fcm_config").get().await()
+                val serverKey = settingsSnap.getString("serverKey") ?: ""
+
+                val tokens = mutableListOf<String>()
+
+                when {
+                    audience == "all_users" || audience == "all_users_and_stores" -> {
+                        val userSnap = db.collection("users").get().await()
+                        for (doc in userSnap.documents) {
+                            val tok = doc.getString("fcmToken")
+                            if (!tok.isNullOrBlank()) tokens.add(tok)
+                        }
+                    }
+                    audience == "all_store_owners" -> {
+                        val userSnap = db.collection("users").whereEqualTo("isStoreOwner", true).get().await()
+                        for (doc in userSnap.documents) {
+                            val tok = doc.getString("fcmToken")
+                            if (!tok.isNullOrBlank()) tokens.add(tok)
+                        }
+                    }
+                    audience == "specific_user" && !targetUserId.isNullOrBlank() -> {
+                        val userDoc = db.collection("users").document(targetUserId).get().await()
+                        val tok = userDoc.getString("fcmToken")
+                        if (!tok.isNullOrBlank()) tokens.add(tok)
+                    }
+                    audience == "specific_store" && !targetStoreId.isNullOrBlank() -> {
+                        val storeDoc = db.collection("stores").document(targetStoreId).get().await()
+                        val ownerId = storeDoc.getString("ownerId")
+                        if (!ownerId.isNullOrBlank()) {
+                            val userDoc = db.collection("users").document(ownerId).get().await()
+                            val tok = userDoc.getString("fcmToken")
+                            if (!tok.isNullOrBlank()) tokens.add(tok)
+                        }
+                    }
+                    audience.startsWith("subscription_plan:") -> {
+                        val plan = audience.substringAfter("subscription_plan:")
+                        val storesSnap = db.collection("stores").whereEqualTo("subscriptionTier", plan).get().await()
+                        val ownerIds = storesSnap.documents.mapNotNull { it.getString("ownerId") }.toSet()
+                        for (oid in ownerIds) {
+                            val userDoc = db.collection("users").document(oid).get().await()
+                            val tok = userDoc.getString("fcmToken")
+                            if (!tok.isNullOrBlank()) tokens.add(tok)
+                        }
+                    }
+                    audience.startsWith("location:") -> {
+                        val loc = audience.substringAfter("location:")
+                        val storesSnap = db.collection("stores").whereEqualTo("city", loc).get().await()
+                        val ownerIds = storesSnap.documents.mapNotNull { it.getString("ownerId") }.toSet()
+                        for (oid in ownerIds) {
+                            val userDoc = db.collection("users").document(oid).get().await()
+                            val tok = userDoc.getString("fcmToken")
+                            if (!tok.isNullOrBlank()) tokens.add(tok)
+                        }
+                    }
+                }
+
+                val notificationId = db.collection("broadcast_notifications").document().id
+                val logData = hashMapOf(
+                    "id" to notificationId,
+                    "title" to title,
+                    "body" to body,
+                    "imageUrl" to (imageUrl ?: ""),
+                    "targetAudience" to audience,
+                    "targetUserId" to (targetUserId ?: ""),
+                    "targetStoreId" to (targetStoreId ?: ""),
+                    "sentBy" to adminId,
+                    "sentAt" to System.currentTimeMillis(),
+                    "deliveryStatus" to "Processing",
+                    "recipientCount" to tokens.size
+                )
+
+                db.collection("broadcast_notifications").document(notificationId).set(logData).await()
+
+                if (serverKey.isNotBlank()) {
+                    val result = com.example.core.utils.FCMSender.sendFCMNotification(
+                        serverKey = serverKey,
+                        tokens = tokens,
+                        title = title,
+                        body = body,
+                        imageUrl = imageUrl,
+                        deepLink = null
+                    )
+                    result.fold(
+                        onSuccess = {
+                            db.collection("broadcast_notifications").document(notificationId)
+                                .update("deliveryStatus", "Sent via FCM")
+                            onSuccess()
+                        },
+                        onFailure = { err ->
+                            db.collection("broadcast_notifications").document(notificationId)
+                                .update("deliveryStatus", "Partial Failed: ${err.localizedMessage}")
+                            onFailure("Saved in Firestore, but FCM delivery failed: ${err.localizedMessage}")
+                        }
+                    )
+                } else {
+                    db.collection("broadcast_notifications").document(notificationId)
+                        .update("deliveryStatus", "Sent (In-App Sync)")
+                    onSuccess()
+                }
+            } catch (e: Exception) {
+                Log.e("AdminViewModel", "Error broadcasting", e)
+                onFailure(e.localizedMessage ?: "Unknown error")
+            }
+        }
     }
 
     // --- STORE REPOSITORY TRIGGER ACTIONS ---
@@ -720,7 +887,8 @@ fun AdminDashboardScreen(
                             AdminModule.Subscriptions,
                             AdminModule.Settings,
                             AdminModule.Analytics,
-                            AdminModule.ExchangeRate
+                            AdminModule.ExchangeRate,
+                            AdminModule.BroadcastNotifications
                         ),
                         state = state,
                         isArabic = isArabic,
@@ -796,7 +964,11 @@ fun AdminDashboardScreen(
                             isArabic = isArabic,
                             viewModel = viewModel
                         )
-                        else -> Unit
+                        is AdminModule.BroadcastNotifications -> AdminBroadcastNotificationsManager(
+                            isArabic = isArabic,
+                            viewModel = viewModel
+                        )
+                        null -> Unit
                     }
                 }
             }
@@ -3651,6 +3823,620 @@ fun AdminJobsManager(
         if (applications.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                 Text(if (isArabic) "لا يوجد طلبات" else "No applications found", color = BrandTextMuted)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminBroadcastNotificationsManager(
+    isArabic: Boolean,
+    viewModel: AdminViewModel
+) {
+    val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
+    val db = remember { com.google.firebase.firestore.FirebaseFirestore.getInstance() }
+
+    // Server Key state
+    var serverKeyInput by remember { mutableStateOf("") }
+    var isKeySaving by remember { mutableStateOf(false) }
+
+    // Form inputs
+    var titleInput by remember { mutableStateOf("") }
+    var bodyInput by remember { mutableStateOf("") }
+    var imageUrlInput by remember { mutableStateOf("") }
+    var selectedAudienceKey by remember { mutableStateOf("all_users_and_stores") }
+
+    // Detailed audience selections
+    var selectedUserId by remember { mutableStateOf("") }
+    var selectedStoreId by remember { mutableStateOf("") }
+    var selectedPlan by remember { mutableStateOf("Starter") }
+    var selectedLocation by remember { mutableStateOf("دمشق") }
+
+    // Query states for filtering Specific User/Store
+    var userSearchQuery by remember { mutableStateOf("") }
+    var storeSearchQuery by remember { mutableStateOf("") }
+
+    // Loading & Feedback status
+    var isSending by remember { mutableStateOf(false) }
+
+    // Fetch FCM config on launch
+    LaunchedEffect(Unit) {
+        try {
+            db.collection("admin_settings").document("fcm_config")
+                .get()
+                .addOnSuccessListener { doc ->
+                    serverKeyInput = doc.getString("serverKey") ?: ""
+                }
+        } catch (e: Exception) {
+            Log.e("AdminBroadcast", "Failed to load fcm server key on launch", e)
+        }
+    }
+
+    val syrianGovernorates = listOf(
+        "دمشق", "ريف دمشق", "حلب", "حمص", "حماة", "اللاذقية", "طرطوس", "السويداء", "درعا", "دير الزور", "الحسكة", "الرقة", "إدلب", "القنيطرة"
+    )
+
+    val subscriptionPlans = listOf("Starter", "Growth", "Pro")
+
+    val audienceOptions = listOf(
+        "all_users_and_stores" to (if (isArabic) "جميع المستخدمين والمتاجر" else "All Users & Stores"),
+        "all_users" to (if (isArabic) "جميع الزبائن/المستخدمين فقط" else "All Clients/Users Only"),
+        "all_store_owners" to (if (isArabic) "جميع أصحاب المتاجر فقط" else "All Store Owners Only"),
+        "specific_user" to (if (isArabic) "زبون/مستخدم محدد" else "Specific User"),
+        "specific_store" to (if (isArabic) "متجر محدد" else "Specific Store"),
+        "subscription_plan" to (if (isArabic) "حسب باقة الاشتراك" else "By Subscription Plan"),
+        "location" to (if (isArabic) "حسب الموقع (المحافظة)" else "By Location (Governorate)")
+    )
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // 1. Header Row
+        item {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                IconButton(onClick = { viewModel.selectModule(null) }) {
+                    Icon(
+                        imageVector = if (isArabic) Icons.AutoMirrored.Filled.ArrowForward else Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = BrandPrimary
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isArabic) "نظام الإشعارات الجماعية (FCM)" else "Broadcast Notifications (FCM)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = BrandPrimary
+                )
+            }
+        }
+
+        // 2. Configuration Settings Card (FCM Server Key)
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = null,
+                            tint = BrandPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isArabic) "إعداد مفتاح خادم FCM" else "Configure FCM Server Key",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = BrandTextPrimary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = if (isArabic) 
+                            "لإرسال إشعارات جماعية حقيقية، يرجى إدخال مفتاح الخادم (Legacy Server Key) من لوحة تحكم Firebase." 
+                            else "To trigger actual push notifications, please configure your Legacy Server Key from the Firebase Console settings.",
+                        fontSize = 12.sp,
+                        color = BrandTextMuted
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = serverKeyInput,
+                        onValueChange = { serverKeyInput = it },
+                        label = { Text(if (isArabic) "مفتاح خادم FCM Legacy Key" else "FCM Legacy Server Key") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = BrandPrimary,
+                            unfocusedBorderColor = BrandTextMuted.copy(alpha = 0.5f),
+                            focusedLabelColor = BrandPrimary,
+                            unfocusedLabelColor = BrandTextMuted
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            isKeySaving = true
+                            viewModel.saveFcmServerKey(serverKeyInput) { success ->
+                                isKeySaving = false
+                                Toast.makeText(
+                                    context,
+                                    if (success) (if (isArabic) "تم حفظ المفتاح بنجاح" else "FCM Key saved successfully")
+                                    else (if (isArabic) "فشل حفظ المفتاح" else "Failed to save FCM Key"),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        modifier = Modifier.align(Alignment.End),
+                        enabled = !isKeySaving
+                    ) {
+                        if (isKeySaving) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = BrandTextPrimary, strokeWidth = 2.dp)
+                        } else {
+                            Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isArabic) "حفظ الإعدادات" else "Save Config")
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Main Composition Form Card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = if (isArabic) "إنشاء إشعار جماعي جديد" else "Compose New Broadcast Notification",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = BrandPrimary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // A. Title
+                    OutlinedTextField(
+                        value = titleInput,
+                        onValueChange = { titleInput = it },
+                        label = { Text(if (isArabic) "عنوان الإشعار" else "Notification Title") },
+                        modifier = Modifier.fillMaxWidth().testTag("notification_title_input"),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // B. Body / Message
+                    OutlinedTextField(
+                        value = bodyInput,
+                        onValueChange = { bodyInput = it },
+                        label = { Text(if (isArabic) "نص الرسالة" else "Message Body") },
+                        modifier = Modifier.fillMaxWidth().height(100.dp).testTag("notification_body_input"),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // C. Optional Image URL
+                    OutlinedTextField(
+                        value = imageUrlInput,
+                        onValueChange = { imageUrlInput = it },
+                        label = { Text(if (isArabic) "رابط الصورة الاختياري" else "Optional Image URL") },
+                        modifier = Modifier.fillMaxWidth().testTag("notification_image_input"),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary)
+                    )
+                    if (imageUrlInput.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .background(BrandBackground, RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Image Preview
+                            AsyncImage(
+                                model = imageUrlInput,
+                                contentDescription = "Image Preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // D. Audience Selection
+                    Text(
+                        text = if (isArabic) "الجمهور المستهدف" else "Target Audience",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                        color = BrandTextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Render Audience Selection Buttons/Dropdown
+                    audienceOptions.forEach { (key, label) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedAudienceKey = key }
+                                .padding(vertical = 6.dp)
+                        ) {
+                            RadioButton(
+                                selected = (selectedAudienceKey == key),
+                                onClick = { selectedAudienceKey = key },
+                                colors = RadioButtonDefaults.colors(selectedColor = BrandPrimary)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = label, color = BrandTextPrimary, fontSize = 13.sp)
+                        }
+                    }
+
+                    // E. Audience Sub-forms based on selection
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    AnimatedVisibility(visible = selectedAudienceKey == "specific_user") {
+                        Column {
+                            Text(if (isArabic) "البحث وتحديد الزبون:" else "Search and Select User:", color = BrandPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedTextField(
+                                value = userSearchQuery,
+                                onValueChange = { userSearchQuery = it },
+                                label = { Text(if (isArabic) "ابحث بالاسم أو البريد" else "Search by name or email") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                trailingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // List matched users
+                            val matchedUsers = state.users.filter { 
+                                it.name.contains(userSearchQuery, ignoreCase = true) || 
+                                it.email.contains(userSearchQuery, ignoreCase = true)
+                            }.take(4)
+
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                matchedUsers.forEach { user ->
+                                    val isUserSelected = selectedUserId == user.id
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                if (isUserSelected) BrandPrimary.copy(alpha = 0.2f) else Color.Transparent,
+                                                RoundedCornerShape(4.dp)
+                                            )
+                                            .clickable { selectedUserId = user.id }
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isUserSelected) Icons.Default.CheckCircle else Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = if (isUserSelected) BrandPrimary else BrandTextMuted,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(text = "${user.name} (${user.email})", color = BrandTextPrimary, fontSize = 12.sp)
+                                    }
+                                }
+                                if (matchedUsers.isEmpty()) {
+                                    Text(if (isArabic) "لا توجد نتائج" else "No matching users found", color = BrandTextMuted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(visible = selectedAudienceKey == "specific_store") {
+                        Column {
+                            Text(if (isArabic) "البحث وتحديد المتجر:" else "Search and Select Store:", color = BrandPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            OutlinedTextField(
+                                value = storeSearchQuery,
+                                onValueChange = { storeSearchQuery = it },
+                                label = { Text(if (isArabic) "ابحث باسم المتجر" else "Search by store name") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                trailingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val matchedStores = state.stores.filter { 
+                                it.name.contains(storeSearchQuery, ignoreCase = true)
+                            }.take(4)
+
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                matchedStores.forEach { store ->
+                                    val isStoreSelected = selectedStoreId == store.id
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                if (isStoreSelected) BrandPrimary.copy(alpha = 0.2f) else Color.Transparent,
+                                                RoundedCornerShape(4.dp)
+                                            )
+                                            .clickable { selectedStoreId = store.id }
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isStoreSelected) Icons.Default.CheckCircle else Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = if (isStoreSelected) BrandPrimary else BrandTextMuted,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(text = store.name, color = BrandTextPrimary, fontSize = 12.sp)
+                                    }
+                                }
+                                if (matchedStores.isEmpty()) {
+                                    Text(if (isArabic) "لا توجد نتائج" else "No matching stores found", color = BrandTextMuted, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(visible = selectedAudienceKey == "subscription_plan") {
+                        Column {
+                            Text(if (isArabic) "اختر باقة الاشتراك المستهدفة:" else "Select target subscription plan:", color = BrandPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                subscriptionPlans.forEach { plan ->
+                                    val isSelected = selectedPlan == plan
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .background(
+                                                if (isSelected) BrandPrimary else BrandBackground,
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable { selectedPlan = plan }
+                                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = plan, color = if (isSelected) BrandTextPrimary else BrandTextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(visible = selectedAudienceKey == "location") {
+                        Column {
+                            Text(if (isArabic) "اختر المحافظة المستهدفة:" else "Select target Governorate:", color = BrandPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .background(BrandBackground, RoundedCornerShape(8.dp))
+                                    .padding(8.dp)
+                            ) {
+                                LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    items(syrianGovernorates.size) { index ->
+                                        val gov = syrianGovernorates[index]
+                                        val isSelected = selectedLocation == gov
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(
+                                                    if (isSelected) BrandPrimary.copy(alpha = 0.2f) else Color.Transparent,
+                                                    RoundedCornerShape(4.dp)
+                                                )
+                                                .clickable { selectedLocation = gov }
+                                                .padding(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Info,
+                                                contentDescription = null,
+                                                tint = if (isSelected) BrandPrimary else BrandTextMuted,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(text = gov, color = BrandTextPrimary, fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // F. SEND BROADCAST ACTION BUTTON
+                    Button(
+                        onClick = {
+                            if (titleInput.isBlank() || bodyInput.isBlank()) {
+                                Toast.makeText(context, if (isArabic) "يرجى كتابة العنوان ونص الرسالة" else "Please fill out both Title and Message Body", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+
+                            val finalAudience = when (selectedAudienceKey) {
+                                "subscription_plan" -> "subscription_plan:$selectedPlan"
+                                "location" -> "location:$selectedLocation"
+                                else -> selectedAudienceKey
+                            }
+
+                            isSending = true
+                            viewModel.sendBroadcastNotification(
+                                title = titleInput,
+                                body = bodyInput,
+                                imageUrl = imageUrlInput.ifBlank { null },
+                                audience = finalAudience,
+                                targetUserId = if (selectedAudienceKey == "specific_user") selectedUserId else null,
+                                targetStoreId = if (selectedAudienceKey == "specific_store") selectedStoreId else null,
+                                onSuccess = {
+                                    isSending = false
+                                    titleInput = ""
+                                    bodyInput = ""
+                                    imageUrlInput = ""
+                                    Toast.makeText(context, if (isArabic) "تم إرسال البث الإشعاري وتدوينه بنجاح!" else "Broadcast triggered and logged successfully!", Toast.LENGTH_LONG).show()
+                                },
+                                onFailure = { errMsg ->
+                                    isSending = false
+                                    Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
+                                }
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("send_broadcast_button"),
+                        enabled = !isSending
+                    ) {
+                        if (isSending) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = BrandTextPrimary, strokeWidth = 2.dp)
+                        } else {
+                            Icon(imageVector = Icons.Default.Send, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = if (isArabic) "بث الإشعار الآن" else "Broadcast Notification Now")
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. History Logs Header
+        item {
+            Text(
+                text = if (isArabic) "سجل عمليات البث السابقة" else "Broadcast Dispatch History",
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                color = BrandPrimary,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        // 5. History Logs Items
+        val logs = state.broadcastHistory
+        if (logs.isEmpty()) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = if (isArabic) "لا توجد سجلات بث سابقة" else "No previous broadcasts found",
+                            color = BrandTextMuted,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        } else {
+            items(logs.size) { index ->
+                val log = logs[index]
+                val title = log["title"] as? String ?: ""
+                val body = log["body"] as? String ?: ""
+                val audience = log["targetAudience"] as? String ?: "all_users"
+                val deliveryStatus = log["deliveryStatus"] as? String ?: "Unknown"
+                val sentAt = log["sentAt"] as? Long ?: 0L
+                val recipientCount = (log["recipientCount"] as? Number)?.toInt() ?: 0
+                val imageUrl = log["imageUrl"] as? String ?: ""
+
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                val formattedTime = if (sentAt > 0) sdf.format(java.util.Date(sentAt)) else "-"
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = BrandSurface),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = title,
+                                fontWeight = FontWeight.Bold,
+                                color = BrandTextPrimary,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = formattedTime,
+                                color = BrandTextMuted,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = body,
+                            color = BrandTextMuted,
+                            fontSize = 11.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (imageUrl.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (isArabic) "📎 تحتوي على صورة" else "📎 Contains attachment image",
+                                color = BrandPrimary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider(color = BrandSoftGray, thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = (if (isArabic) "الجمهور: " else "Audience: ") + when {
+                                    audience == "all_users_and_stores" -> (if (isArabic) "الكل" else "Everyone")
+                                    audience == "all_users" -> (if (isArabic) "المستخدمين" else "Users")
+                                    audience == "all_store_owners" -> (if (isArabic) "أصحاب المتاجر" else "Store Owners")
+                                    audience == "specific_user" -> (if (isArabic) "مستخدم محدد" else "Specific User")
+                                    audience == "specific_store" -> (if (isArabic) "متجر محدد" else "Specific Store")
+                                    audience.startsWith("subscription_plan:") -> (if (isArabic) "باقة " else "Plan ") + audience.substringAfter(":")
+                                    audience.startsWith("location:") -> (if (isArabic) "محافظة " else "Gov ") + audience.substringAfter(":")
+                                    else -> audience
+                                } + " (${recipientCount} ${if (isArabic) "جهاز" else "devices"})",
+                                color = BrandTextMuted,
+                                fontSize = 10.sp
+                            )
+
+                            val statusColor = when {
+                                deliveryStatus.contains("FCM") -> BrandSuccess
+                                deliveryStatus.contains("In-App") -> BrandSuccess
+                                deliveryStatus.contains("Failed") -> BrandError
+                                else -> BrandGoldenYellow
+                            }
+
+                            Text(
+                                text = deliveryStatus,
+                                color = statusColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .background(statusColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
